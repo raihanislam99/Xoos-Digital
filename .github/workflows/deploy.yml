@@ -18,15 +18,24 @@ jobs:
           WEB3FORMS_ACCESS_KEY=${{ secrets.WEB3FORMS_ACCESS_KEY }}
           EOF
       - name: Deploy via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USER }}
-          password: ${{ secrets.FTP_PASS }}
-          server-dir: /public_html/
-          exclude: .env
-      - name: Upload .env separately
+        shell: bash
         run: |
-          curl -T .env "ftp://${{ secrets.FTP_HOST }}/public_html/.env" \
-            --user "${{ secrets.FTP_USER }}:${{ secrets.FTP_PASS }}" \
-            --ftp-create-dirs --insecure
+          lftp -c "
+          set ftp:ssl-allow no
+          set net:max-retries 3
+          set net:timeout 30
+          open -u '${{ secrets.FTP_USER }}','${{ secrets.FTP_PASS }}' ${{ secrets.FTP_HOST }}
+          mirror -R -e -x .git -x .env ./ /public_html/
+          quit
+          "
+      - name: Upload .env separately
+        shell: bash
+        run: |
+          lftp -c "
+          set ftp:ssl-allow no
+          set net:max-retries 3
+          set net:timeout 30
+          open -u '${{ secrets.FTP_USER }}','${{ secrets.FTP_PASS }}' ${{ secrets.FTP_HOST }}
+          put -O /public_html/ .env
+          quit
+          "
