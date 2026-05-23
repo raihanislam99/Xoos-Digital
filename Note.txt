@@ -1,0 +1,13 @@
+1. settings improvement
+2. Make separate pages
+3. If possible add another ai for website audit frontend and admin panel. who audit every 7 days and give me a update for change content website improvement. and create a list. If I permit then it will change the website.
+before change always make a backup.
+4. Blog post improvement
+5. ai powered outrich section
+6. quotation/offer, invoice Generator.
+7. Linked post generator
+8. to do/task manager
+6. Protfolio update
+6. Auth add
+7. Deployment
+8. massages should list on admin panel

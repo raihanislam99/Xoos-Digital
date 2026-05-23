@@ -1,0 +1,23 @@
+RewriteEngine On
+
+# Redirect .php URLs to clean URLs (external)
+RewriteCond %{THE_REQUEST} \s/(about|services|portfolio|blog|contact|policy)\.php[\s?] [NC]
+RewriteRule ^(about|services|portfolio|blog|contact|policy)\.php$ $1 [R=301,L,QSA]
+
+# Redirect post.php?slug=X to /post/X (external)
+RewriteCond %{THE_REQUEST} \s/post\.php\?slug=([^\s&]+) [NC]
+RewriteRule ^post\.php$ post/%1? [R=301,L]
+
+# Front-end clean URLs (internal)
+RewriteRule ^about$ about.php [L]
+RewriteRule ^services$ services.php [L]
+RewriteRule ^portfolio$ portfolio.php [L]
+RewriteRule ^blog$ blog.php [L]
+RewriteRule ^contact$ contact.php [L]
+RewriteRule ^policy$ policy.php [L,QSA]
+
+# Sitemap (internal)
+RewriteRule ^sitemap\.xml$ sitemap.php [L]
+
+# Blog posts (internal)
+RewriteRule ^post/([^/]+)$ post.php?slug=$1 [L,QSA]

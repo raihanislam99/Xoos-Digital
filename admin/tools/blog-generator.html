@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Blog Post Generator</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,sans-serif;background:#0f1117;color:#e2e8f0;min-height:100vh;padding:1.5rem}
+.app-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem}
+.app-header h1{font-size:1.2rem;font-weight:700;color:#c8f135}
+.app-header span{font-size:0.7rem;color:#6b7280}
+.layout{display:grid;grid-template-columns:1fr 300px;gap:1.5rem;align-items:start}
+.card{background:#1a1d27;border:1px solid #2a2d3a;border-radius:8px;padding:1.25rem}
+.label{font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#6b7280;margin-bottom:0.4rem;display:block}
+.input{width:100%;padding:0.6rem 0.75rem;background:#12151f;border:1px solid #2a2d3a;border-radius:8px;color:#e2e8f0;font-size:0.85rem;outline:none;font-family:system-ui;transition:border-color 0.2s}
+.input:focus{border-color:#c8f135}
+textarea.input{min-height:200px;resize:vertical;line-height:1.6}
+textarea.input.image-prompt{min-height:80px;resize:vertical}
+textarea.input.meta-desc{min-height:60px;resize:vertical}
+select.input{cursor:pointer}
+.counter{font-size:0.65rem;color:#6b7280;margin-top:2px;text-align:right}
+.counter.warn{color:#ef4444}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0.6rem 1.2rem;border-radius:8px;font-size:0.82rem;font-weight:600;cursor:pointer;border:none;transition:all 0.15s;font-family:system-ui}
+.btn-primary{background:#c8f135;color:#0f1117}
+.btn-primary:hover{opacity:0.85}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed}
+.btn-secondary{background:#2a2d3a;color:#e2e8f0;border:1px solid #2a2d3a}
+.btn-secondary:hover{background:#3a3d4a}
+.btn-full{width:100%}
+.btn-sm{padding:0.4rem 0.8rem;font-size:0.75rem}
+.field{margin-bottom:1rem}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.error-msg{font-size:0.75rem;color:#ef4444;margin-top:4px;display:none}
+.error-msg.show{display:block}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid #0f1117;border-top-color:transparent;border-radius:50%;animation:spin 0.6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sidebar-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem}
+.sidebar-header h3{font-size:0.85rem;font-weight:700;color:#c8f135}
+.suggestion-list{display:flex;flex-direction:column;gap:6px;max-height:calc(100vh - 200px);overflow-y:auto}
+.suggestion-item{padding:0.5rem 0.75rem;background:#12151f;border:1px solid #2a2d3a;border-radius:6px;font-size:0.78rem;color:#e2e8f0;cursor:pointer;transition:all 0.15s;line-height:1.4}
+.suggestion-item:hover{border-color:#c8f135;color:#c8f135}
+.copy-toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);background:#c8f135;color:#0f1117;padding:0.5rem 1.25rem;border-radius:8px;font-size:0.82rem;font-weight:600;opacity:0;transition:opacity 0.3s;z-index:999;pointer-events:none}
+.copy-toast.show{opacity:1}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.sidebar-header h3{font-size:0.8rem}}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+    <h1>&#9889; AI Blog Post Generator</h1>
+    <span>Claude Sonnet 4</span>
+</div>
+
+<div class="layout">
+    <div class="card">
+        <div class="field">
+            <label class="label">Keyword</label>
+            <div style="display:flex;gap:8px">
+                <input class="input" id="keyword" placeholder="Enter a keyword or topic..." style="flex:1">
+                <button class="btn btn-primary" id="genBtn" onclick="generateAll()">Generate All</button>
+            </div>
+            <div class="error-msg" id="errorMsg"></div>
+        </div>
+
+        <div class="field">
+            <label class="label">Title <span style="color:#6b7280;font-weight:400">(50-60 chars)</span></label>
+            <input class="input" id="title" placeholder="Generated title appears here...">
+            <div class="counter" id="titleCounter">0 / 60</div>
+        </div>
+
+        <div class="field">
+            <label class="label">Content <span style="color:#6b7280;font-weight:400">(HTML supported)</span></label>
+            <textarea class="input" id="content" placeholder="Generated content appears here..."></textarea>
+            <div class="counter" id="wordCounter">0 words</div>
+        </div>
+
+        <div class="field">
+            <label class="label">Featured Image Prompt</label>
+            <textarea class="input image-prompt" id="imagePrompt" placeholder="AI image generation prompt for featured image..."></textarea>
+        </div>
+
+        <div class="field">
+            <label class="label">Category</label>
+            <select class="input" id="category">
+                <option value="">Select category...</option>
+                <option value="Logo Design">Logo Design</option>
+                <option value="Social Media">Social Media</option>
+                <option value="Web Development">Web Development</option>
+                <option value="Branding">Branding</option>
+                <option value="SEO">SEO</option>
+                <option value="AI">AI</option>
+            </select>
+        </div>
+
+        <div class="field-row">
+            <div class="field">
+                <label class="label">Meta Title</label>
+                <input class="input" id="metaTitle" placeholder="SEO meta title..." maxlength="60">
+                <div class="counter" id="metaTitleCounter">0 / 60</div>
+            </div>
+            <div class="field">
+                <label class="label">Meta Description</label>
+                <textarea class="input meta-desc" id="metaDesc" placeholder="SEO meta description..." maxlength="160"></textarea>
+                <div class="counter" id="metaDescCounter">0 / 160</div>
+            </div>
+        </div>
+
+        <div class="field">
+            <label class="label">Tags <span style="color:#6b7280;font-weight:400">(comma separated)</span></label>
+            <input class="input" id="tags" placeholder="tag1, tag2, tag3, tag4, tag5">
+        </div>
+
+        <button class="btn btn-secondary btn-full" onclick="copyAll()"><i class="ti ti-copy" style="font-size:0.9rem">&#128203;</i> Copy All as JSON</button>
+    </div>
+
+    <div class="card" style="position:sticky;top:1.5rem">
+        <div class="sidebar-header">
+            <h3>Post Ideas</h3>
+            <button class="btn btn-secondary btn-sm" id="refreshBtn" onclick="loadSuggestions()">&#128260; Refresh</button>
+        </div>
+        <div class="suggestion-list" id="suggestions">
+            <div style="text-align:center;color:#6b7280;font-size:0.78rem;padding:2rem 0">Click Refresh to load ideas</div>
+        </div>
+    </div>
+</div>
+
+<div class="copy-toast" id="toast">Copied to clipboard!</div>
+
+<script>
+var API_URL = '/api/proxy.php';
+
+function callAPI(systemMsg, userMsg) {
+    return fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 4000,
+            system: systemMsg,
+            messages: [{ role: 'user', content: userMsg }]
+        })
+    }).then(function(r) {
+        if (!r.ok) throw new Error('API error: HTTP ' + r.status);
+        return r.json();
+    }).then(function(d) {
+        return d.content[0].text;
+    });
+}
+
+function generateAll() {
+    var keyword = document.getElementById('keyword').value.trim();
+    if (!keyword) { showError('Please enter a keyword'); return; }
+    hideError();
+
+    var btn = document.getElementById('genBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Generating...';
+
+    var systemMsg = 'You are an expert SEO blog writer for a digital design agency. Return ONLY valid JSON no markdown no explanation.';
+    var userMsg = 'Write a complete SEO blog post for the keyword "' + keyword + '" and return this exact JSON structure with these keys: title which is a 50-60 character SEO title, content which is an 800 word HTML blog post using h2 h3 p ul tags, image_prompt which is a detailed AI image generation prompt for the featured image, meta_title which is max 60 characters, meta_description which is max 160 characters, tags which is a comma separated string of 5 tags.';
+
+    callAPI(systemMsg, userMsg).then(function(raw) {
+        var cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+        var data = JSON.parse(cleaned);
+        if (data.title) document.getElementById('title').value = data.title;
+        if (data.content) document.getElementById('content').value = data.content;
+        if (data.image_prompt) document.getElementById('imagePrompt').value = data.image_prompt;
+        if (data.meta_title) document.getElementById('metaTitle').value = data.meta_title;
+        if (data.meta_description) document.getElementById('metaDesc').value = data.meta_description;
+        if (data.tags) document.getElementById('tags').value = data.tags;
+        updateCounters();
+    }).catch(function(e) {
+        showError('Generation failed: ' + e.message);
+    }).finally(function() {
+        btn.disabled = false;
+        btn.innerHTML = 'Generate All';
+    });
+}
+
+function loadSuggestions() {
+    var btn = document.getElementById('refreshBtn');
+    btn.innerHTML = '<span class="spinner" style="border-color:#e2e8f0;border-top-color:transparent"></span>';
+    btn.disabled = true;
+
+    var systemMsg = 'Return ONLY valid JSON array no markdown.';
+    var userMsg = 'Generate 10 blog post title ideas for a digital agency offering Logo Design Social Media Kit Website Development Branding and SEO. Return as JSON array of strings.';
+
+    callAPI(systemMsg, userMsg).then(function(raw) {
+        var cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+        var titles = JSON.parse(cleaned);
+        var container = document.getElementById('suggestions');
+        container.innerHTML = '';
+        if (Array.isArray(titles)) {
+            titles.forEach(function(t) {
+                var div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.textContent = t;
+                div.onclick = function() {
+                    document.getElementById('keyword').value = t;
+                    generateAll();
+                };
+                container.appendChild(div);
+            });
+        }
+    }).catch(function(e) {
+        document.getElementById('suggestions').innerHTML = '<div style="text-align:center;color:#ef4444;font-size:0.78rem;padding:1rem">Failed to load ideas</div>';
+    }).finally(function() {
+        btn.innerHTML = '&#128260; Refresh';
+        btn.disabled = false;
+    });
+}
+
+function copyAll() {
+    var data = {
+        keyword: document.getElementById('keyword').value,
+        title: document.getElementById('title').value,
+        content: document.getElementById('content').value,
+        image_prompt: document.getElementById('imagePrompt').value,
+        category: document.getElementById('category').value,
+        meta_title: document.getElementById('metaTitle').value,
+        meta_description: document.getElementById('metaDesc').value,
+        tags: document.getElementById('tags').value
+    };
+    navigator.clipboard.writeText(JSON.stringify(data, null, 2)).then(function() {
+        var toast = document.getElementById('toast');
+        toast.classList.add('show');
+        setTimeout(function() { toast.classList.remove('show'); }, 2000);
+    });
+}
+
+function showError(msg) {
+    var el = document.getElementById('errorMsg');
+    el.textContent = msg;
+    el.classList.add('show');
+}
+function hideError() {
+    document.getElementById('errorMsg').classList.remove('show');
+}
+
+function updateCounters() {
+    var title = document.getElementById('title').value;
+    var tc = document.getElementById('titleCounter');
+    tc.textContent = title.length + ' / 60';
+    tc.className = 'counter' + (title.length > 60 ? ' warn' : '');
+
+    var content = document.getElementById('content').value;
+    var words = content.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(function(w) { return w.length > 0; }).length;
+    document.getElementById('wordCounter').textContent = words + ' words';
+
+    var mt = document.getElementById('metaTitle').value;
+    var mtc = document.getElementById('metaTitleCounter');
+    mtc.textContent = mt.length + ' / 60';
+    mtc.className = 'counter' + (mt.length > 60 ? ' warn' : '');
+
+    var md = document.getElementById('metaDesc').value;
+    var mdc = document.getElementById('metaDescCounter');
+    mdc.textContent = md.length + ' / 160';
+    mdc.className = 'counter' + (md.length > 160 ? ' warn' : '');
+}
+
+document.getElementById('title').addEventListener('input', updateCounters);
+document.getElementById('content').addEventListener('input', updateCounters);
+document.getElementById('metaTitle').addEventListener('input', updateCounters);
+document.getElementById('metaDesc').addEventListener('input', updateCounters);
+</script>
+</body>
+</html>
