@@ -7,6 +7,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Create .env from secrets
+        run: |
+          cat > .env << EOF
+          DB_HOST=${{ secrets.DB_HOST }}
+          DB_NAME=${{ secrets.DB_NAME }}
+          DB_USER=${{ secrets.DB_USER }}
+          DB_PASS=${{ secrets.DB_PASS }}
+          GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
+          WEB3FORMS_ACCESS_KEY=${{ secrets.WEB3FORMS_ACCESS_KEY }}
+          EOF
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -14,3 +24,9 @@ jobs:
           username: ${{ secrets.FTP_USER }}
           password: ${{ secrets.FTP_PASS }}
           server-dir: /public_html/
+          exclude: .env
+      - name: Upload .env separately
+        run: |
+          curl -T .env "ftp://${{ secrets.FTP_HOST }}/public_html/.env" \
+            --user "${{ secrets.FTP_USER }}:${{ secrets.FTP_PASS }}" \
+            --ftp-create-dirs --insecure
