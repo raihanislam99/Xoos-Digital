@@ -163,7 +163,7 @@ require_once __DIR__ . '/../inc/header.php';
         <div class="card">
             <div class="form-group">
                 <label>Web3Forms Key <span class="text-muted">(read-only)</span></label>
-                <input class="form-control" value="f5792651-e546-4e3e-a788-216ec76ab809" readonly style="color:var(--text3)">
+                <input class="form-control" value="<?= WEB3FORMS_ACCESS_KEY ?>" readonly style="color:var(--text3)">
             </div>
 
             <?php $presets = ai_provider_presets(); ?>

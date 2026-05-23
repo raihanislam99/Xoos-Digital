@@ -228,4 +228,5 @@
 
 </div>
 </div>
+<script>var WEB3FORMS_KEY = '<?= WEB3FORMS_ACCESS_KEY ?>';</script>
 <!-- ══ END PROJECT FORM POPUP ══ -->

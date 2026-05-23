@@ -716,7 +716,7 @@ $allCats = array_unique($allCats);
       <div class="cta-form-wrap">
         <form class="cta-form" id="contactForm">
           <!-- Web3Forms hidden fields -->
-          <input type="hidden" name="access_key" value="f5792651-e546-4e3e-a788-216ec76ab809">
+          <input type="hidden" name="access_key" value="<?= WEB3FORMS_ACCESS_KEY ?>">
           <input type="hidden" name="subject" value="New Project Inquiry - Xoos Digital">
           <input type="hidden" name="from_name" value="Xoos Digital Website">
           <div class="form-grid-2">

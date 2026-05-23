@@ -11,14 +11,36 @@ header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'xoosdigital');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+// ── Load .env into $_ENV ─────────────────────────────
+$envFile = dirname(__DIR__) . '/.env';
+if (is_file($envFile)) {
+    foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        $line = trim($line);
+        if ($line === '' || $line[0] === '#') continue;
+        $eq = strpos($line, '=');
+        if ($eq === false) continue;
+        $_ENV[trim(substr($line, 0, $eq))] = trim(substr($line, $eq + 1));
+    }
+}
 
-define('GROQ_API_KEY', getenv('GROQ_API_KEY') ?: ''); // Set via environment variable in production
+function env(string $key, mixed $default = null): mixed {
+    return array_key_exists($key, $_ENV) && $_ENV[$key] !== '' ? $_ENV[$key] : $default;
+}
+
+// ── Database ─────────────────────────────────────────
+define('DB_HOST', env('DB_HOST', 'localhost'));
+define('DB_NAME', env('DB_NAME', 'xoosdigital'));
+define('DB_USER', env('DB_USER', 'root'));
+define('DB_PASS', env('DB_PASS', ''));
+
+// ── AI Providers ─────────────────────────────────────
+define('GROQ_API_KEY', env('GROQ_API_KEY', ''));
 define('GROQ_MODEL', 'llama-3.3-70b-versatile');
 
+// ── Web3Forms (public, shared across front-end) ──────
+define('WEB3FORMS_ACCESS_KEY', env('WEB3FORMS_ACCESS_KEY', 'f5792651-e546-4e3e-a788-216ec76ab809'));
+
+// ── Base URLs ────────────────────────────────────────
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
 $host = $_SERVER['HTTP_HOST'];
 $projectRoot = dirname(__DIR__);
