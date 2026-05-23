@@ -17,25 +17,35 @@ jobs:
           GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
           WEB3FORMS_ACCESS_KEY=${{ secrets.WEB3FORMS_ACCESS_KEY }}
           EOF
-      - name: Deploy via FTP
+
+      - name: Test FTP connection
+        shell: bash
+        run: |
+          echo "Testing FTP connection..."
+          curl -v --connect-timeout 15 \
+            --user "${{ secrets.FTP_USER }}:${{ secrets.FTP_PASS }}" \
+            "ftp://${{ secrets.FTP_HOST }}/" 2>&1 || true
+
+      - name: Deploy via SFTP
         shell: bash
         run: |
           lftp -c "
-          set ftp:ssl-allow no
+          set sftp:auto-confirm yes
           set net:max-retries 3
           set net:timeout 30
-          open -u '${{ secrets.FTP_USER }}','${{ secrets.FTP_PASS }}' ${{ secrets.FTP_HOST }}
+          open sftp://${{ secrets.FTP_HOST }} -u '${{ secrets.FTP_USER }}','${{ secrets.FTP_PASS }}'
           mirror -R -e -x .git -x .env ./ /public_html/
           quit
           "
-      - name: Upload .env separately
+
+      - name: Upload .env via SFTP
         shell: bash
         run: |
           lftp -c "
-          set ftp:ssl-allow no
+          set sftp:auto-confirm yes
           set net:max-retries 3
           set net:timeout 30
-          open -u '${{ secrets.FTP_USER }}','${{ secrets.FTP_PASS }}' ${{ secrets.FTP_HOST }}
+          open sftp://${{ secrets.FTP_HOST }} -u '${{ secrets.FTP_USER }}','${{ secrets.FTP_PASS }}'
           put -O /public_html/ .env
           quit
           "
