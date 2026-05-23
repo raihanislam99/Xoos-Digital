@@ -116,14 +116,14 @@ require __DIR__ . '/inc/navbar.php';
       <p class="cta-sub">Tell us about your project and we'll get back to you within 24 hours with a clear plan and honest quote.</p>
       <div class="cta-details">
         <div class="cta-detail-row">
-          <img src="Images/Icons/phn2.svg" alt="" class="cta-icon-img" loading="lazy">
+          <img src="images/Icons/phn2.svg" alt="" class="cta-icon-img" loading="lazy">
           <div>
             <div class="cta-detail-label">PHONE</div>
             <div class="cta-detail-value"><?= h(get_setting('contact_phone', '+8801572932943')) ?></div>
           </div>
         </div>
         <div class="cta-detail-row">
-          <img src="Images/Icons/mail2.svg" alt="" class="cta-icon-img" loading="lazy">
+          <img src="images/Icons/mail2.svg" alt="" class="cta-icon-img" loading="lazy">
           <div>
             <div class="cta-detail-label">EMAIL</div>
             <div class="cta-detail-value"><?= h(get_setting('contact_email', 'xoosdigital@gmail.com')) ?></div>

@@ -676,21 +676,21 @@ $allCats = array_unique($allCats);
 
         <div class="cta-details">
           <div class="cta-detail-row">
-            <img src="Images/Icons/phn2.svg" alt="" class="cta-icon-img" loading="lazy">
+            <img src="images/Icons/phn2.svg" alt="" class="cta-icon-img" loading="lazy">
             <div>
               <div class="cta-detail-label">PHONE</div>
               <div class="cta-detail-value"><?= h(get_setting('contact_phone', '+8801572932943')) ?></div>
             </div>
           </div>
           <div class="cta-detail-row">
-            <img src="Images/Icons/mail2.svg" alt="" class="cta-icon-img" loading="lazy">
+            <img src="images/Icons/mail2.svg" alt="" class="cta-icon-img" loading="lazy">
             <div>
               <div class="cta-detail-label">EMAIL</div>
               <div class="cta-detail-value"><?= h(get_setting('contact_email', 'xoosdigital@gmail.com')) ?></div>
             </div>
           </div>
           <div class="cta-detail-row">
-            <img src="Images/Icons/location1.svg" alt="" class="cta-icon-img" loading="lazy">
+            <img src="images/Icons/location1.svg" alt="" class="cta-icon-img" loading="lazy">
             <div>
               <div class="cta-detail-label">LOCATION</div>
               <div class="cta-detail-value"><?= h(get_setting('address', 'Khilgaon, Dhaka, Bangladesh')) ?></div>
