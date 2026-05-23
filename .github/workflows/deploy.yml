@@ -7,14 +7,38 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy via SFTP
+
+      - name: Install lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+
+      - name: Deploy via FTP (passive + SSL)
         shell: bash
+        continue-on-error: true
         run: |
           lftp -c "
-          set sftp:auto-confirm yes
-          set net:max-retries 3
-          set net:timeout 30
-          open sftp://${{ secrets.FTP_HOST }} -u '${{ secrets.FTP_USER }}','${{ secrets.FTP_PASS }}'
+          set ftp:ssl-allow yes
+          set ftp:passive-mode on
+          set net:max-retries 5
+          set net:timeout 60
+          set net:reconnect-interval-base 5
+          set dns:order 'inet inet6'
+          open -u '${{ secrets.FTP_USER }}','${{ secrets.FTP_PASS }}' ${{ secrets.FTP_HOST }}
+          mirror -R -e -x .git -x .env ./ /public_html/
+          quit
+          " && echo "FTP-SSL SUCCESS" || echo "FTP-SSL FAILED"
+
+      - name: Deploy via plain FTP (fallback)
+        shell: bash
+        if: failure()
+        run: |
+          lftp -c "
+          set ftp:ssl-allow no
+          set ftp:passive-mode on
+          set net:max-retries 5
+          set net:timeout 60
+          set net:reconnect-interval-base 5
+          set dns:order 'inet inet6'
+          open -u '${{ secrets.FTP_USER }}','${{ secrets.FTP_PASS }}' ${{ secrets.FTP_HOST }}
           mirror -R -e -x .git -x .env ./ /public_html/
           quit
           "
