@@ -593,7 +593,7 @@ $allCats = array_unique($allCats);
       <?php $bi++; ?>
       <article class="blog-card" data-animate data-href="post/<?= h($post['slug']) ?>">
         <div class="blog-img-wrap">
-          <img src="<?= h($post['featured_image'] ?: 'images/Xoos_Digital_Facebook_Cover_Image.jpg') ?>" alt="<?= h($post['title']) ?>" loading="lazy">
+          <img src="<?= h(image_url($post['featured_image'] ?: 'images/Xoos_Digital_Facebook_Cover_Image.jpg')) ?>" alt="<?= h($post['title']) ?>" loading="lazy">
           <div class="blog-img-overlay blog-overlay-<?= $bi ?>"></div>
           <div class="blog-author-badge">
             <img src="images/Icons/user1.svg" alt="" loading="lazy">

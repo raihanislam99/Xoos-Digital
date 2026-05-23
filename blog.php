@@ -29,7 +29,7 @@ require __DIR__ . '/inc/navbar.php';
     <article class="blog-card blog-card-featured" data-href="post/<?= h($featured['slug']) ?>">
       <div class="blog-featured-grid">
         <div class="blog-img-wrap">
-          <img src="<?= h($featured['featured_image'] ?: 'images/Xoos_Digital_Facebook_Cover_Image.jpg') ?>" alt="<?= h($featured['title']) ?>" loading="lazy">
+          <img src="<?= h(image_url($featured['featured_image'] ?: 'images/Xoos_Digital_Facebook_Cover_Image.jpg')) ?>" alt="<?= h($featured['title']) ?>" loading="lazy">
           <div class="blog-img-overlay blog-overlay-1"></div>
           <div class="blog-author-badge">
             <img src="images/Icons/user1.svg" alt="" loading="lazy">
@@ -56,7 +56,7 @@ require __DIR__ . '/inc/navbar.php';
     <?php if ($bi === 0) continue; ?>
     <article class="blog-card" data-animate data-href="post/<?= h($post['slug']) ?>">
       <div class="blog-img-wrap">
-        <img src="<?= h($post['featured_image'] ?: 'images/Xoos_Digital_Facebook_Cover_Image.jpg') ?>" alt="<?= h($post['title']) ?>" loading="lazy">
+        <img src="<?= h(image_url($post['featured_image'] ?: 'images/Xoos_Digital_Facebook_Cover_Image.jpg')) ?>" alt="<?= h($post['title']) ?>" loading="lazy">
         <div class="blog-img-overlay blog-overlay-<?= ($bi % 3) + 1 ?>"></div>
         <div class="blog-author-badge">
           <img src="images/Icons/user1.svg" alt="" loading="lazy">

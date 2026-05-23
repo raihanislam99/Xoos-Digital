@@ -108,6 +108,19 @@ function h($str) {
     return htmlspecialchars($str, ENT_QUOTES, 'UTF-8');
 }
 
+function image_url($path) {
+    if (empty($path)) return '';
+    // Already an absolute URL that's not localhost — return as-is
+    if (preg_match('#^https?://#', $path) && stripos($path, 'localhost') === false) {
+        return $path;
+    }
+    // Strip old localhost prefix
+    $path = preg_replace('#^https?://[^/]+/#', '', $path);
+    // Strip "xoosdigital/" prefix if present (local dev prefix)
+    $path = preg_replace('#^xoosdigital/#', '', $path);
+    return BASE_URL . '/' . ltrim($path, '/');
+}
+
 // ── Generic DB shortcuts ──
 
 function db_val($query, $params = []) {

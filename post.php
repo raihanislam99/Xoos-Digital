@@ -35,7 +35,7 @@ if (!$post) {
 
 $pageTitle = h($post['meta_title'] ?: $post['title']) . ' — Xoos Digital';
 $pageDesc = h($post['meta_description'] ?: '');
-$pageImage = $post['featured_image'] ? BASE_URL . '/' . ltrim($post['featured_image'], '/') : (BASE_URL . '/images/logo.png');
+$pageImage = image_url($post['featured_image'] ?: 'images/logo.png');
 require __DIR__ . '/inc/head.php';
 ?>
 
@@ -110,7 +110,7 @@ require __DIR__ . '/inc/head.php';
 
   <?php if ($post['featured_image']): ?>
   <div class="post-featured-img">
-    <img src="<?= h($post['featured_image']) ?>" alt="<?= h($post['title']) ?>" loading="lazy" width="900" height="506">
+    <img src="<?= h(image_url($post['featured_image'])) ?>" alt="<?= h($post['title']) ?>" loading="lazy" width="900" height="506">
   </div>
   <?php endif; ?>
 
@@ -124,7 +124,7 @@ require __DIR__ . '/inc/head.php';
       <?php foreach ($recent as $r): ?>
       <a href="post/<?= urlencode($r['slug']) ?>" class="ps-item">
         <?php if ($r['featured_image']): ?>
-        <img class="ps-thumb" src="<?= h($r['featured_image']) ?>" alt="<?= h($r['title']) ?>" loading="lazy" width="60" height="45">
+        <img class="ps-thumb" src="<?= h(image_url($r['featured_image'])) ?>" alt="<?= h($r['title']) ?>" loading="lazy" width="60" height="45">
         <?php endif; ?>
         <div class="ps-info">
           <div class="ps-title"><?= h($r['title']) ?></div>

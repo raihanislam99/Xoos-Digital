@@ -5,6 +5,11 @@ require_once __DIR__ . '/admin/inc/functions.php';
 $portfolios = [];
 try {
     $portfolios = get_all('portfolio', 'created_at DESC');
+    // Normalize image URLs for JS
+    foreach ($portfolios as &$p) {
+        $p['image_url'] = image_url($p['image_url'] ?? '');
+    }
+    unset($p);
 } catch (Exception $e) {}
 
 $pageTitle = 'Portfolio | Xoos Digital';
@@ -51,7 +56,7 @@ require __DIR__ . '/inc/navbar.php';
       <?php $pi = 0; foreach ($portfolios as $p): ?>
       <?php $pCat = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $p['service'] ?? '')); ?>
       <div class="p-card" data-category="<?= h($pCat) ?>" onclick="openLightbox(<?= $pi ?>)">
-        <div class="p-card-bg"><?php if ($p['image_url']): ?><img src="<?= h($p['image_url']) ?>" alt="" class="p-card-img" loading="lazy"><?php endif; ?></div>
+        <div class="p-card-bg"><?php if ($p['image_url']): ?><img src="<?= h(image_url($p['image_url'])) ?>" alt="" class="p-card-img" loading="lazy"><?php endif; ?></div>
         <div class="p-card-overlay" style="background:linear-gradient(to top,rgba(0,0,0,0.92) 0%,rgba(0,0,0,0.3) 50%,rgba(0,0,0,0) 100%)">
           <span class="p-badge"><?= h(strtoupper($p['service'] ?? 'PROJECT')) ?></span>
           <div class="p-card-info">

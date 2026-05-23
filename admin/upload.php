@@ -30,11 +30,7 @@ if (!move_uploaded_file($file['tmp_name'], $dest)) {
 }
 
 $filepath = 'admin/uploads/' . $name;
-$url = 'uploads/' . $name;
-
-if (!empty($_SERVER['HTTP_ORIGIN'])) {
-    $url = rtrim(ADMIN_URL, '/') . '/uploads/' . $name;
-}
+$url = $filepath;
 
 // Save to media_files for media library
 try {
