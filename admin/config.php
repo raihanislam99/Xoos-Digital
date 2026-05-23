@@ -12,7 +12,11 @@ header('X-Frame-Options: DENY');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 
 // ── Load .env into $_ENV ─────────────────────────────
-$envFile = dirname(__DIR__) . '/.env';
+// Check outside public_html first (more secure), fallback to inside
+$envFile = dirname(__DIR__, 2) . '/.env';
+if (!is_file($envFile)) {
+    $envFile = dirname(__DIR__) . '/.env';
+}
 if (is_file($envFile)) {
     foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
         $line = trim($line);
