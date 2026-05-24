@@ -1,4 +1,4 @@
-name: Deploy
+name: Deploy to Hostinger
 on:
   push:
     branches: [main]
@@ -6,4 +6,63 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Webhook deploy — https://xoosdigital.com/deploy.php"
+      - uses: actions/checkout@v4
+
+      - name: Generate .env from GitHub secrets
+        run: |
+          cat > .env <<ENVEOF
+          DB_HOST=${{ secrets.DB_HOST }}
+          DB_NAME=${{ secrets.DB_NAME }}
+          DB_USER=${{ secrets.DB_USER }}
+          DB_PASS=${{ secrets.DB_PASS }}
+          GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
+          WEB3FORMS_ACCESS_KEY=${{ secrets.WEB3FORMS_ACCESS_KEY }}
+          DEPLOY_SECRET=${{ secrets.DEPLOY_SECRET }}
+          ENVEOF
+
+      - name: Test FTP connection & show remote structure
+        run: |
+          lftp -c "
+            set ftp:ssl-allow true
+            set ftp:passive-mode true
+            set net:max-retries 2
+            set net:timeout 15
+            open -u ${{ secrets.FTP_USER }},${{ secrets.FTP_PASS }} ${{ secrets.FTP_HOST }}
+            echo '=== Remote directory ==='
+            pwd
+            ls -la
+            echo '=== Checking public_html ==='
+            ls public_html/ 2>/dev/null || echo 'public_html/ not found — FTP root may be the web root'
+            quit
+          "
+
+      - name: Deploy via FTP
+        run: |
+          lftp -c "
+            set ftp:ssl-allow true
+            set ftp:passive-mode true
+            set net:max-retries 5
+            set net:timeout 60
+            set ftp:list-empty-ok true
+            open -u ${{ secrets.FTP_USER }},${{ secrets.FTP_PASS }} ${{ secrets.FTP_HOST }}
+            echo '=== Uploading files to public_html/ ==='
+            mirror -R -x ^\.git/ -x ^\.github/ -x ^\.gitignore$ -x ^\.env\.example$ -x ^Note\.txt$ -x ^README\.md$ -x ^_deploy_temp/ ./ public_html/
+            echo '=== Uploading .env outside public_html ==='
+            put -O . .env
+            echo '=== Setting .env permissions ==='
+            chmod 600 .env
+            quit
+          "
+
+      - name: Verify deployment
+        run: |
+          lftp -c "
+            set ftp:ssl-allow true
+            set ftp:passive-mode true
+            open -u ${{ secrets.FTP_USER }},${{ secrets.FTP_PASS }} ${{ secrets.FTP_HOST }}
+            echo '=== Files in public_html/ ==='
+            ls public_html/ 2>/dev/null || ls -la
+            echo '=== .env outside public_html ==='
+            ls -la .env 2>/dev/null && echo '.env OK' || echo '.env NOT FOUND in FTP root'
+            quit
+          "
