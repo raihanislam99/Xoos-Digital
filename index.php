@@ -7,7 +7,7 @@ $blogs = [];
 
 try {
     $services    = get_all('services', 'sort_order ASC');
-    $portfolios  = get_all('portfolio', 'created_at DESC');
+    $portfolios  = array_slice(get_all('portfolio', 'created_at DESC'), 0, 5);
     $packages    = get_all('packages', 'created_at ASC');
     $faqs        = get_all('faq', 'sort_order ASC');
     $testimonials = get_all('testimonials', 'sort_order ASC');
@@ -431,9 +431,22 @@ $allCats = array_unique($allCats);
       <!-- Bento Grid -->
       <div class="p-bento-grid">
 
+        <?php
+        $patIdx = 0; $patPos = 0;
+        $rowPatterns = [
+          [[6, 1, 280], [6, 1, 280]],
+          [[4, 1, 220], [4, 1, 220], [4, 1, 220]],
+        ];
+        ?>
         <?php $pi = 0; foreach ($portfolios as $p): ?>
         <?php $pCat = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $p['service'] ?? '')); ?>
-        <div class="p-card" data-category="<?= h($pCat) ?>" data-description="<?= h($p['description'] ?? '') ?>" data-link="<?= h($p['link'] ?? '') ?>">
+        <?php
+          $row = $rowPatterns[$patIdx % count($rowPatterns)];
+          $s = $row[$patPos];
+          $patPos++;
+          if ($patPos >= count($row)) { $patIdx++; $patPos = 0; }
+        ?>
+        <div class="p-card" style="grid-column:span <?= $s[0] ?>;grid-row:span <?= $s[1] ?>;min-height:<?= $s[2] ?>px" data-category="<?= h($pCat) ?>" data-description="<?= h($p['description'] ?? '') ?>" data-link="<?= h($p['link'] ?? '') ?>">
           <div class="p-card-bg"><?php if ($p['image_url']): ?><img src="<?= h($p['image_url']) ?>" alt="" class="p-card-img" loading="lazy"><?php endif; ?>
           </div>
           <div class="p-card-overlay">
@@ -460,6 +473,9 @@ $allCats = array_unique($allCats);
 
       </div>
 <?php endif; ?>
+      <div class="see-more-wrap">
+        <a href="portfolio" class="see-more-link">SEE MORE PROJECTS →</a>
+      </div>
     </div>
   </section>
 
@@ -516,13 +532,11 @@ $allCats = array_unique($allCats);
       <button class="carousel-arrow carousel-arrow-right" id="pricingNext" aria-label="Next">›</button>
     </div>
     <div class="pricing-dots" id="pricingDots"></div>
+    <div class="see-more-wrap">
+      <a href="services" class="see-more-link">SEE ALL SERVICES →</a>
+    </div>
 <?php endif; ?>
 
-    <p class="pricing-note">
-      All prices in USD. Payment: 50% upfront, 50% on delivery.<br>
-      Prefer bKash, Payoneer, or Wise? We support all.<br>
-      Need something custom? <a href="#contact" class="pricing-contact-link">Let's talk →</a>
-    </p>
   </section>
 
   <!-- ══════════════════════════════════════════
@@ -616,6 +630,9 @@ $allCats = array_unique($allCats);
       <button class="carousel-arrow carousel-arrow-right" id="blogNext" aria-label="Next">›</button>
     </div>
     <div class="blog-dots" id="blogDots"></div>
+    <div class="see-more-wrap">
+      <a href="blog" class="see-more-link">READ ALL ARTICLES →</a>
+    </div>
 <?php endif; ?>
   </section>
 

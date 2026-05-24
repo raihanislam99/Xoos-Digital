@@ -55,6 +55,7 @@ require_once __DIR__ . '/../inc/header.php';
         <button type="button" class="setting-tab <?= ($_GET['tab'] ?? '') === 'tab2' ? 'active' : '' ?>" onclick="switchTab(this,'tab2')">Social Links</button>
         <button type="button" class="setting-tab <?= ($_GET['tab'] ?? '') === 'tab3' ? 'active' : '' ?>" onclick="switchTab(this,'tab3')">Stats</button>
         <button type="button" class="setting-tab <?= ($_GET['tab'] ?? '') === 'tab4' ? 'active' : '' ?>" onclick="switchTab(this,'tab4')">API & AI</button>
+        <button type="button" class="setting-tab <?= ($_GET['tab'] ?? '') === 'tab5' ? 'active' : '' ?>" onclick="switchTab(this,'tab5')">Lead & Outreach</button>
     </div>
 
     <div id="tab1" class="setting-pane <?= (!isset($_GET['tab']) || $_GET['tab'] === 'tab1') ? 'active' : '' ?>">
@@ -217,6 +218,15 @@ require_once __DIR__ . '/../inc/header.php';
                 </select>
             </div>
 
+            <div class="form-group">
+                <label>Post AI <span class="text-muted">(LinkedIn &amp; Facebook Post Generator)</span></label>
+                <select class="form-control" name="ai_provider_posts">
+                    <?php foreach ($presets as $pk => $pv): ?>
+                        <option value="<?= $pk ?>" <?= get_setting('ai_provider_posts','groq') === $pk ? 'selected' : '' ?>><?= $pv['label'] ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
             <div class="form-group" style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
                 <label>Chatbot Enabled</label>
                 <div style="display:flex;align-items:center;gap:0.75rem;margin-top:4px">
@@ -230,10 +240,156 @@ require_once __DIR__ . '/../inc/header.php';
         </div>
     </div>
 
+    <div id="tab5" class="setting-pane <?= ($_GET['tab'] ?? '') === 'tab5' ? 'active' : '' ?>">
+        <div class="card">
+            <h3 style="font-family:'Orbitron',sans-serif;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-bottom:1rem">📧 SMTP Configuration</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>SMTP Host</label>
+                    <input class="form-control" name="smtp_host" value="<?= h(get_setting('smtp_host', '')) ?>" placeholder="smtp.gmail.com">
+                </div>
+                <div class="form-group">
+                    <label>SMTP Port</label>
+                    <input class="form-control" name="smtp_port" value="<?= h(get_setting('smtp_port', '587')) ?>" placeholder="587">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>SMTP Username</label>
+                    <input class="form-control" name="smtp_user" value="<?= h(get_setting('smtp_user', '')) ?>" placeholder="your@email.com">
+                </div>
+                <div class="form-group">
+                    <label>SMTP Password</label>
+                    <input class="form-control" type="password" name="smtp_pass" value="<?= h(get_setting('smtp_pass', '')) ?>" placeholder="App password or SMTP key">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>From Name</label>
+                    <input class="form-control" name="smtp_from_name" value="<?= h(get_setting('smtp_from_name', 'Raihan Islam — Xoos Digital')) ?>">
+                </div>
+                <div class="form-group">
+                    <label>From Email</label>
+                    <input class="form-control" name="smtp_from_email" value="<?= h(get_setting('smtp_from_email', 'raihan@xoosdigital.com')) ?>">
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="testSmtp()"><i class="ti ti-send"></i> Test Connection</button>
+                <span id="smtpTestResult" style="font-size:0.78rem;color:var(--text3);align-self:center"></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 style="font-family:'Orbitron',sans-serif;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-bottom:1rem">⚡ Sending Limits</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Daily Email Limit</label>
+                    <input class="form-control" name="daily_email_limit" type="number" value="<?= h(get_setting('daily_email_limit', '50')) ?>">
+                </div>
+                <div class="form-group">
+                    <label>Email Delay (seconds)</label>
+                    <input class="form-control" name="email_delay_seconds" type="number" value="<?= h(get_setting('email_delay_seconds', '30')) ?>">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>WhatsApp Delay (seconds)</label>
+                    <input class="form-control" name="wa_delay_seconds" type="number" value="<?= h(get_setting('wa_delay_seconds', '15')) ?>">
+                </div>
+                <div class="form-group">
+                    <label>SerpAPI Key</label>
+                    <input class="form-control" name="serp_api_key" value="<?= h(get_setting('serp_api_key', '')) ?>" placeholder="Optional - for Google search">
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 style="font-family:'Orbitron',sans-serif;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-bottom:1rem">🤖 AI Configuration</h3>
+            <p style="font-size:0.78rem;color:var(--text3);margin-bottom:1rem">Uses the same AI provider as Admin AI (set in API & AI tab). Defaults to Groq.</p>
+            <div class="form-group">
+                <label>Default Tone</label>
+                <select class="form-control" name="lead_default_tone">
+                    <option value="professional" <?= get_setting('lead_default_tone','professional') === 'professional' ? 'selected' : '' ?>>Professional</option>
+                    <option value="friendly" <?= get_setting('lead_default_tone','professional') === 'friendly' ? 'selected' : '' ?>>Friendly & Casual</option>
+                    <option value="direct" <?= get_setting('lead_default_tone','professional') === 'direct' ? 'selected' : '' ?>>Direct & Bold</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Default Language</label>
+                <select class="form-control" name="lead_default_language">
+                    <option value="English" <?= get_setting('lead_default_language','English') === 'English' ? 'selected' : '' ?>>English</option>
+                    <option value="Bangla" <?= get_setting('lead_default_language','English') === 'Bangla' ? 'selected' : '' ?>>Bangla</option>
+                    <option value="Banglish" <?= get_setting('lead_default_language','English') === 'Banglish' ? 'selected' : '' ?>>Banglish</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Default Service</label>
+                <select class="form-control" name="lead_default_service">
+                    <option value="WordPress Website Design" <?= get_setting('lead_default_service','WordPress Website Design') === 'WordPress Website Design' ? 'selected' : '' ?>>WordPress Website Design</option>
+                    <option value="WooCommerce E-Commerce Store" <?= get_setting('lead_default_service','WordPress Website Design') === 'WooCommerce E-Commerce Store' ? 'selected' : '' ?>>WooCommerce Store</option>
+                    <option value="Creative Branding & Logo" <?= get_setting('lead_default_service','WordPress Website Design') === 'Creative Branding & Logo' ? 'selected' : '' ?>>Branding & Logo</option>
+                    <option value="SEO & Google Rankings" <?= get_setting('lead_default_service','WordPress Website Design') === 'SEO & Google Rankings' ? 'selected' : '' ?>>SEO & Google</option>
+                    <option value="Facebook/Google Ads" <?= get_setting('lead_default_service','WordPress Website Design') === 'Facebook/Google Ads' ? 'selected' : '' ?>>Facebook/Google Ads</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 style="font-family:'Orbitron',sans-serif;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-bottom:1rem">📝 Email Signature</h3>
+            <div class="form-group">
+                <textarea class="form-control" name="lead_signature" rows="5"><?= h(get_setting('lead_signature', "Raihan Islam\nFounder, Xoos Digital\nxoosdigital.com\n+880 1572-932943\nDhaka, Bangladesh")) ?></textarea>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 style="font-family:'Orbitron',sans-serif;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-bottom:1rem">⚙️ Data Management</h3>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <a href="../modules/leads.php?view=my_leads&export=csv" class="btn btn-secondary btn-sm"><i class="ti ti-file-export"></i> Export All Leads CSV</a>
+                <button type="button" class="btn btn-danger btn-sm" onclick="clearAllLeads()"><i class="ti ti-trash"></i> Clear All Leads</button>
+            </div>
+        </div>
+    </div>
+
     <div class="form-actions" style="margin-top:1.5rem">
         <button type="submit" class="btn btn-primary"><i class="ti ti-device-floppy"></i> Save All Settings</button>
     </div>
 </form>
+
+<script>
+function testSmtp() {
+    var btn = event.target;
+    var result = document.getElementById('smtpTestResult');
+    btn.disabled = true;
+    result.textContent = 'Testing...';
+    var csrf = document.querySelector('input[name="_csrf"]').value;
+    fetch('../api/leads_email.php', {
+        method: 'POST',
+        headers: {'Content-Type':'application/x-www-form-urlencoded'},
+        body: '_csrf=' + encodeURIComponent(csrf) + '&action=test'
+    }).then(function(r) { return r.json(); }).then(function(j) {
+        btn.disabled = false;
+        result.textContent = j.success ? '✓ ' + j.message : '✗ ' + j.error;
+        result.style.color = j.success ? 'var(--green)' : 'var(--red)';
+    }).catch(function() {
+        btn.disabled = false;
+        result.textContent = '✗ Connection failed';
+        result.style.color = 'var(--red)';
+    });
+}
+function clearAllLeads() {
+    if (!confirm('Are you sure? This will permanently delete ALL leads.')) return;
+    if (!confirm('This CANNOT be undone. Continue?')) return;
+    var csrf = document.querySelector('input[name="_csrf"]').value;
+    fetch('../api/leads_save.php', {
+        method: 'POST',
+        headers: {'Content-Type':'application/x-www-form-urlencoded'},
+        body: '_csrf=' + encodeURIComponent(csrf) + '&action=bulk_action&bulk_action=delete&ids=all'
+    }).then(function(r) { return r.json(); }).then(function(j) {
+        alert(j.message || 'Cleared');
+        location.reload();
+    });
+}
+</script>
 
 <script>
 function saveApiKey(provider) {

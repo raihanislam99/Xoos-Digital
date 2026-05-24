@@ -6,21 +6,12 @@ $current = basename($_SERVER['SCRIPT_NAME']);
 $module = basename(dirname($_SERVER['SCRIPT_NAME'])) === 'modules' ? basename($_SERVER['SCRIPT_NAME']) : '';
 $active = $module ? str_replace('.php', '', $module) : '';
 
-$nav = [
-    ['blog',        'Blog Posts',       'ti ti-news'],
-    ['services',    'Services',         'ti ti-settings'],
-    ['packages',    'Packages',         'ti ti-box'],
-    ['testimonials','Testimonials',     'ti ti-quote'],
-    ['faq',         'FAQ',              'ti ti-help'],
-    ['portfolio',   'Portfolio',        'ti ti-briefcase'],
-    ['brands',      'Brands',           'ti ti-building'],
-    ['messages',    'Messages',         'ti ti-mail'],
-    ['media',       'Media Library',    'ti ti-photo'],
-    ['settings',    'Settings',         'ti ti-tool'],
-];
+// Nav groups rendered inline in the sidebar template below
 
 $unread_msgs = 0;
 try { $unread_msgs = db_val("SELECT COUNT(*) FROM contact_messages WHERE is_read = 0"); } catch (Exception $e) {}
+$pendingTasks = 0;
+try { $pendingTasks = (int)db_val("SELECT COUNT(*) FROM admin_tasks WHERE status IN ('pending','in_progress')"); } catch (Exception $e) {}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -81,13 +72,11 @@ try { $unread_msgs = db_val("SELECT COUNT(*) FROM contact_messages WHERE is_read
             bottom: 0;
             z-index: 100;
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: var(--shadow);
-            backdrop-filter: blur(10px);
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.03), 0 12px 40px rgba(0,0,0,0.5);
         }
         .sidebar-brand {
-            padding: 1.75rem 1.5rem;
+            padding: 1.5rem 1.5rem 1.25rem;
             border-bottom: 1px solid var(--border);
-            background: linear-gradient(180deg, rgba(255,255,255,0.01) 0%, transparent 100%);
         }
         .sidebar-brand a {
             font-family: 'Orbitron', sans-serif;
@@ -111,57 +100,81 @@ try { $unread_msgs = db_val("SELECT COUNT(*) FROM contact_messages WHERE is_read
         }
         .sidebar-nav {
             flex: 1;
-            padding: 1rem 0;
+            padding: 0.5rem 0;
             overflow-y: auto;
+        }
+        .nav-label {
+            padding: 1rem 1.5rem 0.35rem;
+            font-size: 0.6rem;
+            font-weight: 800;
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            opacity: 0.6;
+            font-family: 'Inter', sans-serif;
+        }
+        .nav-separator {
+            height: 1px;
+            background: var(--border);
+            margin: 0.5rem 1.5rem;
         }
         .sidebar-nav a {
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 0.75rem 1.5rem;
+            padding: 0.65rem 1.5rem;
             color: var(--text2);
             text-decoration: none;
-            font-size: 0.85rem;
+            font-size: 0.82rem;
             font-weight: 500;
-            transition: all 0.2s ease;
+            transition: all 0.15s ease;
             border-left: 3px solid transparent;
+            margin: 1px 0;
         }
         .sidebar-nav a:hover {
             color: var(--text);
-            background: rgba(255, 255, 255, 0.02);
-            padding-left: 1.65rem;
+            background: rgba(255, 255, 255, 0.03);
         }
         .sidebar-nav a.active {
             color: var(--accent);
-            background: linear-gradient(90deg, rgba(204, 255, 0, 0.05) 0%, transparent 100%);
+            background: linear-gradient(90deg, rgba(204, 255, 0, 0.06) 0%, transparent 100%);
             border-left-color: var(--accent);
-            padding-left: 1.65rem;
+            font-weight: 600;
         }
         .sidebar-nav a i {
-            font-size: 1.2rem;
+            font-size: 1.15rem;
             width: 20px;
             text-align: center;
+            flex-shrink: 0;
+        }
+        .unread-badge {
+            margin-left: auto;
+            background: #ef4444;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 999px;
+            font-family: 'Inter', sans-serif;
         }
         .sidebar-footer {
-            padding: 1rem 0;
+            padding: 0.75rem 0;
             border-top: 1px solid var(--border);
-            background: linear-gradient(0deg, rgba(255,255,255,0.01) 0%, transparent 100%);
         }
         .sidebar-footer a {
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 0.7rem 1.5rem;
+            padding: 0.6rem 1.5rem;
             color: var(--text3);
             text-decoration: none;
-            font-size: 0.82rem;
+            font-size: 0.8rem;
             font-weight: 500;
-            transition: all 0.2s ease;
+            transition: all 0.15s ease;
         }
         .sidebar-footer a:hover {
             color: var(--text2);
-            background: rgba(255,255,255,0.01);
-            padding-left: 1.65rem;
+            background: rgba(255,255,255,0.02);
         }
 
         /* ── Main ── */
@@ -569,15 +582,55 @@ try { $unread_msgs = db_val("SELECT COUNT(*) FROM contact_messages WHERE is_read
             </a>
         </div>
         <nav class="sidebar-nav">
-            <?php foreach ($nav as $n): ?>
-                <a href="<?= ADMIN_URL ?>/modules/<?= $n[0] ?>.php" class="<?= $active === $n[0] ? 'active' : '' ?>">
-                    <i class="<?= $n[2] ?>"></i>
-                    <?= $n[1] ?>
-                    <?php if ($n[0] === 'messages' && $unread_msgs > 0): ?>
-                        <span style="background:#ef4444;color:white;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;margin-left:auto;font-family:'Inter',sans-serif"><?= $unread_msgs ?></span>
-                    <?php endif; ?>
-                </a>
-            <?php endforeach; ?>
+            <?php
+            $groups = [
+                'CONTENT' => [
+                    ['blog',        'Blog Posts',       'ti ti-news'],
+                    ['services',    'Services',         'ti ti-settings'],
+                    ['packages',    'Packages',         'ti ti-box'],
+                    ['testimonials','Testimonials',     'ti ti-quote'],
+                    ['faq',         'FAQ',              'ti ti-help'],
+                    ['portfolio',   'Portfolio',        'ti ti-briefcase'],
+                    ['brands',      'Brands',           'ti ti-building'],
+                    ['post-generator','Post Generator', 'ti ti-file-text'],
+                    ['quote-invoice','Quote & Invoice', 'ti ti-receipt'],
+                ],
+                'COMMUNICATION' => [
+                    ['messages',    'Messages',         'ti ti-mail'],
+                    ['media',       'Media Library',    'ti ti-photo'],
+                ],
+                'OUTREACH' => [
+                    ['leads',       'Outreach',         'ti ti-users-plus'],
+                ],
+                'PRODUCTIVITY' => [
+                    ['tasks',       'Tasks',            'ti ti-checklist'],
+                ],
+                'SYSTEM' => [
+                    ['settings',    'Settings',         'ti ti-tool'],
+                ],
+            ];
+            $g = 0;
+            foreach ($groups as $label => $items):
+                if ($g > 0): ?>
+                    <div class="nav-separator"></div>
+                <?php endif; ?>
+                <div class="nav-label"><?= $label ?></div>
+                <?php foreach ($items as $n):
+                    $isActive = $active === $n[0];
+                ?>
+                    <a href="<?= ADMIN_URL ?>/modules/<?= $n[0] ?>.php" class="<?= $isActive ? 'active' : '' ?>">
+                        <i class="<?= $n[2] ?>"></i>
+                        <?= $n[1] ?>
+                        <?php if ($n[0] === 'messages' && $unread_msgs > 0): ?>
+                            <span class="unread-badge"><?= $unread_msgs ?></span>
+                        <?php endif; ?>
+                        <?php if ($n[0] === 'tasks' && $pendingTasks > 0): ?>
+                            <span class="unread-badge"><?= $pendingTasks ?></span>
+                        <?php endif; ?>
+                    </a>
+                <?php endforeach;
+                $g++;
+            endforeach; ?>
         </nav>
         <div class="sidebar-footer">
             <a href="<?= ADMIN_URL ?>/setup.php"><i class="ti ti-database"></i> Setup</a>

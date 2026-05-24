@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     for (let i = 0; i < 28; i++) {
       const ray = document.createElement('div');
       ray.className = 'ray';
-      ray.style.left = `calc(${i} / 27 * 100%)`;
+      ray.style.left = `calc(${i} / 28 * 100%)`;
       ray.style.animationDelay = `${i * 0.12}s`;
       heroRays.appendChild(ray);
     }
@@ -677,14 +677,15 @@ document.addEventListener('DOMContentLoaded', function() {
     var cards = track.children;
     var total = cards.length;
     var gap = 24;
-    var slideCount = total - 2;
-    if (total <= 3) {
+    var isMobile = window.matchMedia('(max-width: 640px)').matches;
+    var slideCount = isMobile ? total : Math.max(total - 2, 1);
+    if (slideCount <= 1) {
       if (prev) prev.style.display = 'none';
       if (next) next.style.display = 'none';
       return;
     }
 
-    var current = 0;
+    var current = isMobile ? 1 : 0;
     var isAnimating = false;
     var autoTimer = null;
 
@@ -698,7 +699,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     for (var i = 0; i < slideCount; i++) {
       var dot = document.createElement('div');
-      dot.className = 'pricing-dot' + (i === 0 ? ' active' : '');
+      dot.className = 'pricing-dot' + (i === (isMobile ? 1 : 0) ? ' active' : '');
       dot.addEventListener('click', function(idx) {
         return function() { goTo(idx); };
       }(i));
@@ -714,8 +715,10 @@ document.addEventListener('DOMContentLoaded', function() {
       for (var i = 0; i < dots.length; i++) {
         dots[i].classList.toggle('active', i === current);
       }
-      setTimeout(function() { isAnimating = false; }, 600);
-      resetAuto();
+      setTimeout(function() {
+        isAnimating = false;
+        if (!isMobile && typeof resetAuto === 'function') resetAuto();
+      }, 900);
     }
 
     function slideNext() { goTo(current + 1); }
@@ -742,17 +745,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.addEventListener('resize', applyPosition);
 
-    function startAuto() { autoTimer = setInterval(slideNext, 5000); }
-    function resetAuto() { clearInterval(autoTimer); startAuto(); }
+    if (!isMobile) {
+      function startAuto() { autoTimer = setInterval(slideNext, 5000); }
+      function resetAuto() { clearInterval(autoTimer); startAuto(); }
 
-    track.addEventListener('mouseenter', function() { clearInterval(autoTimer); });
-    track.addEventListener('mouseleave', startAuto);
-    document.addEventListener('visibilitychange', function() {
-      if (document.hidden) clearInterval(autoTimer); else startAuto();
-    });
+      track.addEventListener('mouseenter', function() { clearInterval(autoTimer); });
+      track.addEventListener('mouseleave', startAuto);
+      document.addEventListener('visibilitychange', function() {
+        if (document.hidden) clearInterval(autoTimer); else startAuto();
+      });
 
-    applyPosition();
-    startAuto();
+      applyPosition();
+      startAuto();
+    } else {
+      applyPosition();
+    }
   })();
 
   // ── BLOG CAROUSEL ──
@@ -766,8 +773,8 @@ document.addEventListener('DOMContentLoaded', function() {
     var cards = track.children;
     var total = cards.length;
     var gap = 24;
-    var slideCount = total - 2;
-    if (total <= 3) {
+    var slideCount = window.matchMedia('(max-width: 640px)').matches ? total : Math.max(total - 2, 1);
+    if (slideCount <= 1) {
       if (prev) prev.style.display = 'none';
       if (next) next.style.display = 'none';
       return;
@@ -803,7 +810,7 @@ document.addEventListener('DOMContentLoaded', function() {
       for (var i = 0; i < dots.length; i++) {
         dots[i].classList.toggle('active', i === current);
       }
-      setTimeout(function() { isAnimating = false; }, 600);
+      setTimeout(function() { isAnimating = false; }, 900);
       resetAuto();
     }
 

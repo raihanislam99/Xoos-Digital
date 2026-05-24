@@ -1,7 +1,11 @@
+add one more feature in admin panel called quotation/offer and invoice Generator. make a letterhead using my information and logo. i will give some idea it'll make me a quation. and one more tab where i can generate invoice and mail it from system aslo can download it in pdf.
+
+
+
+
+
 1. settings improvement
 2. Make separate pages
-3. If possible add another ai for website audit frontend and admin panel. who audit every 7 days and give me a update for change content website improvement. and create a list. If I permit then it will change the website.
-before change always make a backup.
 4. Blog post improvement
 5. ai powered outrich section
 6. quotation/offer, invoice Generator.
