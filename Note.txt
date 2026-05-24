@@ -1,4 +1,4 @@
-add one more feature in admin panel called quotation/offer and invoice Generator. make a letterhead using my information and logo. i will give some idea it'll make me a quation. and one more tab where i can generate invoice and mail it from system aslo can download it in pdf.
+add one more feature called quotation/offer and invoice Generator. make a letterhead using my information and logo. i will give some idea it'll make me a quation. and one more tab where i can generate invoice and mail it from system aslo can download it in pdf.
 
 
 

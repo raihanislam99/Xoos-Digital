@@ -677,8 +677,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var cards = track.children;
     var total = cards.length;
     var gap = 24;
-    var isMobile = window.matchMedia('(max-width: 640px)').matches;
-    var slideCount = isMobile ? total : Math.max(total - 2, 1);
+    var slideCount = window.matchMedia('(max-width: 640px)').matches ? total : Math.max(total - 2, 1);
     if (slideCount <= 1) {
       if (prev) prev.style.display = 'none';
       if (next) next.style.display = 'none';
@@ -715,10 +714,8 @@ document.addEventListener('DOMContentLoaded', function() {
       for (var i = 0; i < dots.length; i++) {
         dots[i].classList.toggle('active', i === current);
       }
-      setTimeout(function() {
-        isAnimating = false;
-        if (!isMobile && typeof resetAuto === 'function') resetAuto();
-      }, 900);
+      setTimeout(function() { isAnimating = false; }, 900);
+      resetAuto();
     }
 
     function slideNext() { goTo(current + 1); }
