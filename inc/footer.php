@@ -43,12 +43,10 @@ $waNum   = get_setting('whatsapp_number', '8801572932943');
         </div>
 
         <div>
-          <div class="footer-heading">Quick Links</div>
-          <a href="about" class="footer-link">About Us</a>
-          <a href="services" class="footer-link">Services</a>
-          <a href="portfolio" class="footer-link">Portfolio</a>
-          <a href="blog" class="footer-link">Blog</a>
-          <a href="contact" class="footer-link">Contact</a>
+          <div class="footer-heading">Policies</div>
+          <a href="policy.php?type=privacy" class="footer-link">Privacy Policy</a>
+          <a href="policy.php?type=terms" class="footer-link">Terms of Service</a>
+          <a href="policy.php?type=cookies" class="footer-link">Cookie Policy</a>
         </div>
 
         <div>

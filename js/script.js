@@ -677,8 +677,8 @@ document.addEventListener('DOMContentLoaded', function() {
     var cards = track.children;
     var total = cards.length;
     var gap = 24;
-    var slideCount = total - 2;
-    if (total <= 3) {
+    var slideCount = window.matchMedia('(max-width: 640px)').matches ? total : Math.max(total - 2, 1);
+    if (slideCount <= 1) {
       if (prev) prev.style.display = 'none';
       if (next) next.style.display = 'none';
       return;
@@ -714,7 +714,7 @@ document.addEventListener('DOMContentLoaded', function() {
       for (var i = 0; i < dots.length; i++) {
         dots[i].classList.toggle('active', i === current);
       }
-      setTimeout(function() { isAnimating = false; }, 600);
+      setTimeout(function() { isAnimating = false; }, 900);
       resetAuto();
     }
 
@@ -766,8 +766,8 @@ document.addEventListener('DOMContentLoaded', function() {
     var cards = track.children;
     var total = cards.length;
     var gap = 24;
-    var slideCount = total - 2;
-    if (total <= 3) {
+    var slideCount = window.matchMedia('(max-width: 640px)').matches ? total : Math.max(total - 2, 1);
+    if (slideCount <= 1) {
       if (prev) prev.style.display = 'none';
       if (next) next.style.display = 'none';
       return;
@@ -803,7 +803,7 @@ document.addEventListener('DOMContentLoaded', function() {
       for (var i = 0; i < dots.length; i++) {
         dots[i].classList.toggle('active', i === current);
       }
-      setTimeout(function() { isAnimating = false; }, 600);
+      setTimeout(function() { isAnimating = false; }, 900);
       resetAuto();
     }
 

@@ -16,7 +16,7 @@ function db() {
                 ]
             );
         } catch (PDOException $e) {
-            die('Database connection failed');
+            return null;
         }
     }
     return $pdo;
@@ -55,7 +55,7 @@ function json_response($data, $code = 200) {
 }
 
 function get_all($table, $order = 'created_at DESC') {
-    $allowed = ['blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands'];
+    $allowed = ['blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks'];
     if (!in_array($table, $allowed)) return [];
     $safe = preg_replace('/[^a-z_]/', '', $table);
     $order = preg_replace('/[^a-z0-9_ ,.\-]+/i', '', $order);
@@ -68,7 +68,7 @@ function get_all($table, $order = 'created_at DESC') {
 }
 
 function get_row($table, $id) {
-    $allowed = ['blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands'];
+    $allowed = ['blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks'];
     if (!in_array($table, $allowed)) return null;
     $safe = preg_replace('/[^a-z_]/', '', $table);
     $stmt = db()->prepare("SELECT * FROM {$safe} WHERE id = ?");
@@ -77,7 +77,7 @@ function get_row($table, $id) {
 }
 
 function insert($table, $data) {
-    $allowed = ['blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands'];
+    $allowed = ['blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks'];
     if (!in_array($table, $allowed)) return false;
     $safe = preg_replace('/[^a-z_]/', '', $table);
     $cols = implode(', ', array_keys($data));
@@ -87,7 +87,7 @@ function insert($table, $data) {
 }
 
 function update($table, $id, $data) {
-    $allowed = ['blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands'];
+    $allowed = ['blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks'];
     if (!in_array($table, $allowed)) return false;
     $safe = preg_replace('/[^a-z_]/', '', $table);
     $sets = implode(', ', array_map(fn($c) => "{$c} = :{$c}", array_keys($data)));
@@ -97,7 +97,7 @@ function update($table, $id, $data) {
 }
 
 function delete($table, $id) {
-    $allowed = ['blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands'];
+    $allowed = ['blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks'];
     if (!in_array($table, $allowed)) return false;
     $safe = preg_replace('/[^a-z_]/', '', $table);
     $stmt = db()->prepare("DELETE FROM {$safe} WHERE id = ?");
@@ -160,7 +160,9 @@ function db_delete($table, $where, $params = []) {
 // ── Settings ──
 
 function get_setting($key, $default = '') {
-    $stmt = db()->prepare("SELECT setting_value FROM settings WHERE setting_key = ?");
+    $pdo = db();
+    if ($pdo === null) return $default;
+    $stmt = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_key = ?");
     $stmt->execute([$key]);
     $v = $stmt->fetchColumn();
     return $v !== false ? $v : $default;
