@@ -26,7 +26,7 @@ if (strpos($_SERVER['REQUEST_URI'], '/post/') === 0) $ogType = 'article';
   <meta name="twitter:description" content="<?= h($pageDesc) ?>">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700;800;900&family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
-  <link rel="stylesheet" href="<?= BASE_URL ?>/css/style.css">
+  <link rel="stylesheet" href="<?= BASE_URL ?>/css/style.css?v=<?= filemtime(__DIR__ . '/../css/style.css') ?>">
 <base href="<?= BASE_URL ?>/">
 </head>
 

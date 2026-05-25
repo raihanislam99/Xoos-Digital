@@ -569,7 +569,7 @@ try { $pendingTasks = (int)db_val("SELECT COUNT(*) FROM admin_tasks WHERE status
             .form-row{grid-template-columns:1fr}
         }
     </style>
-    <script src="<?= ADMIN_URL ?>/js/admin.js"></script>
+    <script src="<?= ADMIN_URL ?>/js/admin.js?v=<?= filemtime(__DIR__ . '/../js/admin.js') ?>"></script>
     <script>window.blogAIProvider='<?= get_setting('ai_provider_blog','groq') ?>';</script>
 </head>
 <body>
