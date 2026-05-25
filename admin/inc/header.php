@@ -552,9 +552,9 @@ try { $newLeadsWeek = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklist
         .mobile-menu-btn {
             display: none;
             position: fixed;
-            top: 0.75rem;
-            right: 0.75rem;
-            z-index: 99;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            z-index: 101;
             background: var(--bg2);
             border: 1px solid var(--border);
             color: var(--text);
