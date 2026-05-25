@@ -686,7 +686,6 @@ try { $newLeadsWeek = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklist
                     <div class="bd-empty">All caught up ✨</div>
                 <?php endif; ?>
             </div>
-            <button class="sidebar-toggle" id="sidebarToggle" title="Collapse sidebar"><i class="ti ti-layout-sidebar"></i></button>
         </div>
 
         <div class="v3-more-section" style="flex:1;overflow-y:auto;padding:0.5rem 0">
