@@ -6,6 +6,15 @@ $view = $_GET['view'] ?? 'kanban';
 
 $pdo = db();
 
+$pdo->exec("CREATE TABLE IF NOT EXISTS task_notes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    task_id INT NOT NULL,
+    note TEXT NOT NULL,
+    category VARCHAR(255) DEFAULT '',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (task_id) REFERENCES admin_tasks(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
 // AJAX handlers
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
