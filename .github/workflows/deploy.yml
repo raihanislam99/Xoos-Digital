@@ -2,3 +2,8 @@ name: Deploy to Hostinger (disabled — using Hostinger Git deploy)
 on:
   push:
     branches: [never]
+jobs:
+  placeholder:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "This workflow is intentionally disabled"

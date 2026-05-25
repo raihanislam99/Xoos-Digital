@@ -1197,6 +1197,7 @@ html { font-size: 17px; }
   .v3-dash-stats { grid-template-columns: repeat(3, 1fr); }
   .v3-focus-grid { grid-template-columns: repeat(2, 1fr); }
   .v3-mini-charts-row { grid-template-columns: 1fr; }
+  .v3-blog-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
 }
 @media(max-width:768px) {
   .v3-sidebar { transform: translateX(-100%); }
@@ -1207,5 +1208,66 @@ html { font-size: 17px; }
   .v3-mini-charts-row { grid-template-columns: 1fr; }
   .v3-activity-card { padding: 1rem; }
   .v3-toast-container { bottom: 1rem; right: 1rem; left: 1rem; }
-  .v3-toast { min-width: auto; }
+  .v3-toast { min-width: auto; max-width: 100%; }
+  .v3-page-title { font-size: 0.95rem; }
+  .v3-dash-stat { padding: 16px 18px; min-height: 80px; }
+  .v3-dash-stat .ds-value { font-size: 1.8rem; }
+  .v3-focus-card { padding: 18px; }
+  .v3-focus-card .fc-count { font-size: 1.3rem; }
+  .v3-mini-chart-card { padding: 18px; }
+  .v3-blog-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.75rem; }
+  .v3-blog-card { padding: 1rem; }
+  .v3-gen-area { padding: 1.25rem; }
+  .v3-activity-item { flex-wrap: wrap; gap: 6px; }
+  .v3-activity-item .ai-time { width: 100%; margin-left: 18px; }
+  .v3-task-quick-bar { flex-wrap: wrap; padding: 0.5rem 0.75rem; }
+  .v3-task-quick-bar .tqb-input { min-width: 100%; }
+  .v3-task-quick-bar .tqb-btn { width: 100%; justify-content: center; }
+  .v3-outreach-tabs { width: 100%; }
+  .v3-bell-dropdown { position: fixed; top: auto; bottom: 0; left: 0; right: 0; width: 100%; max-height: 60vh; border-radius: var(--radius-lg) var(--radius-lg) 0 0; box-shadow: 0 -8px 32px rgba(0,0,0,0.5); }
+  .v3-cmdk-modal { max-width: 100%; margin: 0 0.5rem; }
+  .v3-cmdk-results { max-height: 280px; }
+  .sidebar-user .sidebar-toggle { display: none; }
+  /* make activity items more compact */
+  .v3-activity-item { padding: 10px 8px; font-size: 0.82rem; }
+  /* quick bar + view toggle wrapping */
+  .v3-view-toggle { width: 100%; justify-content: center; }
+  .v3-view-toggle button { flex: 1; text-align: center; justify-content: center; }
+  /* notifications dropdown on mobile */
+  .v3-bell-dropdown .bd-item { padding: 0.65rem 1rem; }
+}
+@media(max-width:480px) {
+  .v3-dash-stats { grid-template-columns: 1fr; gap: 0.5rem; }
+  .v3-dash-stat { padding: 14px 16px; min-height: auto; }
+  .v3-dash-stat .ds-value { font-size: 1.5rem; }
+  .v3-main { padding: 0.85rem; }
+  .v3-page-title { font-size: 0.85rem; }
+  .v3-focus-grid { gap: 0.65rem; }
+  .v3-focus-card { padding: 14px; }
+  .v3-focus-card .fc-count { font-size: 1.1rem; }
+  .v3-mini-charts-row { gap: 0.65rem; }
+  .v3-mini-chart-card { padding: 14px; }
+  .v3-activity-card { padding: 0.85rem; }
+  .v3-activity-card .ac-header { flex-wrap: wrap; gap: 6px; }
+  .v3-activity-item { padding: 8px 6px; }
+  .v3-activity-item .ai-text { font-size: 0.8rem; }
+  .v3-blog-grid { grid-template-columns: 1fr; }
+  .v3-blog-card .bc-actions { opacity: 1; }
+  .v3-gen-area { padding: 1rem; }
+  .v3-gen-pills { gap: 4px; }
+  .v3-gen-pill { font-size: 0.68rem; padding: 0.25rem 0.6rem; }
+  .v3-cmdk-overlay { padding: 5vh 0.5rem; align-items: flex-start; padding-top: 10vh; }
+  .v3-cmdk-modal { border-radius: var(--v3-radius); }
+  .v3-cmdk-input-wrap { padding: 0.6rem 0.75rem; }
+  .v3-cmdk-input { font-size: 0.85rem; }
+  .v3-cmdk-hint-row { font-size: 0.55rem; padding: 0.3rem 0.75rem; flex-wrap: wrap; gap: 6px; }
+  .v3-cmdk-item { padding: 0.5rem 0.6rem; font-size: 0.78rem; }
+  .v3-toast-container { bottom: 0.75rem; right: 0.75rem; left: 0.75rem; }
+  .v3-toast { padding: 0.6rem 1rem; font-size: 0.78rem; }
+  .v3-task-quick-bar .tqb-label { width: 100%; margin-bottom: 2px; }
+  .v3-outreach-tab { padding: 0.4rem 0.75rem; font-size: 0.7rem; }
+  .v3-focus-card .fc-mini-chart { height: 22px; }
+  .v3-sidebar-footer a { font-size: 0.78rem; padding: 8px 12px; }
+  .v3-more-item { font-size: 0.8rem; padding: 7px 10px; }
+  .v3-focus-item { font-size: 0.8rem; padding: 7px 10px; }
 }

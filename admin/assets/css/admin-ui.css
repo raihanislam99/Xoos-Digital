@@ -971,6 +971,11 @@ tr:hover td {
    RESPONSIVE TWEAKS
    ═══════════════════════════════════════════════ */
 
+@media(max-width: 1024px) {
+  .stat-grid { grid-template-columns: repeat(3, 1fr); }
+  .outreach-stats { grid-template-columns: repeat(3, 1fr); }
+  .outreach-stat-strip { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
 @media(max-width: 768px) {
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
   .quick-actions { grid-template-columns: repeat(2, 1fr); }
@@ -978,4 +983,54 @@ tr:hover td {
   .dashboard-widgets { grid-template-columns: 1fr; }
   .settings-tabs { gap: 0; }
   .settings-tab { padding: 0.6rem 1rem; font-size: 0.65rem; }
+  .outreach-stat-strip { grid-template-columns: repeat(2, 1fr); }
+  .settings-card { padding: 1.25rem; }
+  .funnel-stage .stage-label { width: 60px; font-size: 0.6rem; }
+  .funnel-stage .stage-bar { height: 20px; }
+  .funnel-stage .stage-count { font-size: 0.75rem; width: 32px; }
+  .gen-filter-bar { flex-wrap: wrap; }
+  .gen-filter-bar input { min-width: 100%; }
+  .quick-gen-input { flex-wrap: wrap; }
+  .quick-gen-input input { min-width: 100%; }
+  .widget-card { padding: 1.25rem; }
+  .stat-card-glass .stat-value { font-size: 1.3rem; }
+  .stat-card-glass { padding: 1.2rem; }
+  .oss-item { padding: 0.85rem 1rem; }
+  .oss-val { font-size: 1.1rem; }
+  .section-header { font-size: 0.68rem; padding-left: 10px; }
+  .outreach-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .outreach-tab { padding: 0.6rem 1rem; font-size: 0.65rem; }
+  .sort-controls { flex-wrap: wrap; }
+  .sort-controls select { flex: 1; min-width: 120px; }
+  .task-progress-bar { height: 6px; }
+  .task-legend { gap: 0.65rem; font-size: 0.65rem; flex-wrap: wrap; }
+  .os-card { padding: 1rem; }
+}
+@media(max-width: 480px) {
+  .stat-grid { grid-template-columns: 1fr; gap: 0.65rem; }
+  .quick-actions { grid-template-columns: 1fr; }
+  .outreach-stats { grid-template-columns: 1fr; gap: 0.65rem; }
+  .dashboard-widgets { gap: 0.85rem; }
+  .stat-card-glass { padding: 1rem; }
+  .stat-card-glass .stat-value { font-size: 1.1rem; }
+  .stat-card-glass .stat-icon { width: 32px; height: 32px; font-size: 1rem; margin-bottom: 0.65rem; }
+  .outreach-stat-strip { grid-template-columns: 1fr; }
+  .settings-card { padding: 1rem; }
+  .settings-tab { padding: 0.5rem 0.75rem; font-size: 0.6rem; }
+  .settings-card-title { font-size: 0.62rem; }
+  .oss-item { padding: 0.7rem 0.85rem; gap: 10px; }
+  .oss-icon { width: 32px; height: 32px; font-size: 1rem; }
+  .oss-val { font-size: 1rem; }
+  .funnel-stage { flex-wrap: wrap; gap: 4px; }
+  .funnel-stage .stage-label { width: 100%; font-size: 0.58rem; }
+  .funnel-stage .stage-count { width: auto; }
+  .section-header { font-size: 0.6rem; margin-bottom: 0.85rem; }
+  .outreach-tab { padding: 0.45rem 0.75rem; font-size: 0.6rem; }
+  .widget-card { padding: 1rem; }
+  .char-counter { font-size: 0.55rem; }
+  .sort-controls { flex-direction: column; align-items: stretch; }
+  .sort-controls select { width: 100%; }
+  .outreach-strip { grid-template-columns: 1fr; gap: 0.35rem; }
+  .quick-action-card { padding: 1rem 0.5rem; font-size: 0.65rem; }
+  .quick-action-card i { font-size: 1.2rem; }
 }

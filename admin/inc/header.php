@@ -37,8 +37,8 @@ try { $newLeadsWeek = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklist
         *{margin:0;padding:0;box-sizing:border-box}
         :root {
             --bg: #0d1117; /* Matches frontend hero background */
-            --bg2: #050d072e; /* Sleek, cards & sidebar */
-            --bg3: #050d072e; /* Dark slate fields */
+            --bg2: #0e1420; /* Sleek, cards & sidebar */
+            --bg3: #0e1420; /* Dark slate fields */
             --border: rgba(255, 255, 255, 0.05); /* Subtle border */
             --border-hover: rgba(204, 255, 0, 0.25); /* Accent lime borders */
             --accent: #CCFF00; /* Modern toxic/lime primary accent */
@@ -549,13 +549,95 @@ try { $newLeadsWeek = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklist
 
         .touch-active .media-overlay { opacity: 1 !important; }
 
+        /* ── Responsive ── */
+        @media(max-width:1024px){
+            .page-title { font-size: 1.1rem; }
+            .search-box input { width: 180px; }
+            .table-wrap { font-size: 0.82rem; }
+            th, td { padding: 0.85rem 1rem; }
+        }
         @media(max-width:768px){
+            html { font-size: 15px; }
             .sidebar{transform:translateX(-100%)}
             .sidebar.open{transform:translateX(0)}
             .sidebar.open + .sidebar-backdrop { display: block; }
-            .admin-main{padding:1.5rem}
+            .admin-main{padding:1.25rem; margin-left:0; width:100%}
             .sidebar-user .hamburger{display:block}
             .form-row{grid-template-columns:1fr}
+            .page-header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+            .page-title { font-size: 1rem; }
+            .top-bar { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+            .form-group { margin-bottom: 1rem; }
+            .form-control { padding: 0.65rem 0.85rem; font-size: 0.85rem; }
+            .card { padding: 1.25rem; }
+            .card + .card { margin-top: 1rem; }
+            .table-wrap { border-radius: var(--radius-sm); }
+            th, td { padding: 0.75rem 0.85rem; font-size: 0.78rem; }
+            th { font-size: 0.62rem; }
+            .modal { padding: 1.25rem; max-width: 100%; margin: 0 0.5rem; }
+            .modal-title { font-size: 0.85rem; }
+            .modal-actions { flex-wrap: wrap; }
+            .modal-actions .btn { flex: 1; min-width: 0; text-align: center; }
+            .btn { padding: 0.55rem 1.1rem; font-size: 0.8rem; }
+            .btn-sm { padding: 0.4rem 0.85rem; font-size: 0.72rem; }
+            .search-box { width: 100%; }
+            .search-box input { width: 100%; }
+            .form-actions { flex-direction: column; }
+            .form-actions .btn { width: 100%; justify-content: center; }
+            .empty-state { padding: 2.5rem 1rem; }
+            .empty-state i { font-size: 2.2rem; }
+            .btn-quickaction { font-size: 12px; padding: 10px 14px; }
+            .toast-msg { left: 1rem; right: 1rem; transform: none; width: auto; font-size: 0.82rem; padding: 0.65rem 1.25rem; }
+            .toast-msg.show { transform: none; }
+            /* Kanban responsive */
+            .kanban-board { flex-direction: column; overflow-x: visible; gap: 1rem; }
+            .kanban-col { min-width: 100%; max-height: none !important; }
+            .kanban-col-header { position: sticky; top: 0; z-index: 2; }
+            .task-card { padding: 0.75rem 0.85rem !important; }
+            /* Blog page */
+            .blog-sidebar { position: static !important; width: 100% !important; margin-top: 1.5rem; }
+            .blog-layout { flex-direction: column; }
+            .bulk-bar { flex-direction: column; align-items: stretch; }
+            .lead-filters { flex-direction: column; }
+            .lead-filters select, .lead-filters input { width: 100%; }
+            .finder-panel { position: static !important; }
+            .chart-container { height: auto !important; min-height: 200px; }
+        }
+        @media(max-width:480px){
+            html { font-size: 14px; }
+            .admin-main { padding: 0.85rem; }
+            .sidebar-user { padding: 0.75rem 0.65rem 0.6rem; }
+            .sidebar-user .hamburger { font-size: 1.1rem; }
+            .sidebar-avatar { width: 30px; height: 30px; font-size: 0.75rem; }
+            .sidebar-user-name { font-size: 0.78rem; }
+            .sidebar-user-role { font-size: 0.5rem; }
+            .sidebar-brand { padding: 1rem 1rem 0.85rem; }
+            .sidebar-brand a { font-size: 0.85rem; }
+            .sidebar-brand small { font-size: 0.5rem; }
+            .sidebar-nav a { padding: 0.5rem 1rem; font-size: 0.78rem; gap: 10px; }
+            .sidebar-nav a i { font-size: 1rem; width: 18px; }
+            .sidebar-footer a { padding: 0.5rem 1rem; font-size: 0.75rem; }
+            .nav-label { padding: 0.65rem 1rem 0.25rem; font-size: 0.55rem; }
+            .page-title { font-size: 0.88rem; }
+            .page-header { margin-bottom: 1.25rem; }
+            .card { padding: 1rem; border-radius: var(--radius-md); }
+            th, td { padding: 0.6rem 0.65rem; font-size: 0.72rem; }
+            .modal { padding: 1rem; }
+            .modal-title { font-size: 0.8rem; }
+            .btn { padding: 0.5rem 0.9rem; font-size: 0.75rem; }
+            .btn-sm { padding: 0.35rem 0.7rem; font-size: 0.68rem; }
+            .form-control { padding: 0.55rem 0.75rem; font-size: 0.82rem; }
+            .status-badge { font-size: 0.6rem; padding: 2px 8px; }
+            .empty-state { padding: 2rem 0.75rem; }
+            .empty-state i { font-size: 1.8rem; }
+            .btn-quickaction { font-size: 11px; padding: 9px 12px; }
+            .v3-bell { width: 28px; height: 28px; font-size: 0.95rem; }
+            .v3-bell-dropdown .bd-header { font-size: 0.62rem; padding: 0.6rem 0.85rem; }
+            .v3-bell-dropdown .bd-item { font-size: 0.72rem; padding: 0.55rem 0.85rem; }
+            .post-card { padding: 1rem; }
+            .blog-layout .blog-sidebar .sidebar-card { padding: 1rem; }
+            .tpl-card { padding: 1rem; }
+            .lead-card { padding: 1rem; }
         }
     </style>
     <script src="<?= ADMIN_URL ?>/js/admin.js?v=<?= filemtime(__DIR__ . '/../js/admin.js') ?>"></script>
