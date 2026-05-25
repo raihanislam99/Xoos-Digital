@@ -256,9 +256,9 @@
   }
 
   function bindSidebar() {
-    var hamburger = document.querySelector('.hamburger');
-    if (hamburger) {
-      hamburger.addEventListener('click', function() {
+    var mobileBtn = document.getElementById('mobileMenuBtn');
+    if (mobileBtn) {
+      mobileBtn.addEventListener('click', function() {
         var sidebar = document.getElementById('sidebar');
         if (sidebar) sidebar.classList.toggle('open');
       });

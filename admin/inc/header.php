@@ -549,6 +549,27 @@ try { $newLeadsWeek = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklist
 
         .touch-active .media-overlay { opacity: 1 !important; }
 
+        .mobile-menu-btn {
+            display: none;
+            position: fixed;
+            top: 0.75rem;
+            left: 0.75rem;
+            z-index: 99;
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-size: 1.3rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: var(--radius-sm);
+            width: 40px;
+            height: 40px;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+        .mobile-menu-btn:hover { border-color: var(--accent); color: var(--accent); }
+
         /* ── Responsive ── */
         @media(max-width:1024px){
             .page-title { font-size: 1.1rem; }
@@ -562,7 +583,7 @@ try { $newLeadsWeek = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklist
             .sidebar.open{transform:translateX(0)}
             .sidebar.open + .sidebar-backdrop { display: block; }
             .admin-main{padding:1.25rem; margin-left:0; width:100%}
-            .sidebar-user .hamburger{display:block}
+            .mobile-menu-btn{display:flex}
             .form-row{grid-template-columns:1fr}
             .page-header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
             .page-title { font-size: 1rem; }
@@ -646,11 +667,11 @@ try { $newLeadsWeek = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklist
     <script>window.blogAIProvider='<?= get_setting('ai_provider_blog','groq') ?>';</script>
 </head>
 <body>
+    <button class="mobile-menu-btn" id="mobileMenuBtn" title="Menu">
+        <i class="ti ti-menu-2"></i>
+    </button>
     <aside class="sidebar v3-sidebar" id="sidebar">
         <div class="sidebar-user">
-            <button class="hamburger" title="Menu">
-                <i class="ti ti-menu-2"></i>
-            </button>
             <div class="sidebar-avatar" data-name="<?= htmlspecialchars($_SESSION['admin_username'] ?? 'A') ?>"></div>
             <div class="sidebar-user-info">
                 <div class="sidebar-user-name"><?= htmlspecialchars($_SESSION['admin_username'] ?? 'Admin') ?></div>

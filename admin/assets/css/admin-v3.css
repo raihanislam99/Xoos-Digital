@@ -111,18 +111,6 @@ html { font-size: 17px; }
   border-bottom: 1px solid var(--border);
   position: relative;
 }
-.sidebar-user .hamburger {
-  display: none;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 1.2rem;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 6px;
-  transition: all 0.15s;
-}
-.sidebar-user .hamburger:hover { color: var(--text-primary); background: rgba(255,255,255,0.04); }
 .sidebar-bell {
   position: relative;
   background: none;
