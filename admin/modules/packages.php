@@ -36,12 +36,22 @@ $flash_msg = $_SESSION['flash_msg'] ?? '';
 $flash_type = $_SESSION['flash_type'] ?? '';
 unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
 
-$items = get_all('packages', 'created_at DESC');
-$editItem = [];
+$records = get_all('packages', 'created_at DESC');
+$editItem = [
+    'id'       => null,
+    'name'     => '',
+    'tier'     => '',
+    'tagline'  => '',
+    'price'    => '',
+    'features' => '',
+];
 $isEdit = false;
 if (!empty($_GET['edit']) && is_numeric($_GET['edit'])) {
     $fetched = get_row('packages', (int)$_GET['edit']);
-    if ($fetched) { $editItem = $fetched; $isEdit = true; }
+    if ($fetched) {
+        $editItem = array_merge($editItem, $fetched);
+        $isEdit = true;
+    }
 }
 $showForm = $isEdit || isset($_GET['new']);
 ?>
@@ -61,22 +71,22 @@ $showForm = $isEdit || isset($_GET['new']);
 
 <div id="module-list" style="<?= $showForm ? 'display:none' : 'display:block' ?>">
     <div class="card">
-        <?php if (count($items)): ?>
+        <?php if (count($records)): ?>
         <div class="table-wrap">
             <table>
                 <thead>
                     <tr><th>Name</th><th>Tier</th><th>Price</th><th>Tagline</th><th style="text-align:right">Actions</th></tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($items as $p): ?>
+                    <?php foreach ($records as $p): ?>
                     <tr>
-                        <td><strong style="color:var(--text)"><?= h($p['name']) ?></strong></td>
-                        <td><span class="text-muted"><?= h($p['tier']) ?></span></td>
-                        <td style="color:var(--accent);font-weight:600"><?= h($p['price']) ?></td>
-                        <td class="text-muted" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><?= h($p['tagline']) ?></td>
+                        <td><strong style="color:var(--text)"><?= h($p['name'] ?? '') ?></strong></td>
+                        <td><span class="text-muted"><?= h($p['tier'] ?? '') ?></span></td>
+                        <td style="color:var(--accent);font-weight:600"><?= h($p['price'] ?? '') ?></td>
+                        <td class="text-muted" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><?= h($p['tagline'] ?? '') ?></td>
                         <td style="text-align:right">
-                            <a href="?edit=<?= $p['id'] ?>" class="btn btn-secondary btn-sm"><i class="ti ti-pencil"></i></a>
-                            <button onclick="confirmDelete('packages.php?delete=<?= $p['id'] ?>', '<?= h(addslashes($p['name'])) ?>')" class="btn btn-danger btn-sm"><i class="ti ti-trash"></i></button>
+                            <a href="?edit=<?= $p['id'] ?? 0 ?>" class="btn btn-secondary btn-sm"><i class="ti ti-pencil"></i></a>
+                            <button onclick="confirmDelete('packages.php?delete=<?= $p['id'] ?? 0 ?>', '<?= h(addslashes($p['name'] ?? '')) ?>')" class="btn btn-danger btn-sm"><i class="ti ti-trash"></i></button>
                         </td>
                     </tr>
                     <?php endforeach; ?>

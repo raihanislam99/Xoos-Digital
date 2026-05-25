@@ -188,8 +188,8 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
 
 <?php if ($view === 'dashboard'): ?>
 
-<div class="card" style="margin-bottom:1.5rem">
-    <h3 style="font-family:'Orbitron',sans-serif;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-bottom:1rem"><i class="ti ti-sparkles"></i> Generate Today's Posts</h3>
+<div class="v3-gen-area">
+    <div class="ga-label"><i class="ti ti-sparkles"></i> Generate Today's Posts</div>
     <form id="genForm" onsubmit="return generatePosts(event)">
         <div class="form-group">
             <label>What's the topic today?</label>
@@ -197,38 +197,41 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
         </div>
         <div class="form-row">
             <div class="form-group">
-                <label>Use Training Data</label>
-                <div style="max-height:120px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0.5rem">
+                <label>Training Data</label>
+                <div class="v3-gen-pills">
                     <?php if (count($trainingData)): ?>
                     <?php foreach ($trainingData as $td): ?>
-                    <label style="display:flex;align-items:flex-start;gap:8px;font-size:0.75rem;color:var(--text2);padding:4px 0;cursor:pointer">
-                        <input type="checkbox" name="training_ids" value="<?= $td['id'] ?>" style="margin-top:2px">
-                        <span class="text-muted" style="display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden"><?= h(mb_substr($td['content'], 0, 120)) ?></span>
+                    <label class="v3-gen-pill">
+                        <input type="checkbox" name="training_ids" value="<?= $td['id'] ?>" onchange="this.parentElement.classList.toggle('checked')" style="display:none">
+                        <i class="ti ti-circle"></i>
+                        <span class="gp-label"><?= h(mb_substr($td['content'], 0, 60)) ?></span>
                     </label>
                     <?php endforeach; ?>
                     <?php else: ?>
-                    <div class="text-muted" style="font-size:0.75rem">No training data yet. <a href="post-generator.php?view=training" style="color:var(--accent)">Add some</a></div>
+                    <span style="font-size:0.75rem;color:var(--v3-text3)">No training data yet. <a href="post-generator.php?view=training" style="color:var(--v3-accent)">Add some</a></span>
                     <?php endif; ?>
                 </div>
             </div>
             <div class="form-group">
-                <label>Reference Profiles</label>
-                <div style="max-height:120px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0.5rem">
+                <label>Profiles</label>
+                <div class="v3-gen-pills">
                     <?php if (count($profiles)): ?>
                     <?php foreach ($profiles as $pr): ?>
-                    <label style="display:flex;align-items:flex-start;gap:8px;font-size:0.75rem;color:var(--text2);padding:4px 0;cursor:pointer">
-                        <input type="checkbox" name="profile_ids" value="<?= $pr['id'] ?>" style="margin-top:2px">
-                        <span><span class="<?= $pr['platform']==='linkedin'?'priority-high':'priority-medium' ?>" style="font-size:0.6rem;font-weight:700;text-transform:uppercase;padding:0 4px;border-radius:2px"><?= $pr['platform'] ?></span> <?= h($pr['name'] ?: $pr['profile_url']) ?></span>
+                    <label class="v3-gen-pill">
+                        <input type="checkbox" name="profile_ids" value="<?= $pr['id'] ?>" onchange="this.parentElement.classList.toggle('checked')" style="display:none">
+                        <i class="ti ti-user"></i>
+                        <span class="gp-label"><?= h($pr['name'] ?: $pr['profile_url']) ?></span>
+                        <span style="font-size:0.55rem;color:var(--v3-text3);text-transform:uppercase"><?= $pr['platform'] ?></span>
                     </label>
                     <?php endforeach; ?>
                     <?php else: ?>
-                    <div class="text-muted" style="font-size:0.75rem">No profiles yet. <a href="post-generator.php?view=profiles" style="color:var(--accent)">Add some</a></div>
+                    <span style="font-size:0.75rem;color:var(--v3-text3)">No profiles yet. <a href="post-generator.php?view=profiles" style="color:var(--v3-accent)">Add some</a></span>
                     <?php endif; ?>
                 </div>
             </div>
         </div>
         <div class="form-actions">
-            <button type="submit" class="btn btn-primary" id="gen-btn"><i class="ti ti-sparkles"></i> Generate Posts</button>
+            <button type="submit" class="btn btn-primary btn-pulse" id="gen-btn"><i class="ti ti-sparkles"></i> Generate Posts</button>
         </div>
     </form>
 </div>
@@ -260,6 +263,9 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
 
 <div style="margin-top:2rem">
     <div class="flex" style="justify-content:space-between;margin-bottom:1rem">
+        <div class="gen-filter-bar">
+            <input type="text" id="genFilter" placeholder="Filter generations...">
+        </div>
         <h3 style="font-family:'Orbitron',sans-serif;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text3)"><i class="ti ti-clock"></i> Recent Generations</h3>
     </div>
     <?php $grouped = []; foreach ($generatedPosts as $gp) { $k = substr($gp['created_at'], 0, 10); $grouped[$k][] = $gp; } ?>
@@ -286,7 +292,7 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
         </div>
     </div>
     <?php endforeach; endforeach; else: ?>
-    <div class="empty-state"><i class="ti ti-file-text"></i><p>No posts generated yet.</p></div>
+    <div class="empty-illustration"><div class="empty-icon"><i class="ti ti-file-text"></i></div><h4>No posts yet</h4><p>Generate your first post above and it will appear here.</p></div>
     <?php endif; ?>
 </div>
 
@@ -336,7 +342,7 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
         </table>
     </div>
     <?php else: ?>
-    <div class="empty-state"><i class="ti ti-database"></i><p>No training data yet. Add articles, notes, or style guides to train the AI.</p></div>
+    <div class="empty-illustration"><div class="empty-icon"><i class="ti ti-database"></i></div><h4>No training data</h4><p>Add articles, notes, or style guides above to train the AI.</p></div>
     <?php endif; ?>
 </div>
 
@@ -395,7 +401,7 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
         </table>
     </div>
     <?php else: ?>
-    <div class="empty-state"><i class="ti ti-users"></i><p>No profiles yet. Add LinkedIn or Facebook profile links to train the AI on post style.</p></div>
+    <div class="empty-illustration"><div class="empty-icon"><i class="ti ti-users"></i></div><h4>No profiles yet</h4><p>Add LinkedIn or Facebook profile links above to train the AI on post style.</p></div>
     <?php endif; ?>
 </div>
 

@@ -1,3 +1,34 @@
+<!-- Command Palette (Ctrl+K) -->
+<div class="v3-cmdk-overlay" id="v3CmdkOverlay">
+    <div class="v3-cmdk-modal">
+        <div class="v3-cmdk-input-wrap">
+            <i class="ti ti-search"></i>
+            <input class="v3-cmdk-input" id="v3CmdkInput" type="text" placeholder="Search pages, tasks, posts..." autocomplete="off" spellcheck="false">
+        </div>
+        <div class="v3-cmdk-hint-row">
+            <span><kbd>↑↓</kbd> Navigate</span>
+            <span><kbd>Enter</kbd> Open</span>
+            <span><kbd>Esc</kbd> Close</span>
+        </div>
+        <div class="v3-cmdk-results" id="v3CmdkResults"></div>
+    </div>
+</div>
+
+<!-- Keyboard Shortcuts Overlay (?) -->
+<div class="v3-shortcuts-overlay" id="v3ShortcutsOverlay">
+    <div class="v3-shortcuts-modal">
+        <h3>Keyboard Shortcuts</h3>
+        <div class="sk-row"><span>Open command palette</span> <kbd>Ctrl+K</kbd></div>
+        <div class="sk-row"><span>Show shortcuts</span> <kbd>?</kbd></div>
+        <div class="sk-row"><span>Close modal / palette</span> <kbd>Esc</kbd></div>
+        <div class="sk-row"><span>New task (quick)</span> <kbd>N</kbd></div>
+        <div style="margin-top:1rem;text-align:center;font-size:0.72rem;color:var(--v3-text3)">Click anywhere or press <kbd>Esc</kbd> to close</div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="v3-toast-container" id="v3ToastContainer"></div>
+
 <div class="modal-overlay" id="deleteModal">
     <div class="modal" style="text-align:center">
         <div style="width:56px;height:56px;border-radius:50%;background:var(--red-bg);border:1px solid rgba(255, 77, 109, 0.2);display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem">

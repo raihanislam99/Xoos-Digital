@@ -207,6 +207,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const dotsWrap = document.getElementById('tDots');
     const prevBtn = document.getElementById('tPrev');
     const nextBtn = document.getElementById('tNext');
+    if (!track || !dotsWrap || !prevBtn || !nextBtn) return;
 
     let current = 0;
     let isAnimating = false;
@@ -376,12 +377,17 @@ document.addEventListener('DOMContentLoaded', function() {
           card.style.opacity = '0';
           card.style.transform = 'scale(0.95)';
           setTimeout(function() {
-            card.style.display = match ? 'block' : 'none';
             if (match) {
+              card.style.display = '';
+              card.style.visibility = '';
+              card.style.pointerEvents = '';
               requestAnimationFrame(function() {
                 card.style.opacity = '1';
                 card.style.transform = '';
               });
+            } else {
+              card.style.visibility = 'hidden';
+              card.style.pointerEvents = 'none';
             }
           }, 150);
         });
@@ -684,7 +690,7 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
 
-    var current = isMobile ? 1 : 0;
+    var current = isMobileDevice ? 1 : 0;
     var isAnimating = false;
     var autoTimer = null;
 
@@ -698,7 +704,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     for (var i = 0; i < slideCount; i++) {
       var dot = document.createElement('div');
-      dot.className = 'pricing-dot' + (i === (isMobile ? 1 : 0) ? ' active' : '');
+      dot.className = 'pricing-dot' + (i === (isMobileDevice ? 1 : 0) ? ' active' : '');
       dot.addEventListener('click', function(idx) {
         return function() { goTo(idx); };
       }(i));
@@ -742,7 +748,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.addEventListener('resize', applyPosition);
 
-    if (!isMobile) {
+    if (!isMobileDevice) {
       function startAuto() { autoTimer = setInterval(slideNext, 5000); }
       function resetAuto() { clearInterval(autoTimer); startAuto(); }
 
@@ -849,12 +855,12 @@ document.addEventListener('DOMContentLoaded', function() {
   })();
 
   // ── BLOG CARD CLICK ──
-  document.querySelectorAll('.blog-card').forEach(function(card) {
-    card.addEventListener('click', function(e) {
-      if (e.target.closest('a, button, .blog-read-more')) return;
-      var href = card.getAttribute('data-href');
-      if (href && href !== '#') window.location.href = href;
-    });
+  document.addEventListener('click', function(e) {
+    var card = e.target.closest('.blog-card[data-href]');
+    if (!card) return;
+    if (e.target.closest('a, button')) e.preventDefault();
+    var href = card.getAttribute('data-href');
+    if (href && href !== '#') window.location.href = href;
   });
 
   // ── VIEW ALL PROJECTS LINK HOVER ──

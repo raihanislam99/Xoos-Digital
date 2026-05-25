@@ -183,49 +183,81 @@ $showForm = $isEdit || isset($_GET['new']);
 </div>
 
 <div id="module-list" style="<?= $showForm ? 'display:none' : 'display:block' ?>">
-    <div class="card">
-        <?php if (count($posts)): ?>
-        <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Title</th>
-                        <th>Status</th>
-                        <th>Updated</th>
-                        <th style="text-align:right">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($posts as $p): ?>
-                    <tr>
-                        <td style="color:var(--text3)">#<?= $p['id'] ?></td>
-                        <td>
-                            <strong style="color:var(--text)"><?= h($p['title']) ?></strong>
-                            <?php if ($p['meta_title']): ?><br><span class="text-muted">SEO: <?= h($p['meta_title']) ?></span><?php endif; ?>
-                        </td>
-                        <td>
-                            <span class="status-badge <?= $p['status'] === 'published' ? 'status-published' : 'status-draft' ?>">
-                                <?= $p['status'] ?>
-                            </span>
-                        </td>
-                        <td class="text-muted"><?= date('M j, Y', strtotime($p['updated_at'])) ?></td>
-                        <td style="text-align:right">
-                            <a href="?edit=<?= $p['id'] ?>" class="btn btn-secondary btn-sm"><i class="ti ti-pencil"></i></a>
-                            <button onclick="confirmDelete('blog.php?delete=<?= $p['id'] ?>', '<?= h(addslashes($p['title'])) ?>')" class="btn btn-danger btn-sm"><i class="ti ti-trash"></i></button>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+        <div class="v3-view-toggle">
+            <button class="active" id="v3GridBtn" onclick="setBlogView('grid')"><i class="ti ti-layout-grid"></i> Grid</button>
+            <button id="v3TableBtn" onclick="setBlogView('table')"><i class="ti ti-list"></i> Table</button>
         </div>
-        <?php else: ?>
-        <div class="empty-state">
-            <i class="ti ti-news"></i>
-            <p>No blog posts yet.</p>
-            <a href="blog.php?new=1" class="btn btn-primary mt-1">Create First Post</a>
+        <span style="font-size:0.75rem;color:var(--v3-text3)"><?= count($posts) ?> post<?= count($posts) !== 1 ? 's' : '' ?></span>
+    </div>
+
+    <!-- Card Grid View -->
+    <div id="v3BlogGrid" class="v3-blog-grid">
+        <?php foreach ($posts as $p): ?>
+        <a href="?edit=<?= $p['id'] ?? 0 ?>" class="v3-blog-card">
+            <span class="bc-status <?= ($p['status'] ?? 'draft') === 'published' ? 'published' : 'draft' ?>"><?= $p['status'] ?? 'draft' ?></span>
+            <div class="bc-icon"><i class="ti ti-news"></i></div>
+            <div class="bc-title"><?= h($p['title'] ?? '') ?></div>
+            <?php if ($p['meta_title'] ?? ''): ?><div style="font-size:0.65rem;color:var(--v3-text3);margin-top:4px">SEO: <?= h(mb_strimwidth($p['meta_title'], 0, 40, '...')) ?></div><?php endif; ?>
+            <div class="bc-meta"><?= date('M j, Y', strtotime($p['updated_at'] ?? 'now')) ?></div>
+            <div class="bc-actions">
+                <span class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:0.65rem;text-decoration:none;pointer-events:none" onclick="event.stopPropagation();event.preventDefault()"><i class="ti ti-pencil"></i> Edit</span>
+                <span class="btn btn-danger btn-sm" style="padding:2px 8px;font-size:0.65rem;text-decoration:none;pointer-events:none" onclick="event.stopPropagation();event.preventDefault();confirmDelete('blog.php?delete=<?= $p['id'] ?? 0 ?>', '<?= h(addslashes($p['title'] ?? '')) ?>')"><i class="ti ti-trash"></i></span>
+            </div>
+        </a>
+        <?php endforeach; ?>
+        <a href="blog.php?new=1" class="v3-blog-card bc-new">
+            <i class="ti ti-plus"></i>
+            <span>New Post</span>
+        </a>
+    </div>
+
+    <!-- Table View (hidden by default) -->
+    <div id="v3BlogTable" style="display:none">
+        <div class="card">
+            <?php if (count($posts)): ?>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Title</th>
+                            <th>Status</th>
+                            <th>Updated</th>
+                            <th style="text-align:right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($posts as $p): ?>
+                        <tr>
+                            <td style="color:var(--text3)">#<?= $p['id'] ?? 0 ?></td>
+                            <td>
+                                <strong style="color:var(--text)"><?= h($p['title'] ?? '') ?></strong>
+                                <?php if ($p['meta_title'] ?? ''): ?><br><span class="text-muted">SEO: <?= h($p['meta_title'] ?? '') ?></span><?php endif; ?>
+                            </td>
+                            <td>
+                                <span class="status-badge <?= ($p['status'] ?? 'draft') === 'published' ? 'status-published' : 'status-draft' ?>">
+                                    <?= $p['status'] ?? 'draft' ?>
+                                </span>
+                            </td>
+                            <td class="text-muted"><?= date('M j, Y', strtotime($p['updated_at'] ?? 'now')) ?></td>
+                            <td style="text-align:right">
+                                <a href="?edit=<?= $p['id'] ?? 0 ?>" class="btn btn-secondary btn-sm"><i class="ti ti-pencil"></i></a>
+                                <button onclick="confirmDelete('blog.php?delete=<?= $p['id'] ?? 0 ?>', '<?= h(addslashes($p['title'] ?? '')) ?>')" class="btn btn-danger btn-sm"><i class="ti ti-trash"></i></button>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <?php else: ?>
+            <div class="empty-state">
+                <i class="ti ti-news"></i>
+                <p>No blog posts yet.</p>
+                <a href="blog.php?new=1" class="btn btn-primary mt-1">Create First Post</a>
+            </div>
+            <?php endif; ?>
         </div>
-        <?php endif; ?>
     </div>
 </div>
 
@@ -617,6 +649,31 @@ function uploadImage(input) {
 }
 
 function showList() { window.location.href = 'blog.php'; }
+function setBlogView(view) {
+    var grid = document.getElementById('v3BlogGrid');
+    var table = document.getElementById('v3BlogTable');
+    var gridBtn = document.getElementById('v3GridBtn');
+    var tableBtn = document.getElementById('v3TableBtn');
+    if (!grid || !table) return;
+    if (view === 'grid') {
+        grid.style.display = '';
+        table.style.display = 'none';
+        gridBtn.classList.add('active');
+        tableBtn.classList.remove('active');
+        localStorage.setItem('blogView', 'grid');
+    } else {
+        grid.style.display = 'none';
+        table.style.display = '';
+        tableBtn.classList.add('active');
+        gridBtn.classList.remove('active');
+        localStorage.setItem('blogView', 'table');
+    }
+}
+// Restore blog view preference
+(function() {
+    var v = localStorage.getItem('blogView');
+    if (v === 'table') setBlogView('table');
+})();
 
 function aiImagePromptGen() {
     var title = document.getElementById('blogTitle').value.trim();

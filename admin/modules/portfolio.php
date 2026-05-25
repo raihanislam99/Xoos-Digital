@@ -37,12 +37,25 @@ $flash_msg = $_SESSION['flash_msg'] ?? '';
 $flash_type = $_SESSION['flash_type'] ?? '';
 unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
 
-$items = get_all('portfolio', 'created_at DESC');
-$editItem = [];
+$records = get_all('portfolio', 'created_at DESC');
+$editItem = [
+    'id'           => null,
+    'project_name' => '',
+    'client'       => '',
+    'service'      => '',
+    'description'  => '',
+    'image_url'    => '',
+    'link'         => '',
+    'sort_order'   => 0,
+    'is_active'    => 1,
+];
 $isEdit = false;
 if (!empty($_GET['edit']) && is_numeric($_GET['edit'])) {
     $fetched = get_row('portfolio', (int)$_GET['edit']);
-    if ($fetched) { $editItem = $fetched; $isEdit = true; }
+    if ($fetched) {
+        $editItem = array_merge($editItem, $fetched);
+        $isEdit = true;
+    }
 }
 $showForm = $isEdit || isset($_GET['new']);
 ?>
@@ -64,22 +77,22 @@ $showForm = $isEdit || isset($_GET['new']);
 
 <div id="module-list" style="<?= $showForm ? 'display:none' : 'display:block' ?>">
     <div class="card">
-        <?php if (count($items)): ?>
+        <?php if (count($records)): ?>
         <div class="table-wrap">
             <table>
                 <thead>
                     <tr><th>Project</th><th>Client</th><th>Service</th><th>Description</th><th style="text-align:right">Actions</th></tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($items as $p): ?>
+                    <?php foreach ($records as $p): ?>
                     <tr>
-                        <td><strong style="color:var(--text)"><?= h($p['project_name']) ?></strong></td>
-                        <td class="text-muted"><?= h($p['client']) ?></td>
-                        <td><span class="status-badge status-published"><?= h($p['service']) ?></span></td>
-                        <td class="text-muted" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><?= h($p['description']) ?></td>
+                        <td><strong style="color:var(--text)"><?= h($p['project_name'] ?? '') ?></strong></td>
+                        <td class="text-muted"><?= h($p['client'] ?? '') ?></td>
+                        <td><span class="status-badge status-published"><?= h($p['service'] ?? '') ?></span></td>
+                        <td class="text-muted" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><?= h($p['description'] ?? '') ?></td>
                         <td style="text-align:right">
-                            <a href="?edit=<?= $p['id'] ?>" class="btn btn-secondary btn-sm"><i class="ti ti-pencil"></i></a>
-                            <button onclick="confirmDelete('portfolio.php?delete=<?= $p['id'] ?>', '<?= h(addslashes($p['project_name'])) ?>')" class="btn btn-danger btn-sm"><i class="ti ti-trash"></i></button>
+                            <a href="?edit=<?= $p['id'] ?? 0 ?>" class="btn btn-secondary btn-sm"><i class="ti ti-pencil"></i></a>
+                            <button onclick="confirmDelete('portfolio.php?delete=<?= $p['id'] ?? 0 ?>', '<?= h(addslashes($p['project_name'] ?? '')) ?>')" class="btn btn-danger btn-sm"><i class="ti ti-trash"></i></button>
                         </td>
                     </tr>
                     <?php endforeach; ?>

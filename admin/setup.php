@@ -4,6 +4,8 @@ require_once __DIR__ . '/inc/functions.php';
 $message = '';
 $error = false;
 $loggedIn = !empty($_SESSION['admin_logged_in']);
+$reset_admin_done = false;
+$reset_admin_code = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
@@ -177,6 +179,84 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             training_ids TEXT,
             profile_ids TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS admin_tasks (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            status VARCHAR(50) DEFAULT 'pending',
+            priority VARCHAR(50) DEFAULT 'medium',
+            due_date DATETIME DEFAULT NULL,
+            category VARCHAR(255) DEFAULT '',
+            lead_id INT DEFAULT NULL,
+            assignee_type VARCHAR(50) DEFAULT NULL,
+            assignee_name VARCHAR(255) DEFAULT NULL,
+            sort_order INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS leads (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            business_name VARCHAR(255) NOT NULL,
+            owner_name VARCHAR(255) DEFAULT '',
+            email VARCHAR(255) DEFAULT '',
+            phone VARCHAR(100) DEFAULT '',
+            whatsapp VARCHAR(100) DEFAULT '',
+            website VARCHAR(500) DEFAULT '',
+            facebook VARCHAR(500) DEFAULT '',
+            instagram VARCHAR(500) DEFAULT '',
+            city VARCHAR(100) DEFAULT '',
+            country VARCHAR(100) DEFAULT '',
+            address TEXT,
+            niche VARCHAR(255) DEFAULT '',
+            lead_score INT DEFAULT 0,
+            status VARCHAR(50) DEFAULT 'new',
+            source VARCHAR(100) DEFAULT '',
+            tags TEXT,
+            is_blacklisted TINYINT(1) DEFAULT 0,
+            google_maps_url VARCHAR(500) DEFAULT '',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS lead_emails (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            lead_id INT NOT NULL,
+            subject VARCHAR(500) DEFAULT '',
+            body TEXT,
+            status VARCHAR(50) DEFAULT 'draft',
+            sent_at DATETIME DEFAULT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS lead_whatsapp (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            lead_id INT NOT NULL,
+            message TEXT,
+            status VARCHAR(50) DEFAULT 'sent',
+            sent_at DATETIME DEFAULT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS lead_activity (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            lead_id INT NOT NULL,
+            type VARCHAR(50) DEFAULT 'note',
+            content TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS outreach_templates (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            type VARCHAR(50) DEFAULT 'email',
+            subject VARCHAR(500) DEFAULT '',
+            body TEXT,
+            is_default TINYINT(1) DEFAULT 0,
+            use_count INT DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
         // Migrate — safely add missing columns

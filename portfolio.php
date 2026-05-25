@@ -53,15 +53,29 @@ require __DIR__ . '/inc/navbar.php';
     </div>
 
     <div class="p-bento-grid">
-      <?php $pi = 0; foreach ($portfolios as $p): ?>
-      <?php $pCat = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $p['service'] ?? '')); ?>
-      <div class="p-card" data-category="<?= h($pCat) ?>" onclick="openLightbox(<?= $pi ?>)">
+      <?php
+      $pi = 0;
+      $patIdx = 0; $patPos = 0;
+      $rowPatterns = [
+        [[6, 1, 280], [6, 1, 280]],
+        [[4, 1, 220], [4, 1, 220], [4, 1, 220]],
+      ];
+      ?>
+      <?php foreach ($portfolios as $p): ?>
+      <?php
+        $pCat = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $p['service'] ?? ''));
+        $row = $rowPatterns[$patIdx % count($rowPatterns)];
+        $s = $row[$patPos];
+        $patPos++;
+        if ($patPos >= count($row)) { $patIdx++; $patPos = 0; }
+      ?>
+      <div class="p-card" style="grid-column:span <?= $s[0] ?>;grid-row:span <?= $s[1] ?>;min-height:<?= $s[2] ?>px" data-category="<?= h($pCat) ?>" onclick="openLightbox(<?= $pi ?>)">
         <div class="p-card-bg"><?php if ($p['image_url']): ?><img src="<?= h(image_url($p['image_url'])) ?>" alt="" class="p-card-img" loading="lazy"><?php endif; ?></div>
         <div class="p-card-overlay" style="background:linear-gradient(to top,rgba(0,0,0,0.92) 0%,rgba(0,0,0,0.3) 50%,rgba(0,0,0,0) 100%)">
           <span class="p-badge"><?= h(strtoupper($p['service'] ?? 'PROJECT')) ?></span>
           <div class="p-card-info">
-            <h3 class="p-card-title"><?= h($p['project_name']) ?></h3>
-            <?php if ($p['client']): ?><p class="p-card-sub"><?= h($p['client']) ?></p><?php endif; ?>
+            <h3 class="p-card-title"><?= h($p['project_name'] ?? '') ?></h3>
+            <?php if ($p['client'] ?? ''): ?><p class="p-card-sub"><?= h($p['client']) ?></p><?php endif; ?>
           </div>
           <div class="p-view-btn"><span>↗</span></div>
         </div>
@@ -94,7 +108,9 @@ function filterPortfolio(el, filter) {
   el.classList.add('active');
   document.querySelectorAll('.p-card').forEach(function(card) {
     var cat = card.getAttribute('data-category');
-    card.style.display = (filter === 'all' || cat === filter) ? '' : 'none';
+    var match = filter === 'all' || cat === filter;
+    card.style.visibility = match ? '' : 'hidden';
+    card.style.pointerEvents = match ? '' : 'none';
   });
 }
 

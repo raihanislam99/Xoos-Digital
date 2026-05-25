@@ -188,7 +188,7 @@ require_once __DIR__ . '/../inc/header.php';
                 <?php else: ?>
                     <i class="ti ti-file" style="font-size:2rem;color:var(--text3)"></i>
                 <?php endif; ?>
-                <div class="media-overlay" style="position:absolute;inset:0;background:rgba(8,11,16,0.7);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;gap:8px;opacity:0;transition:opacity 0.2s">
+                <div class="media-overlay" style="position:absolute;inset:0;background:rgba(13,17,23,0.7);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;gap:8px;opacity:0;transition:opacity 0.2s">
                     <?php if ($isUsed): ?>
                     <span style="position:absolute;top:6px;left:6px;padding:2px 8px;background:var(--accent);color:#080B10;border-radius:var(--radius-sm);font-size:0.55rem;font-weight:700;font-family:'Orbitron',sans-serif;letter-spacing:0.05em">USED</span>
                     <?php endif; ?>

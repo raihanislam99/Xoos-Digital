@@ -52,7 +52,7 @@ require __DIR__ . '/inc/navbar.php';
         if (!is_array($features)) $features = array_filter(array_map('trim', explode("\n", $s['features'] ?? '')));
       ?>
       <div class="svc-item" data-index="<?= $si ?>">
-        <div class="svc-trigger" onclick="toggleService(this)">
+        <div class="svc-trigger">
           <div class="svc-left">
             <span class="svc-num"><?= str_pad($si + 1, 2, '0', STR_PAD_LEFT) ?></span>
             <h3 class="svc-title"><?= h($s['name']) ?></h3>

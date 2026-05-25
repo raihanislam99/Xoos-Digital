@@ -38,12 +38,25 @@ $flash_msg = $_SESSION['flash_msg'] ?? '';
 $flash_type = $_SESSION['flash_type'] ?? '';
 unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
 
-$items = get_all('brands', 'sort_order ASC, created_at DESC');
-$editItem = [];
+$records = get_all('brands', 'sort_order ASC, created_at DESC');
+$editItem = [
+    'id'          => null,
+    'name'        => '',
+    'logo_url'    => '',
+    'industry'    => '',
+    'country'     => '',
+    'service'     => '',
+    'bloom_color' => 'rgba(0,0,0,0.18)',
+    'sort_order'  => 0,
+    'is_active'   => 1,
+];
 $isEdit = false;
 if (!empty($_GET['edit']) && is_numeric($_GET['edit'])) {
     $fetched = get_row('brands', (int)$_GET['edit']);
-    if ($fetched) { $editItem = $fetched; $isEdit = true; }
+    if ($fetched) {
+        $editItem = array_merge($editItem, $fetched);
+        $isEdit = true;
+    }
 }
 $showForm = $isEdit || isset($_GET['new']);
 ?>
@@ -69,7 +82,7 @@ $showForm = $isEdit || isset($_GET['new']);
 
 <div id="module-list" style="<?= $showForm ? 'display:none' : 'display:block' ?>">
     <div class="card">
-        <?php if (count($items)): ?>
+        <?php if (count($records)): ?>
         <div class="table-wrap">
             <table>
                 <thead>
@@ -83,16 +96,16 @@ $showForm = $isEdit || isset($_GET['new']);
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($items as $p): ?>
+                    <?php foreach ($records as $p): ?>
                     <tr>
-                        <td style="color:var(--text3)"><?= $p['sort_order'] ?></td>
-                        <td><?php if ($p['logo_url']): ?><img src="../<?= h($p['logo_url']) ?>" style="width:40px;height:40px;object-fit:contain;background:white;border-radius:4px;padding:4px"><?php else: ?><span style="color:var(--text3)">—</span><?php endif; ?></td>
-                        <td><strong style="color:var(--text)"><?= h($p['name']) ?></strong></td>
-                        <td class="text-muted"><?= h($p['industry']) ?></td>
-                        <td class="text-muted"><?= h($p['service']) ?></td>
+                        <td style="color:var(--text3)"><?= $p['sort_order'] ?? 0 ?></td>
+                        <td><?php if ($p['logo_url'] ?? ''): ?><img src="../<?= h($p['logo_url'] ?? '') ?>" style="width:40px;height:40px;object-fit:contain;background:white;border-radius:4px;padding:4px"><?php else: ?><span style="color:var(--text3)">—</span><?php endif; ?></td>
+                        <td><strong style="color:var(--text)"><?= h($p['name'] ?? '') ?></strong></td>
+                        <td class="text-muted"><?= h($p['industry'] ?? '') ?></td>
+                        <td class="text-muted"><?= h($p['service'] ?? '') ?></td>
                         <td style="text-align:right">
-                            <a href="?edit=<?= $p['id'] ?>" class="btn btn-secondary btn-sm"><i class="ti ti-pencil"></i></a>
-                            <button onclick="confirmDelete('brands.php?delete=<?= $p['id'] ?>', '<?= h(addslashes($p['name'])) ?>')" class="btn btn-danger btn-sm"><i class="ti ti-trash"></i></button>
+                            <a href="?edit=<?= $p['id'] ?? 0 ?>" class="btn btn-secondary btn-sm"><i class="ti ti-pencil"></i></a>
+                            <button onclick="confirmDelete('brands.php?delete=<?= $p['id'] ?? 0 ?>', '<?= h(addslashes($p['name'] ?? '')) ?>')" class="btn btn-danger btn-sm"><i class="ti ti-trash"></i></button>
                         </td>
                     </tr>
                     <?php endforeach; ?>

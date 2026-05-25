@@ -34,13 +34,14 @@ require_once __DIR__ . '/../inc/header.php';
 
 <div class="page-header">
     <h1 class="page-title">Site Settings</h1>
+    <div style="display:flex;gap:8px">
+        <a href="../setup.php" class="btn btn-secondary btn-sm"><i class="ti ti-database"></i> Setup</a>
+        <a href="../reset-password.php" class="btn btn-secondary btn-sm"><i class="ti ti-key"></i> Credentials</a>
+        <a href="../logout.php" class="btn btn-danger btn-sm"><i class="ti ti-logout"></i> Logout</a>
+    </div>
 </div>
 
 <style>
-.setting-tabs { display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:1.5rem }
-.setting-tab { padding:0.65rem 1.25rem;font-family:'Orbitron',sans-serif;font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s;background:none;border-left:none;border-right:none;border-top:none }
-.setting-tab:hover { color:var(--text) }
-.setting-tab.active { color:var(--accent);border-bottom-color:var(--accent) }
 .setting-pane { display:none }
 .setting-pane.active { display:block }
 </style>
@@ -50,16 +51,46 @@ require_once __DIR__ . '/../inc/header.php';
     <input type="hidden" name="action" value="save">
     <input type="hidden" name="active_tab" id="activeTab" value="<?= h($_GET['tab'] ?? 'tab1') ?>">
 
-    <div class="setting-tabs">
-        <button type="button" class="setting-tab <?= (!isset($_GET['tab']) || $_GET['tab'] === 'tab1') ? 'active' : '' ?>" onclick="switchTab(this,'tab1')">Contact Info</button>
-        <button type="button" class="setting-tab <?= ($_GET['tab'] ?? '') === 'tab2' ? 'active' : '' ?>" onclick="switchTab(this,'tab2')">Social Links</button>
-        <button type="button" class="setting-tab <?= ($_GET['tab'] ?? '') === 'tab3' ? 'active' : '' ?>" onclick="switchTab(this,'tab3')">Stats</button>
-        <button type="button" class="setting-tab <?= ($_GET['tab'] ?? '') === 'tab4' ? 'active' : '' ?>" onclick="switchTab(this,'tab4')">API & AI</button>
-        <button type="button" class="setting-tab <?= ($_GET['tab'] ?? '') === 'tab5' ? 'active' : '' ?>" onclick="switchTab(this,'tab5')">Lead & Outreach</button>
+    <div class="settings-tabs">
+        <button type="button" class="settings-tab <?= (!isset($_GET['tab']) || $_GET['tab'] === 'tab1') ? 'active' : '' ?>" data-tab="tab1" onclick="switchTab(this,'tab1')">Profile &amp; Contact</button>
+        <button type="button" class="settings-tab <?= ($_GET['tab'] ?? '') === 'tab2' ? 'active' : '' ?>" data-tab="tab2" onclick="switchTab(this,'tab2')">API &amp; Integrations</button>
+        <button type="button" class="settings-tab <?= ($_GET['tab'] ?? '') === 'tab3' ? 'active' : '' ?>" data-tab="tab3" onclick="switchTab(this,'tab3')">Lead &amp; Outreach</button>
     </div>
 
-    <div id="tab1" class="setting-pane <?= (!isset($_GET['tab']) || $_GET['tab'] === 'tab1') ? 'active' : '' ?>">
-        <div class="card">
+    <!-- ════════════ TAB 1: Profile & Contact ════════════ -->
+    <div id="tab1" class="settings-section <?= (!isset($_GET['tab']) || $_GET['tab'] === 'tab1') ? 'active' : '' ?>">
+
+        <div class="settings-card">
+            <div class="settings-card-title">User Profile</div>
+            <div style="display:flex;align-items:center;gap:1.25rem;margin-bottom:1.5rem">
+                <div class="avatar-upload" title="Upload avatar (placeholder)"><i class="ti ti-camera"></i></div>
+                <div>
+                    <div style="font-size:1rem;font-weight:700;color:var(--text)"><?= h(get_setting('founder_name', 'Raihan Islam')) ?></div>
+                    <div style="font-size:0.75rem;color:var(--neon-green);margin-top:2px"><?= h(get_setting('founder_title', 'Founder & Creative Director')) ?></div>
+                    <div style="font-size:0.7rem;color:var(--text3);margin-top:2px"><?= h(get_setting('contact_email', 'xoosdigital@gmail.com')) ?></div>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Founder Name</label>
+                    <input class="form-control" name="founder_name" value="<?= h(get_setting('founder_name', 'Raihan Islam')) ?>">
+                </div>
+                <div class="form-group">
+                    <label>Founder Title</label>
+                    <input class="form-control" name="founder_title" value="<?= h(get_setting('founder_title', 'Founder & Creative Director')) ?>">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Founder Bio</label>
+                <textarea class="form-control" name="founder_bio" rows="3"><?= h(get_setting('founder_bio', '')) ?></textarea>
+                <div class="flex" style="margin-top:4px;gap:4px">
+                    <button type="button" class="btn btn-ai btn-sm" onclick="aiImproveBio()"><i class="ti ti-sparkles"></i> Improve with AI</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-card">
+            <div class="settings-card-title">Contact Information</div>
             <div class="form-row">
                 <div class="form-group">
                     <label>Contact Email</label>
@@ -80,28 +111,10 @@ require_once __DIR__ . '/../inc/header.php';
                     <input class="form-control" name="address" value="<?= h(get_setting('address', 'Khilgaon, Dhaka, Bangladesh')) ?>">
                 </div>
             </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Founder Name</label>
-                    <input class="form-control" name="founder_name" value="<?= h(get_setting('founder_name', 'Raihan Islam')) ?>">
-                </div>
-                <div class="form-group">
-                    <label>Founder Title</label>
-                    <input class="form-control" name="founder_title" value="<?= h(get_setting('founder_title', 'Founder & Creative Director')) ?>">
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Founder Bio</label>
-                <textarea class="form-control" name="founder_bio" rows="4"><?= h(get_setting('founder_bio', '')) ?></textarea>
-                <div class="flex" style="margin-top:4px;gap:4px">
-                    <button type="button" class="btn btn-ai btn-sm" onclick="aiImproveBio()"><i class="ti ti-sparkles"></i> Improve with AI</button>
-                </div>
-            </div>
         </div>
-    </div>
 
-    <div id="tab2" class="setting-pane <?= ($_GET['tab'] ?? '') === 'tab2' ? 'active' : '' ?>">
-        <div class="card">
+        <div class="settings-card">
+            <div class="settings-card-title">Social Links</div>
             <div class="form-group">
                 <label>Facebook URL</label>
                 <input class="form-control" name="facebook_url" value="<?= h(get_setting('facebook_url', 'https://facebook.com/xoosdigital')) ?>">
@@ -125,52 +138,20 @@ require_once __DIR__ . '/../inc/header.php';
         </div>
     </div>
 
-    <div id="tab3" class="setting-pane <?= ($_GET['tab'] ?? '') === 'tab3' ? 'active' : '' ?>">
-        <div class="card">
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Brands Designed</label>
-                    <input class="form-control" name="stat_brands" type="number" value="<?= h(get_setting('stat_brands', '70')) ?>">
-                </div>
-                <div class="form-group">
-                    <label>Websites Launched</label>
-                    <input class="form-control" name="stat_websites" type="number" value="<?= h(get_setting('stat_websites', '40')) ?>">
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Clients Served</label>
-                    <input class="form-control" name="stat_clients" type="number" value="<?= h(get_setting('stat_clients', '80')) ?>">
-                </div>
-                <div class="form-group">
-                    <label>Years Experience</label>
-                    <input class="form-control" name="stat_years" type="number" value="<?= h(get_setting('stat_years', '5')) ?>">
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Countries</label>
-                    <input class="form-control" name="stat_countries" type="number" value="<?= h(get_setting('stat_countries', '12')) ?>">
-                </div>
-                <div class="form-group">
-                    <label>&nbsp;</label>
-                    <div></div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- ════════════ TAB 2: API & Integrations ════════════ -->
+    <div id="tab2" class="settings-section <?= ($_GET['tab'] ?? '') === 'tab2' ? 'active' : '' ?>">
 
-    <div id="tab4" class="setting-pane <?= ($_GET['tab'] ?? '') === 'tab4' ? 'active' : '' ?>">
-        <div class="card">
+        <div class="settings-card">
+            <div class="settings-card-title">Web3Forms</div>
             <div class="form-group">
-                <label>Web3Forms Key <span class="text-muted">(read-only)</span></label>
+                <label>Access Key <span class="text-muted">(read-only)</span></label>
                 <input class="form-control" value="<?= WEB3FORMS_ACCESS_KEY ?>" readonly style="color:var(--text3)">
             </div>
+        </div>
 
+        <div class="settings-card">
+            <div class="settings-card-title">API Keys</div>
             <?php $presets = ai_provider_presets(); ?>
-
-            <hr style="border:none;border-top:1px solid var(--border);margin:1.25rem 0">
-            <h3 style="font-family:'Orbitron',sans-serif;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text3);margin-bottom:1rem">🔑 API Keys</h3>
             <?php foreach ($presets as $pk => $pv): if ($pk === 'custom') continue;
                 $savedKey = get_setting('api_key_' . $pk, '');
             ?>
@@ -187,9 +168,10 @@ require_once __DIR__ . '/../inc/header.php';
                     <?php endif; ?>
                 </div>
             <?php endforeach; ?>
+        </div>
 
-            <hr style="border:none;border-top:1px solid var(--border);margin:1.25rem 0">
-            <h3 style="font-family:'Orbitron',sans-serif;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text3);margin-bottom:1rem">⚙️ AI Assignment</h3>
+        <div class="settings-card">
+            <div class="settings-card-title">AI Assignment</div>
 
             <div class="form-group">
                 <label>Chatbot AI</label>
@@ -240,9 +222,11 @@ require_once __DIR__ . '/../inc/header.php';
         </div>
     </div>
 
-    <div id="tab5" class="setting-pane <?= ($_GET['tab'] ?? '') === 'tab5' ? 'active' : '' ?>">
-        <div class="card">
-            <h3 style="font-family:'Orbitron',sans-serif;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-bottom:1rem">📧 SMTP Configuration</h3>
+    <!-- ════════════ TAB 3: Lead & Outreach ════════════ -->
+    <div id="tab3" class="settings-section <?= ($_GET['tab'] ?? '') === 'tab3' ? 'active' : '' ?>">
+
+        <div class="settings-card">
+            <div class="settings-card-title">SMTP Configuration</div>
             <div class="form-row">
                 <div class="form-group">
                     <label>SMTP Host</label>
@@ -279,8 +263,8 @@ require_once __DIR__ . '/../inc/header.php';
             </div>
         </div>
 
-        <div class="card">
-            <h3 style="font-family:'Orbitron',sans-serif;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-bottom:1rem">⚡ Sending Limits</h3>
+        <div class="settings-card">
+            <div class="settings-card-title">Sending Limits</div>
             <div class="form-row">
                 <div class="form-group">
                     <label>Daily Email Limit</label>
@@ -303,9 +287,9 @@ require_once __DIR__ . '/../inc/header.php';
             </div>
         </div>
 
-        <div class="card">
-            <h3 style="font-family:'Orbitron',sans-serif;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-bottom:1rem">🤖 AI Configuration</h3>
-            <p style="font-size:0.78rem;color:var(--text3);margin-bottom:1rem">Uses the same AI provider as Admin AI (set in API & AI tab). Defaults to Groq.</p>
+        <div class="settings-card">
+            <div class="settings-card-title">AI Configuration</div>
+            <p style="font-size:0.78rem;color:var(--text3);margin-bottom:1rem">Uses the same AI provider as Admin AI (set in API & Integrations tab).</p>
             <div class="form-group">
                 <label>Default Tone</label>
                 <select class="form-control" name="lead_default_tone">
@@ -334,15 +318,15 @@ require_once __DIR__ . '/../inc/header.php';
             </div>
         </div>
 
-        <div class="card">
-            <h3 style="font-family:'Orbitron',sans-serif;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-bottom:1rem">📝 Email Signature</h3>
+        <div class="settings-card">
+            <div class="settings-card-title">Email Signature</div>
             <div class="form-group">
                 <textarea class="form-control" name="lead_signature" rows="5"><?= h(get_setting('lead_signature', "Raihan Islam\nFounder, Xoos Digital\nxoosdigital.com\n+880 1572-932943\nDhaka, Bangladesh")) ?></textarea>
             </div>
         </div>
 
-        <div class="card">
-            <h3 style="font-family:'Orbitron',sans-serif;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-bottom:1rem">⚙️ Data Management</h3>
+        <div class="settings-card">
+            <div class="settings-card-title">Data Management</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
                 <a href="../modules/leads.php?view=my_leads&export=csv" class="btn btn-secondary btn-sm"><i class="ti ti-file-export"></i> Export All Leads CSV</a>
                 <button type="button" class="btn btn-danger btn-sm" onclick="clearAllLeads()"><i class="ti ti-trash"></i> Clear All Leads</button>
@@ -421,8 +405,8 @@ function saveApiKey(provider) {
     return false;
 }
 function switchTab(btn, tabId) {
-    document.querySelectorAll('.setting-tab').forEach(function(t) { t.classList.remove('active'); });
-    document.querySelectorAll('.setting-pane').forEach(function(p) { p.classList.remove('active'); });
+    document.querySelectorAll('.settings-tab').forEach(function(t) { t.classList.remove('active'); });
+    document.querySelectorAll('.settings-section').forEach(function(p) { p.classList.remove('active'); });
     btn.classList.add('active');
     document.getElementById(tabId).classList.add('active');
     document.getElementById('activeTab').value = tabId;

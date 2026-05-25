@@ -12,6 +12,15 @@ $unread_msgs = 0;
 try { $unread_msgs = db_val("SELECT COUNT(*) FROM contact_messages WHERE is_read = 0"); } catch (Exception $e) {}
 $pendingTasks = 0;
 try { $pendingTasks = (int)db_val("SELECT COUNT(*) FROM admin_tasks WHERE status IN ('pending','in_progress')"); } catch (Exception $e) {}
+// v3 focus counts
+$tasksDueToday = 0;
+try { $tasksDueToday = (int)db_val("SELECT COUNT(*) FROM admin_tasks WHERE status IN ('pending','in_progress') AND DATE(due_date) = CURDATE()"); } catch (Exception $e) {}
+$blogDrafts = 0;
+try { $blogDrafts = (int)db_val("SELECT COUNT(*) FROM blog_posts WHERE status = 'draft'"); } catch (Exception $e) {}
+$unpubPosts = 0;
+try { $unpubPosts = (int)db_val("SELECT COUNT(*) FROM generated_posts WHERE status = 'draft'"); } catch (Exception $e) {}
+$newLeadsWeek = 0;
+try { $newLeadsWeek = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklisted = 0 AND created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)"); } catch (Exception $e) {}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -22,12 +31,14 @@ try { $pendingTasks = (int)db_val("SELECT COUNT(*) FROM admin_tasks WHERE status
     <link rel="icon" href="<?= BASE_URL ?>/images/Icons/favicon.png">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+    <link rel="stylesheet" href="<?= ADMIN_URL ?>/assets/css/admin-ui.css?v=<?= filemtime(__DIR__ . '/../assets/css/admin-ui.css') ?>">
+    <link rel="stylesheet" href="<?= ADMIN_URL ?>/assets/css/admin-v3.css?v=<?= filemtime(__DIR__ . '/../assets/css/admin-v3.css') ?>">
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
         :root {
-            --bg: #080B10; /* Premium deep slate-black space dark */
-            --bg2: #0F1524; /* Sleek, cards & sidebar */
-            --bg3: #182030; /* Dark slate fields */
+            --bg: #0d1117; /* Matches frontend hero background */
+            --bg2: #050d072e; /* Sleek, cards & sidebar */
+            --bg3: #050d072e; /* Dark slate fields */
             --border: rgba(255, 255, 255, 0.05); /* Subtle border */
             --border-hover: rgba(204, 255, 0, 0.25); /* Accent lime borders */
             --accent: #CCFF00; /* Modern toxic/lime primary accent */
@@ -52,16 +63,18 @@ try { $pendingTasks = (int)db_val("SELECT COUNT(*) FROM admin_tasks WHERE status
             min-height: 100vh;
             background-image: radial-gradient(circle at top right, rgba(204, 255, 0, 0.02), transparent 45%);
             background-attachment: fixed;
+            opacity: 0;
+            transition: opacity 0.25s ease;
         }
 
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: var(--bg); }
-        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(200,255,0,0.3); border-radius: 2px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
         /* ── Sidebar ── */
         .sidebar {
-            width: 250px;
+            width: 260px;
             background: var(--bg2);
             border-right: 1px solid var(--border);
             display: flex;
@@ -72,7 +85,7 @@ try { $pendingTasks = (int)db_val("SELECT COUNT(*) FROM admin_tasks WHERE status
             bottom: 0;
             z-index: 100;
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 0 0 1px rgba(255,255,255,0.03), 0 12px 40px rgba(0,0,0,0.5);
+            box-shadow: 4px 0 24px rgba(0,0,0,0.4);
         }
         .sidebar-brand {
             padding: 1.5rem 1.5rem 1.25rem;
@@ -179,11 +192,11 @@ try { $pendingTasks = (int)db_val("SELECT COUNT(*) FROM admin_tasks WHERE status
 
         /* ── Main ── */
         .admin-main {
-            margin-left: 250px;
+            margin-left: 260px;
             flex: 1;
             padding: 2.5rem;
             min-height: 100vh;
-            width: calc(100% - 250px);
+            width: calc(100% - 260px);
             transition: all 0.3s;
         }
         .page-header {
@@ -221,30 +234,6 @@ try { $pendingTasks = (int)db_val("SELECT COUNT(*) FROM admin_tasks WHERE status
             padding-bottom: 1rem;
             border-bottom: 1px solid var(--border);
         }
-        .hamburger {
-            display: none;
-            background: none;
-            border: none;
-            color: var(--text2);
-            font-size: 1.6rem;
-            cursor: pointer;
-            transition: color 0.15s;
-        }
-        .hamburger:hover { color: var(--accent); }
-        .user-badge {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            color: var(--text2);
-            background: var(--bg2);
-            padding: 6px 12px;
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--border);
-        }
-        .user-badge i { font-size: 1.2rem; color: var(--accent); }
-
         /* ── Cards ── */
         .card {
             background: var(--bg2);
@@ -414,7 +403,7 @@ try { $pendingTasks = (int)db_val("SELECT COUNT(*) FROM admin_tasks WHERE status
         .modal-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(8, 11, 16, 0.8);
+            background: rgba(13, 17, 23, 0.8);
             backdrop-filter: blur(8px);
             z-index: 200;
             display: none;
@@ -493,7 +482,7 @@ try { $pendingTasks = (int)db_val("SELECT COUNT(*) FROM admin_tasks WHERE status
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(8, 11, 16, 0.7);
+            background: rgba(13, 17, 23, 0.7);
             backdrop-filter: blur(4px);
             z-index: 98;
             transition: opacity 0.3s ease;
@@ -564,88 +553,128 @@ try { $pendingTasks = (int)db_val("SELECT COUNT(*) FROM admin_tasks WHERE status
             .sidebar{transform:translateX(-100%)}
             .sidebar.open{transform:translateX(0)}
             .sidebar.open + .sidebar-backdrop { display: block; }
-            .admin-main{margin-left:0;width:100%;padding:1.5rem}
-            .hamburger{display:block}
+            .admin-main{padding:1.5rem}
+            .sidebar-user .hamburger{display:block}
             .form-row{grid-template-columns:1fr}
         }
     </style>
     <script src="<?= ADMIN_URL ?>/js/admin.js?v=<?= filemtime(__DIR__ . '/../js/admin.js') ?>"></script>
+    <script src="<?= ADMIN_URL ?>/assets/js/admin-ui.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin-ui.js') ?>"></script>
+    <script src="<?= ADMIN_URL ?>/assets/js/admin-v3.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin-v3.js') ?>"></script>
     <script>window.blogAIProvider='<?= get_setting('ai_provider_blog','groq') ?>';</script>
 </head>
 <body>
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-brand">
-            <a href="<?= ADMIN_URL ?>/index.php" style="display:block;padding:0;margin:0">
-                <img src="<?= BASE_URL ?>/images/logo.png" alt="Xoos Digital" style="height:32px;width:auto;display:block" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
-                <span style="display:none;font-family:'Orbitron',sans-serif;font-size:14px;font-weight:900;color:#CCFF00">XOOS DIGITAL</span>
-                <span style="font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#555;margin-top:4px;display:block">ADMIN PANEL</span>
-            </a>
-        </div>
-        <nav class="sidebar-nav">
-            <?php
-            $groups = [
-                'CONTENT' => [
-                    ['blog',        'Blog Posts',       'ti ti-news'],
-                    ['services',    'Services',         'ti ti-settings'],
-                    ['packages',    'Packages',         'ti ti-box'],
-                    ['testimonials','Testimonials',     'ti ti-quote'],
-                    ['faq',         'FAQ',              'ti ti-help'],
-                    ['portfolio',   'Portfolio',        'ti ti-briefcase'],
-                    ['brands',      'Brands',           'ti ti-building'],
-                    ['post-generator','Post Generator', 'ti ti-file-text'],
-                    ['quote-invoice','Quote & Invoice', 'ti ti-receipt'],
-                ],
-                'COMMUNICATION' => [
-                    ['messages',    'Messages',         'ti ti-mail'],
-                    ['media',       'Media Library',    'ti ti-photo'],
-                ],
-                'OUTREACH' => [
-                    ['leads',       'Outreach',         'ti ti-users-plus'],
-                ],
-                'PRODUCTIVITY' => [
-                    ['tasks',       'Tasks',            'ti ti-checklist'],
-                ],
-                'SYSTEM' => [
-                    ['settings',    'Settings',         'ti ti-tool'],
-                ],
-            ];
-            $g = 0;
-            foreach ($groups as $label => $items):
-                if ($g > 0): ?>
-                    <div class="nav-separator"></div>
-                <?php endif; ?>
-                <div class="nav-label"><?= $label ?></div>
-                <?php foreach ($items as $n):
-                    $isActive = $active === $n[0];
-                ?>
-                    <a href="<?= ADMIN_URL ?>/modules/<?= $n[0] ?>.php" class="<?= $isActive ? 'active' : '' ?>">
-                        <i class="<?= $n[2] ?>"></i>
-                        <?= $n[1] ?>
-                        <?php if ($n[0] === 'messages' && $unread_msgs > 0): ?>
-                            <span class="unread-badge"><?= $unread_msgs ?></span>
-                        <?php endif; ?>
-                        <?php if ($n[0] === 'tasks' && $pendingTasks > 0): ?>
-                            <span class="unread-badge"><?= $pendingTasks ?></span>
-                        <?php endif; ?>
-                    </a>
-                <?php endforeach;
-                $g++;
-            endforeach; ?>
-        </nav>
-        <div class="sidebar-footer">
-            <a href="<?= ADMIN_URL ?>/setup.php"><i class="ti ti-database"></i> Setup</a>
-            <a href="<?= ADMIN_URL ?>/reset-password.php"><i class="ti ti-key"></i> Change Credentials</a>
-            <a href="<?= ADMIN_URL ?>/logout.php"><i class="ti ti-logout"></i> Logout</a>
-        </div>
-    </aside>
-    <div class="sidebar-backdrop" onclick="document.getElementById('sidebar').classList.remove('open')"></div>
-    <main class="admin-main">
-        <div class="top-bar">
-            <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">
+    <aside class="sidebar v3-sidebar" id="sidebar">
+        <div class="sidebar-user">
+            <button class="hamburger" title="Menu">
                 <i class="ti ti-menu-2"></i>
             </button>
-            <div class="user-badge">
-                <i class="ti ti-user-circle"></i>
-                <?= htmlspecialchars($_SESSION['admin_username'] ?? 'Admin') ?>
+            <div class="sidebar-avatar" data-name="<?= htmlspecialchars($_SESSION['admin_username'] ?? 'A') ?>"></div>
+            <div class="sidebar-user-info">
+                <div class="sidebar-user-name"><?= htmlspecialchars($_SESSION['admin_username'] ?? 'Admin') ?></div>
+                <div class="sidebar-user-role">Administrator</div>
             </div>
+            <button class="v3-bell sidebar-bell" id="v3BellBtn" title="Notifications">
+                <i class="ti ti-bell"></i>
+                <?php if ($unread_msgs > 0 || $tasksDueToday > 0): ?>
+                    <span class="bell-dot"></span>
+                <?php endif; ?>
+            </button>
+            <div class="v3-bell-dropdown" id="v3BellDropdown">
+                <div class="bd-header">Notifications</div>
+                <?php if ($unread_msgs > 0): ?>
+                    <div class="bd-item" onclick="window.location.href='<?= ADMIN_URL ?>/modules/messages.php'">
+                        <div class="bd-title"><?= $unread_msgs ?> unread message<?= $unread_msgs !== 1 ? 's' : '' ?></div>
+                        <div class="bd-meta">From contact form</div>
+                    </div>
+                <?php endif; ?>
+                <?php if ($tasksDueToday > 0): ?>
+                    <div class="bd-item" onclick="window.location.href='<?= ADMIN_URL ?>/modules/tasks.php?view=kanban'">
+                        <div class="bd-title"><?= $tasksDueToday ?> task<?= $tasksDueToday !== 1 ? 's' : '' ?> due today</div>
+                        <div class="bd-meta">Check your Tasks board</div>
+                    </div>
+                <?php endif; ?>
+                <?php if ($blogDrafts > 0): ?>
+                    <div class="bd-item" onclick="window.location.href='<?= ADMIN_URL ?>/modules/blog.php'">
+                        <div class="bd-title"><?= $blogDrafts ?> draft blog post<?= $blogDrafts !== 1 ? 's' : '' ?></div>
+                        <div class="bd-meta">Ready to publish</div>
+                    </div>
+                <?php endif; ?>
+                <?php if ($unread_msgs === 0 && $tasksDueToday === 0 && $blogDrafts === 0): ?>
+                    <div class="bd-empty">All caught up ✨</div>
+                <?php endif; ?>
+            </div>
+            <button class="sidebar-toggle" id="sidebarToggle" title="Collapse sidebar"><i class="ti ti-layout-sidebar"></i></button>
         </div>
+
+        <div class="v3-more-section" style="flex:1;overflow-y:auto;padding:0.5rem 0">
+            <!-- Dashboard -->
+            <a href="<?= ADMIN_URL ?>/index.php" class="v3-focus-item <?= $active === '' || $current === 'index.php' ? 'active' : '' ?>">
+                <span class="fi-icon" style="background:rgba(255,255,255,0.04);color:var(--v3-text3)"><i class="ti ti-rocket"></i></span>
+                <span class="fi-label">Dashboard</span>
+            </a>
+
+            <?php
+            $focusItems = [
+                ['tasks',        'Tasks',         'ti ti-checklist', 'tasks',     $tasksDueToday],
+                ['blog',         'Blog Posts',    'ti ti-news',      'blog',      $blogDrafts],
+                ['post-generator','Post Generator','ti ti-file-text','posts',     $unpubPosts],
+                ['leads',        'Outreach',      'ti ti-users-plus','outreach',  $newLeadsWeek],
+            ];
+            foreach ($focusItems as $f):
+                $isActive = $active === $f[0];
+                $hasItems = $f[4] > 0;
+            ?>
+                <a href="<?= ADMIN_URL ?>/modules/<?= $f[0] ?>.php" class="v3-focus-item <?= $isActive ? 'active' : '' ?>">
+                    <span class="fi-icon <?= $f[3] ?>"><i class="<?= $f[1] === 'Post Generator' ? 'ti ti-file-text' : $f[2] ?>"></i></span>
+                    <span class="fi-label"><?= $f[1] ?></span>
+                    <?php if ($hasItems): ?>
+                        <span class="fi-badge has-items" id="v3Focus<?= ucfirst($f[3]) ?>"><?= $f[4] ?></span>
+                    <?php else: ?>
+                        <span class="fi-badge" id="v3Focus<?= ucfirst($f[3]) ?>">0</span>
+                    <?php endif; ?>
+                </a>
+            <?php endforeach; ?>
+
+            <div class="nav-separator"></div>
+
+            <!-- Messages (standalone) -->
+            <a href="<?= ADMIN_URL ?>/modules/messages.php" class="v3-more-item <?= $active === 'messages' ? 'active' : '' ?>" style="padding:0.55rem 1.25rem">
+                <i class="ti ti-mail"></i> Messages
+                <?php if ($unread_msgs > 0): ?>
+                    <span class="unread-badge"><?= $unread_msgs ?></span>
+                <?php endif; ?>
+            </a>
+
+            <div class="nav-separator"></div>
+
+            <?php
+            $contentItems = [
+                ['services',     'Services',      'ti ti-settings'],
+                ['packages',     'Packages',      'ti ti-box'],
+                ['testimonials', 'Testimonials',  'ti ti-quote'],
+                ['faq',          'FAQ',           'ti ti-help'],
+                ['portfolio',    'Portfolio',     'ti ti-briefcase'],
+                ['brands',       'Brands',        'ti ti-building'],
+                ['media',        'Media Library', 'ti ti-photo'],
+                ['quote-invoice','Quote & Invoice','ti ti-receipt'],
+            ];
+            foreach ($contentItems as $n):
+                $isActive = $active === $n[0];
+            ?>
+                <a href="<?= ADMIN_URL ?>/modules/<?= $n[0] ?>.php" class="v3-more-item <?= $isActive ? 'active' : '' ?>">
+                    <i class="<?= $n[2] ?>"></i> <?= $n[1] ?>
+                </a>
+            <?php endforeach; ?>
+        </div>
+
+        <div class="v3-sidebar-footer">
+            <a href="<?= ADMIN_URL ?>/modules/settings.php" class="<?= $active === 'settings' ? 'active' : '' ?>">
+                <i class="ti ti-tool"></i> Settings
+            </a>
+        </div>
+        <div class="v3-cmdk-hint">Press <kbd>Ctrl+K</kbd> to search</div>
+        <div class="v3-version-badge">v3.0</div>
+    </aside>
+    <div class="sidebar-backdrop" onclick="document.getElementById('sidebar').classList.remove('open')"></div>
+    <main class="admin-main v3-main">

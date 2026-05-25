@@ -225,6 +225,17 @@ $stats = [
     </div>
 </div>
 
+<div class="sort-controls">
+    <label>Sort:</label>
+    <select id="taskSort">
+        <option value="">Default order</option>
+        <option value="due-asc">Due Date ↑</option>
+        <option value="due-desc">Due Date ↓</option>
+        <option value="name">Name (A-Z)</option>
+        <option value="priority">Priority (High→Low)</option>
+    </select>
+</div>
+
 <div id="kanban-view" style="<?= $view==='list'?'display:none':'' ?>">
     <div class="kanban-board">
         <?php foreach (['pending', 'in_progress', 'done'] as $s): $cardList = $colTasks[$s]; ?>
@@ -237,8 +248,9 @@ $stats = [
                 <?php if (count($cardList)): ?>
                 <?php foreach ($cardList as $t): ?>
                 <?php $overdue = $t['due_date'] && $t['due_date'] < date('Y-m-d H:i:s') && $t['status'] !== 'done'; ?>
-                <div class="task-card" draggable="true" ondragstart="dragStart(event)" ondragend="dragEnd(event)" data-id="<?= $t['id'] ?>" data-status="<?= $t['status'] ?>">
+                <div class="task-card" draggable="true" ondragstart="dragStart(event)" ondragend="dragEnd(event)" data-id="<?= $t['id'] ?>" data-status="<?= $t['status'] ?>" data-priority="<?= $t['priority'] ?>" data-due="<?= h($t['due_date'] ?? '') ?>">
                     <div class="card-top">
+                        <span class="drag-handle">⠿</span>
                         <span class="card-title"><?= h($t['title']) ?></span>
                         <span class="card-priority priority-<?= $t['priority'] ?>"><?= $t['priority'] ?></span>
                     </div>
@@ -315,6 +327,12 @@ $stats = [
     </div>
 </div>
 
+<div class="v3-task-quick-bar">
+    <span class="tqb-label">⚡ Quick Add</span>
+    <input class="tqb-input" id="quickTaskInput" placeholder="Task title... press Enter to add" maxlength="200">
+    <button class="tqb-btn" onclick="quickAddTask()">+ Add</button>
+</div>
+
 <div class="modal-overlay" id="taskModal">
     <div class="modal modal-wide">
         <h3 class="modal-title" id="taskModalTitle">New Task</h3>
@@ -323,7 +341,8 @@ $stats = [
             <input type="hidden" name="status" id="tf-status" value="pending">
             <div class="form-group">
                 <label>Title *</label>
-                <input class="form-control" name="title" id="tf-title" required placeholder="What needs to be done?">
+                <input class="form-control" name="title" id="tf-title" maxlength="200" required placeholder="What needs to be done?">
+                <div class="char-counter" id="charCounter">0/200</div>
             </div>
             <div class="form-group">
                 <label>Description</label>
@@ -665,6 +684,29 @@ function sortTable(col) {
     rows.forEach(function(r) { tbody.appendChild(r); });
 }
 
+// Quick add task
+function quickAddTask() {
+    var input = document.getElementById('quickTaskInput');
+    var title = input ? input.value.trim() : '';
+    if (!title) return;
+    var form = document.getElementById('taskForm');
+    if (!form) return;
+    document.getElementById('tf-id').value = '0';
+    document.getElementById('tf-status').value = 'pending';
+    document.getElementById('tf-title').value = title;
+    document.getElementById('tf-desc').value = '';
+    document.getElementById('tf-priority').value = 'medium';
+    document.getElementById('tf-due').value = '';
+    document.getElementById('tf-category').value = '';
+    document.getElementById('tf-lead-id').value = '';
+    document.getElementById('tf-lead-search').value = '';
+    document.getElementById('tf-assignee-type').value = '';
+    document.getElementById('tf-assignee-name').value = '';
+    if (typeof saveTask === 'function') {
+        saveTask(new Event('submit'));
+        input.value = '';
+    }
+}
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.kanban-cards').forEach(function(col) {
         if (col.children.length === 1 && col.querySelector('.empty-col')) return;
@@ -672,6 +714,13 @@ document.addEventListener('DOMContentLoaded', function() {
             col.innerHTML = '<div class="empty-col"><i class="ti ti-inbox"></i> Drop tasks here</div>';
         }
     });
+    // Quick add Enter key
+    var qi = document.getElementById('quickTaskInput');
+    if (qi) {
+        qi.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') { e.preventDefault(); quickAddTask(); }
+        });
+    }
 });
 </script>
 

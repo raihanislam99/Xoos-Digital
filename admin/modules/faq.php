@@ -35,12 +35,22 @@ $flash_msg = $_SESSION['flash_msg'] ?? '';
 $flash_type = $_SESSION['flash_type'] ?? '';
 unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
 
-$items = get_all('faq', 'sort_order ASC, created_at DESC');
-$editItem = [];
+$records = get_all('faq', 'sort_order ASC, created_at DESC');
+$editItem = [
+    'id'         => null,
+    'question'   => '',
+    'answer'     => '',
+    'category'   => '',
+    'sort_order' => 0,
+    'is_active'  => 1,
+];
 $isEdit = false;
 if (!empty($_GET['edit']) && is_numeric($_GET['edit'])) {
     $fetched = get_row('faq', (int)$_GET['edit']);
-    if ($fetched) { $editItem = $fetched; $isEdit = true; }
+    if ($fetched) {
+        $editItem = array_merge($editItem, $fetched);
+        $isEdit = true;
+    }
 }
 $showForm = $isEdit || isset($_GET['new']);
 ?>
@@ -62,21 +72,21 @@ $showForm = $isEdit || isset($_GET['new']);
 
 <div id="module-list" style="<?= $showForm ? 'display:none' : 'display:block' ?>">
     <div class="card">
-        <?php if (count($items)): ?>
+        <?php if (count($records)): ?>
         <div class="table-wrap">
             <table>
                 <thead>
                     <tr><th>Question</th><th>Category</th><th>Answer Preview</th><th style="text-align:right">Actions</th></tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($items as $p): ?>
+                    <?php foreach ($records as $p): ?>
                     <tr>
-                        <td><strong style="color:var(--text)"><?= h($p['question']) ?></strong></td>
-                        <td><span class="text-muted"><?= h($p['category']) ?></span></td>
-                        <td class="text-muted" style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><?= h($p['answer']) ?></td>
+                        <td><strong style="color:var(--text)"><?= h($p['question'] ?? '') ?></strong></td>
+                        <td><span class="text-muted"><?= h($p['category'] ?? '') ?></span></td>
+                        <td class="text-muted" style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><?= h($p['answer'] ?? '') ?></td>
                         <td style="text-align:right">
-                            <a href="?edit=<?= $p['id'] ?>" class="btn btn-secondary btn-sm"><i class="ti ti-pencil"></i></a>
-                            <button onclick="confirmDelete('faq.php?delete=<?= $p['id'] ?>', 'FAQ: <?= h(addslashes($p['question'])) ?>')" class="btn btn-danger btn-sm"><i class="ti ti-trash"></i></button>
+                            <a href="?edit=<?= $p['id'] ?? 0 ?>" class="btn btn-secondary btn-sm"><i class="ti ti-pencil"></i></a>
+                            <button onclick="confirmDelete('faq.php?delete=<?= $p['id'] ?? 0 ?>', 'FAQ: <?= h(addslashes($p['question'] ?? '')) ?>')" class="btn btn-danger btn-sm"><i class="ti ti-trash"></i></button>
                         </td>
                     </tr>
                     <?php endforeach; ?>

@@ -54,75 +54,18 @@ unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
     <div style="padding:0.75rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:0.85rem;background:<?= $flash_type === 'success' ? 'var(--green-bg)' : 'var(--red-bg)' ?>;color:<?= $flash_type === 'success' ? 'var(--green)' : 'var(--red)' ?>"><?= h($flash_msg) ?></div>
 <?php endif; ?>
 
-<style>
-.outreach-header { margin-bottom: 2rem; }
-.outreach-title {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 1.3rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text);
-    margin-bottom: 1.25rem;
-    position: relative;
-    padding-bottom: 6px;
-}
-.outreach-title::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 24px;
-    height: 2px;
-    background: var(--accent);
-    border-radius: 99px;
-}
-.outreach-tabs {
-    display: flex;
-    gap: 2px;
-    background: var(--bg3);
-    border-radius: var(--radius-md);
-    padding: 3px;
-    width: fit-content;
-    max-width: 100%;
-    overflow-x: auto;
-}
-.outreach-tab {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    padding: 0.55rem 1.1rem;
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: var(--text3);
-    text-decoration: none;
-    border-radius: calc(var(--radius-md) - 3px);
-    transition: all 0.15s ease;
-    white-space: nowrap;
-    font-family: 'Inter', sans-serif;
-}
-.outreach-tab:hover {
-    color: var(--text2);
-    background: rgba(255,255,255,0.03);
-}
-.outreach-tab.active {
-    color: #080B10;
-    background: var(--accent);
-    font-weight: 700;
-}
-.outreach-tab i { font-size: 1rem; }
-</style>
 
-<div class="outreach-header">
-    <div class="outreach-title">Outreach</div>
-    <div class="outreach-tabs">
-        <?php foreach ($tabs as $t): ?>
-            <a href="?view=<?= $t[0] ?>" class="outreach-tab <?= $view === $t[0] ? 'active' : '' ?>">
-                <i class="<?= $t[2] ?>"></i>
-                <?= $t[1] ?>
-            </a>
-        <?php endforeach; ?>
-    </div>
+
+<div class="page-header">
+    <h1 class="v3-page-title">Outreach</h1>
+</div>
+<div class="v3-outreach-tabs">
+    <?php foreach ($tabs as $t): ?>
+        <a href="?view=<?= $t[0] ?>" class="v3-outreach-tab <?= $view === $t[0] ? 'active' : '' ?>">
+            <i class="<?= $t[2] ?>"></i>
+            <?= $t[1] ?>
+        </a>
+    <?php endforeach; ?>
 </div>
 
 <?php

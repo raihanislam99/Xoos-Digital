@@ -26,28 +26,20 @@ $replyRate = $totalSent > 0 ? round(($repliedEmails / $totalSent) * 100, 1) : 0;
 $conversionRate = $totalLeads > 0 ? round(($closedWon / $totalLeads) * 100, 1) : 0;
 ?>
 <style>
-.stat-cards { display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:1rem;margin-bottom:2rem }
-.stat-card { background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:1.25rem }
-.stat-card .stat-value { font-family:'Orbitron',sans-serif;font-size:1.8rem;font-weight:900;line-height:1 }
-.stat-card .stat-label { font-size:0.68rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-top:4px }
 .chart-container { background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:1.5rem;margin-bottom:1.5rem;height:280px;display:flex;flex-direction:column }
 .chart-container canvas { flex:1;max-height:220px;width:100% !important }
 .chart-title { font-family:'Orbitron',sans-serif;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-bottom:1rem;flex-shrink:0 }
-.metrics-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-bottom:1.5rem }
-.metric-box { background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:1.25rem;text-align:center }
-.metric-box .val { font-family:'Orbitron',sans-serif;font-size:1.5rem;font-weight:900;color:var(--accent) }
-.metric-box .lbl { font-size:0.68rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-top:2px }
 </style>
 
-<div class="stat-cards">
-    <div class="stat-card"><div class="stat-value" style="color:var(--accent)"><?= $totalLeads ?></div><div class="stat-label">Total Leads</div></div>
-    <div class="stat-card"><div class="stat-value" style="color:#60A5FA"><?= $contacted ?></div><div class="stat-label">Contacted</div></div>
-    <div class="stat-card"><div class="stat-value" style="color:#F59E0B"><?= $replied ?></div><div class="stat-label">Replied</div></div>
-    <div class="stat-card"><div class="stat-value" style="color:#34D399"><?= $closedWon ?></div><div class="stat-label">Closed Won</div></div>
-    <div class="stat-card"><div class="stat-value" style="color:var(--accent)"><?= $emailsToday ?></div><div class="stat-label">Emails Today</div></div>
-    <div class="stat-card"><div class="stat-value" style="color:var(--accent)"><?= $openRate ?>%</div><div class="stat-label">Open Rate</div></div>
-    <div class="stat-card"><div class="stat-value" style="color:#F59E0B"><?= $replyRate ?>%</div><div class="stat-label">Reply Rate</div></div>
-    <div class="stat-card"><div class="stat-value" style="color:#34D399"><?= $conversionRate ?>%</div><div class="stat-label">Conversion</div></div>
+<div class="outreach-stat-strip">
+    <div class="oss-item"><div class="oss-icon" style="background:#CCFF0015;color:var(--accent)"><i class="ti ti-users"></i></div><div><div class="oss-val"><?= $totalLeads ?></div><div class="oss-lbl">Total Leads</div></div></div>
+    <div class="oss-item"><div class="oss-icon" style="background:#60A5FA15;color:#60A5FA"><i class="ti ti-phone"></i></div><div><div class="oss-val"><?= $contacted ?></div><div class="oss-lbl">Contacted</div></div></div>
+    <div class="oss-item"><div class="oss-icon" style="background:#F59E0B15;color:#F59E0B"><i class="ti ti-message-reply"></i></div><div><div class="oss-val"><?= $replied ?></div><div class="oss-lbl">Replied</div></div></div>
+    <div class="oss-item"><div class="oss-icon" style="background:#34D39915;color:#34D399"><i class="ti ti-trophy"></i></div><div><div class="oss-val"><?= $closedWon ?></div><div class="oss-lbl">Closed Won</div></div></div>
+    <div class="oss-item"><div class="oss-icon" style="background:#CCFF0015;color:var(--accent)"><i class="ti ti-mail"></i></div><div><div class="oss-val"><?= $emailsToday ?></div><div class="oss-lbl">Emails Today</div></div></div>
+    <div class="oss-item"><div class="oss-icon" style="background:#CCFF0015;color:var(--accent)"><i class="ti ti-percentage"></i></div><div><div class="oss-val"><?= $openRate ?>%</div><div class="oss-lbl">Open Rate</div></div></div>
+    <div class="oss-item"><div class="oss-icon" style="background:#F59E0B15;color:#F59E0B"><i class="ti ti-reply"></i></div><div><div class="oss-val"><?= $replyRate ?>%</div><div class="oss-lbl">Reply Rate</div></div></div>
+    <div class="oss-item"><div class="oss-icon" style="background:#34D39915;color:#34D399"><i class="ti ti-trending-up"></i></div><div><div class="oss-val"><?= $conversionRate ?>%</div><div class="oss-lbl">Conversion</div></div></div>
 </div>
 
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
@@ -76,11 +68,11 @@ $conversionRate = $totalLeads > 0 ? round(($closedWon / $totalLeads) * 100, 1) :
     </div>
 </div>
 
-<div class="metrics-grid">
-    <div class="metric-box"><div class="val"><?= $totalSent ?></div><div class="lbl">Total Emails Sent</div></div>
-    <div class="metric-box"><div class="val"><?= $opened ?></div><div class="lbl">Emails Opened</div></div>
-    <div class="metric-box"><div class="val"><?= $repliedEmails ?></div><div class="lbl">Emails Replied</div></div>
-    <div class="metric-box"><div class="val" style="color:#F59E0B"><?= $totalWithEmail ?></div><div class="lbl">Leads with Email</div></div>
+<div class="outreach-stat-strip" style="margin-top:1.5rem">
+    <div class="oss-item"><div><div class="oss-val"><?= $totalSent ?></div><div class="oss-lbl">Total Emails Sent</div></div></div>
+    <div class="oss-item"><div><div class="oss-val"><?= $opened ?></div><div class="oss-lbl">Emails Opened</div></div></div>
+    <div class="oss-item"><div><div class="oss-val"><?= $repliedEmails ?></div><div class="oss-lbl">Emails Replied</div></div></div>
+    <div class="oss-item"><div><div class="oss-val" style="color:#F59E0B"><?= $totalWithEmail ?></div><div class="oss-lbl">Leads with Email</div></div></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

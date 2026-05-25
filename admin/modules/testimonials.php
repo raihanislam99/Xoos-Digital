@@ -42,12 +42,31 @@ $flash_msg = $_SESSION['flash_msg'] ?? '';
 $flash_type = $_SESSION['flash_type'] ?? '';
 unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
 
-$items = get_all('testimonials', 'sort_order ASC, created_at DESC');
-$editItem = [];
+$records = get_all('testimonials', 'sort_order ASC, created_at DESC');
+$editItem = [
+    'id'              => null,
+    'client_name'     => '',
+    'client_role'     => '',
+    'client_country'  => '',
+    'country_flag'    => '',
+    'quote'           => '',
+    'rating'          => 5,
+    'platform'        => 'Direct',
+    'avatar_letter'   => '',
+    'avatar_gradient' => 'linear-gradient(135deg,#1a1a3e,#3d2a7a)',
+    'service_tag'     => '',
+    'client_image'    => '',
+    'service_used'    => '',
+    'sort_order'      => 0,
+    'is_active'       => 1,
+];
 $isEdit = false;
 if (!empty($_GET['edit']) && is_numeric($_GET['edit'])) {
     $fetched = get_row('testimonials', (int)$_GET['edit']);
-    if ($fetched) { $editItem = $fetched; $isEdit = true; }
+    if ($fetched) {
+        $editItem = array_merge($editItem, $fetched);
+        $isEdit = true;
+    }
 }
 $showForm = $isEdit || isset($_GET['new']);
 ?>
@@ -69,22 +88,22 @@ $showForm = $isEdit || isset($_GET['new']);
 
 <div id="module-list" style="<?= $showForm ? 'display:none' : 'display:block' ?>">
     <div class="card">
-        <?php if (count($items)): ?>
+        <?php if (count($records)): ?>
         <div class="table-wrap">
             <table>
                 <thead>
                     <tr><th>Client</th><th>Service</th><th>Rating</th><th>Quote Preview</th><th style="text-align:right">Actions</th></tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($items as $p): ?>
+                    <?php foreach ($records as $p): ?>
                     <tr>
-                        <td><strong style="color:var(--text)"><?= h($p['client_name']) ?></strong><?php if ($p['client_image']): ?> <span style="color:var(--accent);font-size:0.65rem">🖼</span><?php endif; ?></td>
-                        <td class="text-muted"><?= h($p['service_used']) ?></td>
-                        <td><?= str_repeat('⭐', $p['rating']) ?></td>
-                        <td class="text-muted" style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><?= h($p['quote']) ?></td>
+                        <td><strong style="color:var(--text)"><?= h($p['client_name'] ?? '') ?></strong><?php if ($p['client_image'] ?? ''): ?> <span style="color:var(--accent);font-size:0.65rem">🖼</span><?php endif; ?></td>
+                        <td class="text-muted"><?= h($p['service_used'] ?? '') ?></td>
+                        <td><?= str_repeat('⭐', $p['rating'] ?? 5) ?></td>
+                        <td class="text-muted" style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><?= h($p['quote'] ?? '') ?></td>
                         <td style="text-align:right">
-                            <a href="?edit=<?= $p['id'] ?>" class="btn btn-secondary btn-sm"><i class="ti ti-pencil"></i></a>
-                            <button onclick="confirmDelete('testimonials.php?delete=<?= $p['id'] ?>', '<?= h(addslashes($p['client_name'])) ?>')" class="btn btn-danger btn-sm"><i class="ti ti-trash"></i></button>
+                            <a href="?edit=<?= $p['id'] ?? 0 ?>" class="btn btn-secondary btn-sm"><i class="ti ti-pencil"></i></a>
+                            <button onclick="confirmDelete('testimonials.php?delete=<?= $p['id'] ?? 0 ?>', '<?= h(addslashes($p['client_name'] ?? '')) ?>')" class="btn btn-danger btn-sm"><i class="ti ti-trash"></i></button>
                         </td>
                     </tr>
                     <?php endforeach; ?>
