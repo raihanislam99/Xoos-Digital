@@ -553,7 +553,7 @@ try { $newLeadsWeek = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklist
             display: none;
             position: fixed;
             top: 0.75rem;
-            left: 0.75rem;
+            right: 0.75rem;
             z-index: 99;
             background: var(--bg2);
             border: 1px solid var(--border);
