@@ -662,9 +662,6 @@ try { $newLeadsWeek = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklist
                     <span class="bell-dot"></span>
                 <?php endif; ?>
             </button>
-            <button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar">
-                <i class="ti ti-menu-2"></i>
-            </button>
             <div class="v3-bell-dropdown" id="v3BellDropdown">
                 <div class="bd-header">Notifications</div>
                 <?php if ($unread_msgs > 0): ?>

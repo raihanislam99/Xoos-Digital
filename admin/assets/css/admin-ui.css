@@ -9,7 +9,6 @@
   --neon-glow: 0 0 20px rgba(200,255,0,0.3);
   --neon-green: #c8ff00;
   --sidebar-width: 250px;
-  --sidebar-collapsed: 68px;
 }
 
 /* ── GLOBAL ── */
@@ -140,20 +139,6 @@
   font-family: 'Inter', sans-serif;
 }
 
-/* Sidebar toggle button */
-.sidebar-toggle {
-  display: flex;
-  background: none;
-  border: none;
-  color: var(--text2);
-  font-size: 1.3rem;
-  cursor: pointer;
-  padding: 0.25rem;
-  transition: color 0.15s;
-  align-items: center;
-  justify-content: center;
-}
-.sidebar-toggle:hover { color: var(--neon-green); }
 
 
 
