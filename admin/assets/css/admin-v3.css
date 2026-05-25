@@ -100,17 +100,28 @@ html { font-size: 17px; }
   z-index: 100;
   transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), width 0.3s;
 }
-.v3-sidebar { transform: translateX(-100%); }
-.v3-sidebar.open { transform: translateX(0); }
-.v3-sidebar.open ~ .v3-main,
-.v3-sidebar.open ~ .admin-main {
-  margin-left: 260px;
-  width: calc(100% - 260px);
-}
-.v3-sidebar ~ .v3-main,
-.v3-sidebar ~ .admin-main {
-  margin-left: 0;
-  width: 100%;
+.v3-sidebar.collapsed { width: 68px; }
+.v3-sidebar.collapsed .sidebar-user { justify-content: center; padding: 1rem 0.5rem 0.75rem; gap: 0; }
+.v3-sidebar.collapsed .sidebar-user .hamburger { display: none; }
+.v3-sidebar.collapsed .sidebar-user .sidebar-user-info { display: none; }
+.v3-sidebar.collapsed .sidebar-bell { display: none; }
+.v3-sidebar.collapsed .sidebar-toggle { display: flex; }
+.v3-sidebar.collapsed .v3-more-section { padding: 0.35rem 0.25rem; }
+.v3-sidebar.collapsed .v3-focus-item { justify-content: center; padding: 9px 0; gap: 0; }
+.v3-sidebar.collapsed .v3-focus-item .fi-label { display: none; }
+.v3-sidebar.collapsed .v3-focus-item .fi-badge { display: none; }
+.v3-sidebar.collapsed .v3-more-item { justify-content: center; padding: 9px 0; gap: 0; }
+.v3-sidebar.collapsed .v3-more-item span { display: none; }
+.v3-sidebar.collapsed .v3-more-item .unread-badge { display: none; }
+.v3-sidebar.collapsed .v3-sidebar-footer a { justify-content: center; padding: 9px 0; gap: 0; }
+.v3-sidebar.collapsed .v3-sidebar-footer a span { display: none; }
+.v3-sidebar.collapsed .v3-cmdk-hint { display: none; }
+.v3-sidebar.collapsed .v3-version-badge { display: none; }
+.v3-sidebar.collapsed .nav-separator { margin: 0.3rem 0.5rem; }
+.v3-sidebar.collapsed ~ .v3-main,
+.v3-sidebar.collapsed ~ .v3-main.admin-main {
+  margin-left: 68px;
+  width: calc(100% - 68px);
 }
 
 /* ── User block ── */

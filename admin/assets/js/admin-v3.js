@@ -264,17 +264,18 @@
       });
     }
 
-    var sidebar = document.getElementById('sidebar');
-    // Start visible on desktop
-    if (window.innerWidth >= 1024) {
-      sidebar.classList.add('open');
-    }
     var sidebarToggle = document.getElementById('sidebarToggle');
     if (sidebarToggle) {
       sidebarToggle.addEventListener('click', function(e) {
         e.stopPropagation();
-        sidebar.classList.toggle('open');
+        var sidebar = document.getElementById('sidebar');
+        sidebar.classList.toggle('collapsed');
+        localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed') ? '1' : '0');
       });
+      // Restore collapsed state from localStorage
+      if (localStorage.getItem('sidebarCollapsed') === '1' && window.innerWidth >= 1024) {
+        document.getElementById('sidebar').classList.add('collapsed');
+      }
     }
   }
 
