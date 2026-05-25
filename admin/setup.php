@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Drop & Recreate
         if (!empty($_POST['reset'])) {
-            $dropTables = ['brands','portfolio','faq','testimonials','packages','services','blog_posts','admin_users'];
+            $dropTables = ['brands','portfolio','faq','testimonials','packages','services','blog_posts','admin_users','post_training_data','post_profiles','generated_posts'];
             foreach ($dropTables as $t) {
                 $pdo->exec("DROP TABLE IF EXISTS {$t}");
             }
@@ -148,6 +148,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             name VARCHAR(255) NOT NULL,
             slug VARCHAR(255) NOT NULL UNIQUE,
             sort_order INT DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS post_training_data (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            content TEXT NOT NULL,
+            type VARCHAR(50) DEFAULT 'topic',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS post_profiles (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            platform VARCHAR(50) NOT NULL,
+            profile_url VARCHAR(500) NOT NULL,
+            name VARCHAR(255) DEFAULT '',
+            notes TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS generated_posts (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            platform VARCHAR(50) NOT NULL,
+            content TEXT,
+            language VARCHAR(50) DEFAULT 'en',
+            status ENUM('draft','published') DEFAULT 'draft',
+            topic VARCHAR(255) DEFAULT '',
+            training_ids TEXT,
+            profile_ids TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
