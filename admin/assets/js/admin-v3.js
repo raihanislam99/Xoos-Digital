@@ -264,16 +264,17 @@
       });
     }
 
+    var sidebar = document.getElementById('sidebar');
+    // Start visible on desktop
+    if (window.innerWidth >= 1024) {
+      sidebar.classList.add('open');
+    }
     var sidebarToggle = document.getElementById('sidebarToggle');
     if (sidebarToggle) {
       sidebarToggle.addEventListener('click', function(e) {
         e.stopPropagation();
-        var sidebar = document.getElementById('sidebar');
-        sidebar.classList.toggle('collapsed');
-        localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed') ? '1' : '0');
+        sidebar.classList.toggle('open');
       });
-      // Reset any stale localStorage so sidebar starts expanded
-      localStorage.removeItem('sidebarCollapsed');
     }
   }
 

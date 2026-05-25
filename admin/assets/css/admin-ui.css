@@ -155,30 +155,6 @@
 }
 .sidebar-toggle:hover { color: var(--neon-green); }
 
-/* Collapsed sidebar on hover for desktop */
-@media(min-width: 1024px) {
-  .sidebar.collapsed { width: var(--sidebar-collapsed); }
-  .sidebar.collapsed .sidebar-user-info,
-  .sidebar.collapsed .nav-label,
-  .sidebar.collapsed .sidebar-nav a span:not(.unread-badge),
-  .sidebar.collapsed .sidebar-brand small,
-  .sidebar.collapsed .version-badge,
-  .sidebar.collapsed .sidebar-footer a span {
-    display: none;
-  }
-  .sidebar.collapsed .sidebar-nav a {
-    justify-content: center;
-    padding: 0.65rem 0;
-  }
-  .sidebar.collapsed .sidebar-nav a i { font-size: 1.3rem; margin: 0; }
-  .sidebar.collapsed + .admin-main { margin-left: var(--sidebar-collapsed); }
-  .sidebar.collapsed .sidebar-footer a { justify-content: center; }
-  .sidebar.collapsed .sidebar-brand { text-align: center; }
-  .sidebar.collapsed .sidebar-brand a img { margin: 0 auto; }
-  .sidebar.collapsed .sidebar-user { justify-content: center; }
-  .sidebar.collapsed .unread-badge { position: absolute; top: 2px; right: 2px; font-size: 8px; padding: 1px 4px; }
-  .sidebar.collapsed .sidebar-nav a { position: relative; }
-}
 
 
 /* ═══════════════════════════════════════════════

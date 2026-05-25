@@ -663,7 +663,7 @@ try { $newLeadsWeek = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklist
                 <?php endif; ?>
             </button>
             <button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar">
-                <i class="ti ti-sidebar"></i>
+                <i class="ti ti-menu-2"></i>
             </button>
             <div class="v3-bell-dropdown" id="v3BellDropdown">
                 <div class="bd-header">Notifications</div>
