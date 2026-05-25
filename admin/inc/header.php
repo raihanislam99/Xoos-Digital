@@ -578,7 +578,7 @@ try { $newLeadsWeek = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklist
             th, td { padding: 0.85rem 1rem; }
         }
         @media(max-width:768px){
-            html { font-size: 15px; }
+            html { font-size: 16px; }
             .sidebar{transform:translateX(-100%)}
             .sidebar.open{transform:translateX(0)}
             .sidebar.open + .sidebar-backdrop { display: block; }
@@ -625,7 +625,7 @@ try { $newLeadsWeek = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklist
             .chart-container { height: auto !important; min-height: 200px; }
         }
         @media(max-width:480px){
-            html { font-size: 14px; }
+            html { font-size: 15px; }
             .admin-main { padding: 0.85rem; }
             .sidebar-user { padding: 0.75rem 0.65rem 0.6rem; }
             .sidebar-user .hamburger { font-size: 1.1rem; }
