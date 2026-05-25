@@ -272,9 +272,8 @@
         sidebar.classList.toggle('collapsed');
         localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed') ? '1' : '0');
       });
-      if (localStorage.getItem('sidebarCollapsed') === '1' && window.innerWidth >= 1024) {
-        document.getElementById('sidebar').classList.add('collapsed');
-      }
+      // Reset any stale localStorage so sidebar starts expanded
+      localStorage.removeItem('sidebarCollapsed');
     }
   }
 
