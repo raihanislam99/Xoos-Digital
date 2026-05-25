@@ -1046,6 +1046,7 @@ html { font-size: 17px; }
   background: rgba(255,255,255,0.03);
   border-radius: 8px;
   padding: 2px;
+  border: 1px solid var(--v3-border);
 }
 .v3-view-toggle button {
   background: none;
@@ -1133,6 +1134,7 @@ html { font-size: 17px; }
   max-width: 100%;
   overflow-x: auto;
   margin-bottom: 1.5rem;
+  border: 1px solid var(--v3-border);
 }
 .v3-outreach-tab {
   display: flex;

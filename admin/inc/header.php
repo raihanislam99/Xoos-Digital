@@ -39,7 +39,7 @@ try { $newLeadsWeek = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklist
             --bg: #0d1117; /* Matches frontend hero background */
             --bg2: #0e1420; /* Sleek, cards & sidebar */
             --bg3: #0e1420; /* Dark slate fields */
-            --border: rgba(255, 255, 255, 0.05); /* Subtle border */
+            --border: rgba(255, 255, 255, 0.1); /* Subtle border */
             --border-hover: rgba(204, 255, 0, 0.25); /* Accent lime borders */
             --accent: #CCFF00; /* Modern toxic/lime primary accent */
             --accent-glow: rgba(204, 255, 0, 0.15); /* Accent shadow color */
