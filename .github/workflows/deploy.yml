@@ -23,49 +23,32 @@ jobs:
           DEPLOY_SECRET=${{ secrets.DEPLOY_SECRET }}
           ENVEOF
 
-      - name: Test FTP connection & show remote structure
-        run: |
-          lftp -c "
-            set ftp:ssl-allow true
-            set ftp:passive-mode true
-            set net:max-retries 2
-            set net:timeout 15
-            open -u ${{ secrets.FTP_USER }},${{ secrets.FTP_PASS }} ${{ secrets.FTP_HOST }}
-            echo '=== Remote directory ==='
-            pwd
-            ls -la
-            echo '=== Checking public_html ==='
-            ls public_html/ 2>/dev/null || echo 'public_html/ not found — FTP root may be the web root'
-            quit
-          "
-
       - name: Deploy via FTP
         run: |
           lftp -c "
             set ftp:ssl-allow true
+            set ftp:ssl-force true
+            set ftp:ssl-protect-data true
             set ftp:passive-mode true
-            set net:max-retries 5
-            set net:timeout 60
+            set ssl:verify-certificate false
+            set net:max-retries 3
+            set net:connection-limit 1
+            set net:timeout 180
             set ftp:list-empty-ok true
+            set cmd:default-protocol ftps
             open -u ${{ secrets.FTP_USER }},${{ secrets.FTP_PASS }} ${{ secrets.FTP_HOST }}
-            echo '=== Uploading files to public_html/ ==='
-            mirror -R -x ^\.git/ -x ^\.github/ -x ^\.gitignore$ -x ^\.env\.example$ -x ^Note\.txt$ -x ^README\.md$ -x ^_deploy_temp/ ./ public_html/
-            echo '=== Uploading .env outside public_html ==='
-            put -O . .env
-            echo '=== Setting .env permissions ==='
-            chmod 600 .env
-            quit
-          "
-
-      - name: Verify deployment
-        run: |
-          lftp -c "
-            set ftp:ssl-allow true
-            set ftp:passive-mode true
-            open -u ${{ secrets.FTP_USER }},${{ secrets.FTP_PASS }} ${{ secrets.FTP_HOST }}
-            echo '=== Files in public_html/ ==='
-            ls public_html/ 2>/dev/null || ls -la
-            echo '=== .env outside public_html ==='
-            ls -la .env 2>/dev/null && echo '.env OK' || echo '.env NOT FOUND in FTP root'
+            echo '=== Remote directory ==='
+            pwd
+            ls -la
+            echo '=== Trying public_html/ ==='
+            if ls public_html/ 2>/dev/null; then
+              cd public_html/
+              mirror -R -x ^\.git/ -x ^\.github/ -x ^\.gitignore$ -x ^\.env\.example$ -x ^Note\.txt$ -x ^README\.md$ -x ^_deploy_temp/ ./ ./
+            else
+              echo 'No public_html/ — mirroring to root'
+              mirror -R -x ^\.git/ -x ^\.github/ -x ^\.gitignore$ -x ^\.env\.example$ -x ^Note\.txt$ -x ^README\.md$ -x ^_deploy_temp/ ./ ./
+              put -O .. .env
+            fi
+            echo '=== Done ==='
             quit
           "
