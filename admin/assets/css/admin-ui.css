@@ -142,7 +142,7 @@
 
 /* Sidebar toggle button */
 .sidebar-toggle {
-  display: none;
+  display: flex;
   background: none;
   border: none;
   color: var(--text2);
@@ -150,6 +150,8 @@
   cursor: pointer;
   padding: 0.25rem;
   transition: color 0.15s;
+  align-items: center;
+  justify-content: center;
 }
 .sidebar-toggle:hover { color: var(--neon-green); }
 
@@ -178,9 +180,6 @@
   .sidebar.collapsed .sidebar-nav a { position: relative; }
 }
 
-@media(max-width: 1023px) {
-  .sidebar-toggle { display: block; }
-}
 
 /* ═══════════════════════════════════════════════
    DASHBOARD

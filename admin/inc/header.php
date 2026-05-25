@@ -662,6 +662,9 @@ try { $newLeadsWeek = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklist
                     <span class="bell-dot"></span>
                 <?php endif; ?>
             </button>
+            <button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar">
+                <i class="ti ti-sidebar"></i>
+            </button>
             <div class="v3-bell-dropdown" id="v3BellDropdown">
                 <div class="bd-header">Notifications</div>
                 <?php if ($unread_msgs > 0): ?>
@@ -722,7 +725,7 @@ try { $newLeadsWeek = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklist
 
             <!-- Messages (standalone) -->
             <a href="<?= ADMIN_URL ?>/modules/messages.php" class="v3-more-item <?= $active === 'messages' ? 'active' : '' ?>" style="padding:0.55rem 1.25rem">
-                <i class="ti ti-mail"></i> Messages
+                <i class="ti ti-mail"></i><span>Messages</span>
                 <?php if ($unread_msgs > 0): ?>
                     <span class="unread-badge"><?= $unread_msgs ?></span>
                 <?php endif; ?>
@@ -745,14 +748,14 @@ try { $newLeadsWeek = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklist
                 $isActive = $active === $n[0];
             ?>
                 <a href="<?= ADMIN_URL ?>/modules/<?= $n[0] ?>.php" class="v3-more-item <?= $isActive ? 'active' : '' ?>">
-                    <i class="<?= $n[2] ?>"></i> <?= $n[1] ?>
+                    <i class="<?= $n[2] ?>"></i><span><?= $n[1] ?></span>
                 </a>
             <?php endforeach; ?>
         </div>
 
         <div class="v3-sidebar-footer">
             <a href="<?= ADMIN_URL ?>/modules/settings.php" class="<?= $active === 'settings' ? 'active' : '' ?>">
-                <i class="ti ti-tool"></i> Settings
+                <i class="ti ti-tool"></i><span>Settings</span>
             </a>
         </div>
         <div class="v3-cmdk-hint">Press <kbd>Ctrl+K</kbd> to search</div>
