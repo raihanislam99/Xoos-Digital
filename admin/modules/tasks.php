@@ -4,10 +4,11 @@ require_login();
 
 $view = $_GET['view'] ?? 'kanban';
 
+$pdo = db();
+
 // AJAX handlers
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
-    $pdo = db();
 
     if ($action === 'create' || $action === 'update') {
         $id = (int)($_POST['id'] ?? 0);
@@ -63,6 +64,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         json_response(['ok' => true]);
     }
 
+    if ($action === 'note_create') {
+        $task_id = (int)($_POST['task_id'] ?? 0);
+        $note = trim($_POST['note'] ?? '');
+        $category = trim($_POST['category'] ?? '');
+        if ($task_id && $note) {
+            $stmt = $pdo->prepare("INSERT INTO task_notes (task_id, note, category) VALUES (?, ?, ?)");
+            $stmt->execute([$task_id, $note, $category]);
+            $id = $pdo->lastInsertId();
+            json_response(['ok' => true, 'id' => $id, 'created_at' => date('M j, Y g:i A')]);
+        }
+        json_response(['ok' => false, 'error' => 'Missing fields'], 400);
+    }
+
+    if ($action === 'note_delete') {
+        $id = (int)($_POST['id'] ?? 0);
+        $stmt = $pdo->prepare("DELETE FROM task_notes WHERE id = ?");
+        $stmt->execute([$id]);
+        json_response(['ok' => true]);
+    }
+
+    if ($action === 'note_update') {
+        $id = (int)($_POST['id'] ?? 0);
+        $note = trim($_POST['note'] ?? '');
+        $category = trim($_POST['category'] ?? '');
+        if ($id && $note) {
+            $stmt = $pdo->prepare("UPDATE task_notes SET note = ?, category = ? WHERE id = ?");
+            $stmt->execute([$note, $category, $id]);
+            json_response(['ok' => true]);
+        }
+        json_response(['ok' => false, 'error' => 'Missing fields'], 400);
+    }
+
+    if ($action === 'get_task') {
+        $id = (int)($_POST['id'] ?? 0);
+        $stmt = $pdo->prepare("SELECT * FROM admin_tasks WHERE id = ?");
+        $stmt->execute([$id]);
+        $task = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($task) {
+            $stmt2 = $pdo->prepare("SELECT * FROM task_notes WHERE task_id = ? ORDER BY created_at DESC");
+            $stmt2->execute([$id]);
+            $task['notes'] = $stmt2->fetchAll(PDO::FETCH_ASSOC);
+            json_response(['ok' => true, 'task' => $task]);
+        }
+        json_response(['ok' => false, 'error' => 'Not found'], 404);
+    }
+
     json_response(['ok' => false, 'error' => 'Unknown action'], 400);
 }
 
@@ -75,11 +122,13 @@ if (!empty($_GET['assignee'])) { $where[] = 'CONCAT(assignee_type,":",assignee_n
 if (!empty($_GET['search'])) { $where[] = '(title LIKE ? OR description LIKE ?)'; $params[] = '%' . $_GET['search'] . '%'; $params[] = '%' . $_GET['search'] . '%'; }
 if (!empty($_GET['overdue'])) { $where[] = 'due_date IS NOT NULL AND due_date < NOW() AND status != ?'; $params[] = 'done'; }
 $whereClause = implode(' AND ', $where);
-$tasks = db()->query("SELECT * FROM admin_tasks WHERE $whereClause ORDER BY sort_order ASC, created_at DESC")->fetchAll();
+$tasks = $pdo->query("SELECT * FROM admin_tasks WHERE $whereClause ORDER BY sort_order ASC, created_at DESC")->fetchAll();
 
-$categories = db()->query("SELECT DISTINCT category FROM admin_tasks WHERE category != '' ORDER BY category")->fetchAll(PDO::FETCH_COLUMN);
-$leads = db()->query("SELECT id, business_name FROM leads ORDER BY business_name")->fetchAll();
-$allAssignees = db()->query("SELECT DISTINCT assignee_type, assignee_name FROM admin_tasks WHERE assignee_name IS NOT NULL AND assignee_name != '' ORDER BY assignee_name")->fetchAll();
+$categories = $pdo->query("SELECT DISTINCT category FROM admin_tasks WHERE category != '' ORDER BY category")->fetchAll(PDO::FETCH_COLUMN);
+$noteCategories = $pdo->query("SELECT DISTINCT category FROM task_notes WHERE category != '' ORDER BY category")->fetchAll(PDO::FETCH_COLUMN);
+$allNoteCategories = array_unique(array_merge($categories, $noteCategories));
+$leads = $pdo->query("SELECT id, business_name FROM leads ORDER BY business_name")->fetchAll();
+$allAssignees = $pdo->query("SELECT DISTINCT assignee_type, assignee_name FROM admin_tasks WHERE assignee_name IS NOT NULL AND assignee_name != '' ORDER BY assignee_name")->fetchAll();
 
 $activeFilters = !empty($_GET['priority']) || !empty($_GET['category']) || !empty($_GET['search']) || !empty($_GET['overdue']) || !empty($_GET['assignee']);
 
@@ -110,7 +159,7 @@ $stats = [
 .kanban-col-header .count { font-size: 0.7rem; background: var(--bg3); color: var(--text3); padding: 2px 10px; border-radius: 999px; font-weight: 700; }
 .kanban-cards { flex: 1; padding: 0.75rem; overflow-y: auto; display: flex; flex-direction: column; gap: 0.6rem; min-height: 150px; border-radius: var(--radius-md); transition: background 0.2s; margin: 0.5rem; }
 .kanban-cards.drag-over { background: rgba(204,255,0,0.03); border: 1px dashed var(--accent); }
-.task-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 0.9rem 1rem; cursor: grab; transition: all 0.15s ease; position: relative; animation: cardSlideIn 0.25s ease-out; }
+.task-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 0.9rem 1rem; cursor: grab; transition: all 0.15s ease; position: relative; animation: cardSlideIn 0.25s ease-out; user-select: none; }
 .task-card:hover { border-color: var(--border-hover); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
 .task-card.dragging { opacity: 0.4; transform: rotate(2deg); }
 .task-card.fade-out { animation: cardFadeOut 0.2s ease-out forwards; }
@@ -128,9 +177,9 @@ $stats = [
 .task-card .assignee-badge { font-size: 0.6rem; font-weight: 600; padding: 1px 7px; border-radius: 4px; display: inline-flex; align-items: center; gap: 3px; }
 .assignee-person { background: rgba(139,92,246,0.15); color: #a78bfa; }
 .assignee-company { background: rgba(6,182,212,0.15); color: #22d3ee; }
-.task-card .card-actions { display: none; gap: 4px; }
+.task-card .card-actions { display: none; gap: 4px; position: absolute; top: 8px; right: 8px; }
 .task-card:hover .card-actions { display: flex; }
-.task-card .card-actions button { background: var(--bg3); border: 1px solid var(--border); color: var(--text2); width: 24px; height: 24px; border-radius: 4px; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; transition: all 0.1s; }
+.task-card .card-actions button { background: var(--bg3); border: 1px solid var(--border); color: var(--text2); width: 26px; height: 26px; border-radius: 4px; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; transition: all 0.1s; }
 .task-card .card-actions button:hover { background: var(--border); color: var(--text); }
 .task-card .card-lead-link { font-size: 0.6rem; color: var(--blue); text-decoration: none; display: inline-flex; align-items: center; gap: 3px; }
 .task-card .card-lead-link:hover { text-decoration: underline; }
@@ -157,12 +206,40 @@ $stats = [
 .clear-filters { font-size: 0.72rem; color: var(--text3); cursor: pointer; text-decoration: none; }
 .clear-filters:hover { color: var(--accent); }
 
-.modal-wide { max-width: 560px; }
+.modal-wide { max-width: 620px; }
 .lead-suggest { position: absolute; top: 100%; left: 0; right: 0; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-sm); max-height: 160px; overflow-y: auto; z-index: 10; display: none; }
 .lead-suggest div { padding: 0.5rem 0.75rem; font-size: 0.8rem; color: var(--text2); cursor: pointer; }
 .lead-suggest div:hover { background: rgba(204,255,0,0.06); color: var(--text); }
 
 .move-select { display: none; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg3); color: var(--text2); }
+
+/* List view status buttons */
+.status-btn-group { display: flex; gap: 4px; }
+.status-btn-group .sbtn { font-size: 0.6rem; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg3); color: var(--text3); cursor: pointer; transition: all 0.12s; font-family: 'Inter', sans-serif; font-weight: 600; }
+.status-btn-group .sbtn:hover { border-color: var(--accent); color: var(--accent); }
+.status-btn-group .sbtn.active { background: var(--accent); color: #080B10; border-color: var(--accent); }
+.status-btn-group .sbtn.sbtn-pending:hover { border-color: var(--blue); color: var(--blue); }
+.status-btn-group .sbtn.sbtn-pending.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+.status-btn-group .sbtn.sbtn-progress:hover { border-color: #f59e0b; color: #f59e0b; }
+.status-btn-group .sbtn.sbtn-progress.active { background: #f59e0b; color: #fff; border-color: #f59e0b; }
+.status-btn-group .sbtn.sbtn-done:hover { border-color: var(--green); color: var(--green); }
+.status-btn-group .sbtn.sbtn-done.active { background: var(--green); color: #fff; border-color: var(--green); }
+
+/* Notes section */
+.notes-section { border-top: 1px solid var(--border); margin-top: 1rem; padding-top: 1rem; }
+.notes-section .ns-header { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text2); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 6px; }
+.note-item { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 0.6rem; }
+.note-item .note-text { font-size: 0.82rem; color: var(--text); line-height: 1.5; }
+.note-item .note-meta { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; font-size: 0.65rem; color: var(--text3); }
+.note-item .note-meta .note-cat { background: rgba(204,255,0,0.06); color: var(--accent); padding: 1px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.note-item .note-actions { display: flex; gap: 4px; }
+.note-item .note-actions button { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 0.8rem; padding: 2px; transition: color 0.1s; }
+.note-item .note-actions button:hover { color: var(--text); }
+.note-input-row { display: flex; gap: 8px; margin-bottom: 0.75rem; }
+.note-input-row input[type="text"] { flex: 1; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.5rem 0.75rem; color: var(--text); font-size: 0.82rem; outline: none; font-family: 'Inter', sans-serif; }
+.note-input-row input:focus { border-color: var(--accent); }
+.note-input-row select { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.5rem 0.75rem; color: var(--text2); font-size: 0.78rem; outline: none; font-family: 'Inter', sans-serif; min-width: 120px; }
+.note-input-row select:focus { border-color: var(--accent); }
 
 @media(max-width:900px){
   .kanban-board { grid-template-columns: 1fr; }
@@ -171,6 +248,7 @@ $stats = [
   .tasks-filters input { min-width: 100%; }
   .move-select { display: inline-block; }
   .stats-row { grid-template-columns: repeat(3, 1fr); }
+  .status-btn-group { flex-direction: column; }
 }
 </style>
 
@@ -248,9 +326,17 @@ $stats = [
                 <?php if (count($cardList)): ?>
                 <?php foreach ($cardList as $t): ?>
                 <?php $overdue = $t['due_date'] && $t['due_date'] < date('Y-m-d H:i:s') && $t['status'] !== 'done'; ?>
-                <div class="task-card" draggable="true" ondragstart="dragStart(event)" ondragend="dragEnd(event)" data-id="<?= $t['id'] ?>" data-status="<?= $t['status'] ?>" data-priority="<?= $t['priority'] ?>" data-due="<?= h($t['due_date'] ?? '') ?>">
+                <div class="task-card" draggable="true" ondragstart="dragStart(event)" ondragend="dragEnd(event)"
+                     data-id="<?= $t['id'] ?>"
+                     data-status="<?= $t['status'] ?>"
+                     data-priority="<?= $t['priority'] ?>"
+                     data-due="<?= h($t['due_date'] ?? '') ?>"
+                     data-description="<?= h($t['description'] ?? '') ?>"
+                     data-category="<?= h($t['category'] ?? '') ?>"
+                     data-lead-id="<?= $t['lead_id'] ?? '' ?>"
+                     data-assignee-type="<?= h($t['assignee_type'] ?? '') ?>"
+                     data-assignee-name="<?= h($t['assignee_name'] ?? '') ?>">
                     <div class="card-top">
-                        <span class="drag-handle">⠿</span>
                         <span class="card-title"><?= h($t['title']) ?></span>
                         <span class="card-priority priority-<?= $t['priority'] ?>"><?= $t['priority'] ?></span>
                     </div>
@@ -265,14 +351,14 @@ $stats = [
                         <span class="card-category"><?= h($t['category']) ?></span>
                         <?php endif; ?>
                         <?php if ($t['assignee_name']): ?>
-                        <span class="assignee-badge assignee-<?= $t['assignee_type']?:'person' ?>"><?= $t['assignee_type']==='company'?'��':'��' ?> <?= h($t['assignee_name']) ?></span>
+                        <span class="assignee-badge assignee-<?= $t['assignee_type']?:'person' ?>"><?= h($t['assignee_name']) ?></span>
                         <?php endif; ?>
-                        <?php if ($t['lead_id']): $lead = db()->query("SELECT id, business_name FROM leads WHERE id = " . (int)$t['lead_id'])->fetch(); if ($lead): ?>
+                        <?php if ($t['lead_id']): $lead = $pdo->query("SELECT id, business_name FROM leads WHERE id = " . (int)$t['lead_id'])->fetch(); if ($lead): ?>
                         <a href="leads.php?view=my_leads&edit=<?= $lead['id'] ?>" class="card-lead-link" target="_blank"><i class="ti ti-user"></i> <?= h($lead['business_name']) ?></a>
                         <?php endif; endif; ?>
                     </div>
                     <div class="card-actions">
-                        <button onclick="editTask(<?= $t['id'] ?>,'<?= h(addslashes($t['title'])) ?>')" title="Edit"><i class="ti ti-pencil"></i></button>
+                        <button onclick="editTask(<?= $t['id'] ?>)" title="Edit"><i class="ti ti-pencil"></i></button>
                         <button onclick="deleteTask(<?= $t['id'] ?>,'<?= h(addslashes($t['title'])) ?>')" title="Delete"><i class="ti ti-trash"></i></button>
                     </div>
                 </div>
@@ -308,12 +394,18 @@ $stats = [
                     <tr>
                         <td><strong style="color:var(--text);font-size:0.82rem"><?= h($t['title']) ?></strong></td>
                         <td><span class="card-priority priority-<?= $t['priority'] ?>"><?= $t['priority'] ?></span></td>
-                        <td><span class="status-badge status-<?= $t['status']==='done'?'published':($t['status']==='in_progress'?'draft':'draft') ?>" style="font-size:0.65rem"><?= $statusLabels[$t['status']] ?></span></td>
+                        <td>
+                            <div class="status-btn-group">
+                                <button class="sbtn sbtn-pending <?= $t['status']==='pending'?'active':'' ?>" onclick="updateListStatus(<?= $t['id'] ?>,'pending',this)">Pend</button>
+                                <button class="sbtn sbtn-progress <?= $t['status']==='in_progress'?'active':'' ?>" onclick="updateListStatus(<?= $t['id'] ?>,'in_progress',this)">Prog</button>
+                                <button class="sbtn sbtn-done <?= $t['status']==='done'?'active':'' ?>" onclick="updateListStatus(<?= $t['id'] ?>,'done',this)">Done</button>
+                            </div>
+                        </td>
                         <td style="<?= $overdue?'color:#ef4444;font-weight:700':'' ?>"><?= $t['due_date'] ? date('M j, Y', strtotime($t['due_date'])) : '-' ?></td>
                         <td><?= $t['category'] ? '<span class="card-category">'.h($t['category']).'</span>' : '-' ?></td>
                         <td><?= $t['assignee_name'] ? '<span class="assignee-badge assignee-'.($t['assignee_type']?:'person').'">'.h($t['assignee_name']).'</span>' : '-' ?></td>
                         <td style="text-align:right">
-                            <button class="btn btn-secondary btn-sm" onclick="editTask(<?= $t['id'] ?>,'<?= h(addslashes($t['title'])) ?>')" style="padding:4px 10px"><i class="ti ti-pencil"></i></button>
+                            <button class="btn btn-secondary btn-sm" onclick="editTask(<?= $t['id'] ?>)" style="padding:4px 10px"><i class="ti ti-pencil"></i></button>
                             <button class="btn btn-danger btn-sm" onclick="deleteTask(<?= $t['id'] ?>,'<?= h(addslashes($t['title'])) ?>')" style="padding:4px 10px"><i class="ti ti-trash"></i></button>
                         </td>
                     </tr>
@@ -401,6 +493,24 @@ $stats = [
                     </datalist>
                 </div>
             </div>
+            <div class="notes-section" id="notesSection" style="display:none">
+                <div class="ns-header"><i class="ti ti-notes"></i> Notes</div>
+                <div id="notesList"></div>
+                <div class="note-input-row">
+                    <input type="text" id="noteInput" placeholder="Add a note..." maxlength="500">
+                    <select id="noteCategory">
+                        <option value="">Category</option>
+                        <option value="General">General</option>
+                        <option value="Update">Update</option>
+                        <option value="Issue">Issue</option>
+                        <option value="Idea">Idea</option>
+                        <?php foreach ($allNoteCategories as $nc): if (!in_array($nc, ['General','Update','Issue','Idea'])): ?>
+                        <option value="<?= h($nc) ?>"><?= h($nc) ?></option>
+                        <?php endif; endforeach; ?>
+                    </select>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="addNote()" style="padding:0.5rem 0.75rem;white-space:nowrap">Add</button>
+                </div>
+            </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary"><i class="ti ti-device-floppy"></i> Save</button>
                 <button type="button" class="btn btn-secondary" onclick="closeTaskModal()">Cancel</button>
@@ -411,6 +521,11 @@ $stats = [
 
 <script>
 var leads = <?= json_encode($leads) ?>;
+var currentTaskId = 0;
+
+// ══════════════════════════════════════
+// DRAG AND DROP
+// ══════════════════════════════════════
 var draggedId = null;
 
 function allowDrop(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
@@ -418,17 +533,14 @@ function dragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
 
 function dragStart(e) {
     draggedId = e.currentTarget.dataset.id;
-    e.dataTransfer.setData('text/plain', draggedId);
     e.dataTransfer.effectAllowed = 'move';
-    setTimeout(function() { e.currentTarget.classList.add('dragging'); }, 0);
+    e.currentTarget.classList.add('dragging');
 }
 
 function dragEnd(e) {
     e.currentTarget.classList.remove('dragging');
     document.querySelectorAll('.kanban-cards').forEach(function(l) { l.classList.remove('drag-over'); });
-    if (window._pendingReorder) {
-        clearTimeout(window._pendingReorder);
-    }
+    if (window._pendingReorder) clearTimeout(window._pendingReorder);
     window._pendingReorder = setTimeout(function() {
         var allCards = document.querySelectorAll('.task-card');
         var orders = [];
@@ -447,8 +559,8 @@ function drop(e) {
     e.preventDefault();
     var list = e.currentTarget;
     list.classList.remove('drag-over');
-    var id = e.dataTransfer.getData('text/plain');
-    var dragging = document.querySelector('.task-card.dragging');
+    if (!draggedId) return;
+    var dragging = document.querySelector('.task-card[data-id="' + draggedId + '"]');
     if (!dragging) return;
 
     var newStatus = list.dataset.status;
@@ -463,7 +575,7 @@ function drop(e) {
     }
 
     dragging.dataset.status = newStatus;
-    updateStatusAjax(id, newStatus);
+    updateStatusAjax(draggedId, newStatus);
     updateStats();
 }
 
@@ -508,6 +620,20 @@ function updateStats() {
     document.querySelectorAll('.stat-card')[4].querySelector('.stat-value').textContent = total ? Math.round(d / total * 100) + '%' : '0%';
 }
 
+// ══════════════════════════════════════
+// LIST VIEW STATUS CHANGE
+// ══════════════════════════════════════
+function updateListStatus(id, status, btn) {
+    updateStatusAjax(id, status);
+    var row = btn.closest('tr');
+    row.querySelectorAll('.sbtn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    showToast('Status updated');
+}
+
+// ══════════════════════════════════════
+// TASK MODAL
+// ══════════════════════════════════════
 function openTaskModal(data) {
     document.getElementById('taskModal').classList.add('open');
     if (data) {
@@ -528,6 +654,8 @@ function openTaskModal(data) {
         } else {
             document.getElementById('tf-lead-search').value = '';
         }
+        currentTaskId = data.id;
+        loadNotes(data.id);
     } else {
         document.getElementById('taskModalTitle').textContent = 'New Task';
         document.getElementById('tf-id').value = 0;
@@ -535,12 +663,20 @@ function openTaskModal(data) {
         document.getElementById('tf-desc').value = '';
         document.getElementById('tf-status').value = 'pending';
         document.getElementById('tf-priority').value = 'medium';
-        document.getElementById('tf-due').value = '';
+        // Auto-select next day date
+        var tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        var y = tomorrow.getFullYear();
+        var m = String(tomorrow.getMonth() + 1).padStart(2, '0');
+        var d = String(tomorrow.getDate()).padStart(2, '0');
+        document.getElementById('tf-due').value = y + '-' + m + '-' + d + 'T09:00';
         document.getElementById('tf-category').value = '';
         document.getElementById('tf-lead-id').value = '';
         document.getElementById('tf-lead-search').value = '';
         document.getElementById('tf-assignee-type').value = '';
         document.getElementById('tf-assignee-name').value = '';
+        currentTaskId = 0;
+        document.getElementById('notesSection').style.display = 'none';
     }
 }
 
@@ -570,15 +706,19 @@ function saveTask(e) {
 }
 
 function editTask(id) {
-    var card = document.querySelector('.task-card[data-id="' + id + '"]');
-    if (card) {
-        openTaskModal({
-            id: parseInt(id),
-            title: card.querySelector('.card-title').textContent,
-            status: card.dataset.status,
-            priority: card.querySelector('.card-priority').textContent.trim().toLowerCase()
-        });
-    }
+    var fd = new FormData();
+    fd.append('action', 'get_task');
+    fd.append('id', id);
+    fetch('tasks.php', { method: 'POST', body: fd })
+    .then(function(r) { return r.json(); })
+    .then(function(j) {
+        if (j.ok && j.task) {
+            openTaskModal(j.task);
+        } else {
+            showToast('Could not load task', 'error');
+        }
+    })
+    .catch(function() { showToast('Request failed', 'error'); });
 }
 
 function deleteTask(id, title) {
@@ -607,6 +747,9 @@ function deleteTask(id, title) {
     };
 }
 
+// ══════════════════════════════════════
+// LEAD SEARCH
+// ══════════════════════════════════════
 function searchLead(q) {
     var c = document.getElementById('lead-suggest');
     c.innerHTML = '';
@@ -626,6 +769,92 @@ function searchLead(q) {
     });
 }
 
+// ══════════════════════════════════════
+// NOTES
+// ══════════════════════════════════════
+function loadNotes(taskId) {
+    var section = document.getElementById('notesSection');
+    var list = document.getElementById('notesList');
+    if (!taskId) { section.style.display = 'none'; return; }
+    section.style.display = 'block';
+    list.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text3);font-size:0.78rem">Loading...</div>';
+
+    var fd = new FormData();
+    fd.append('action', 'get_task');
+    fd.append('id', taskId);
+    fetch('tasks.php', { method: 'POST', body: fd })
+    .then(function(r) { return r.json(); })
+    .then(function(j) {
+        if (j.ok && j.task && j.task.notes) {
+            renderNotes(j.task.notes);
+        } else {
+            list.innerHTML = '';
+        }
+    })
+    .catch(function() { list.innerHTML = ''; });
+}
+
+function renderNotes(notes) {
+    var list = document.getElementById('notesList');
+    if (!notes.length) {
+        list.innerHTML = '<div style="text-align:center;padding:0.75rem;color:var(--text3);font-size:0.75rem">No notes yet</div>';
+        return;
+    }
+    list.innerHTML = notes.map(function(n) {
+        var catHtml = n.category ? '<span class="note-cat">' + n.category + '</span>' : '';
+        return '<div class="note-item" data-id="' + n.id + '">' +
+            '<div class="note-text">' + escapeHtml(n.note) + '</div>' +
+            '<div class="note-meta">' +
+                '<div>' + catHtml + ' <span>' + (n.created_at || '') + '</span></div>' +
+                '<div class="note-actions">' +
+                    '<button onclick="deleteNote(' + n.id + ')" title="Delete"><i class="ti ti-trash"></i></button>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+    }).join('');
+}
+
+function addNote() {
+    var input = document.getElementById('noteInput');
+    var cat = document.getElementById('noteCategory');
+    var text = input.value.trim();
+    if (!text || !currentTaskId) return;
+    var fd = new FormData();
+    fd.append('action', 'note_create');
+    fd.append('task_id', currentTaskId);
+    fd.append('note', text);
+    fd.append('category', cat.value);
+    fetch('tasks.php', { method: 'POST', body: fd })
+    .then(function(r) { return r.json(); })
+    .then(function(j) {
+        if (j.ok) {
+            input.value = '';
+            loadNotes(currentTaskId);
+        }
+    });
+}
+
+function deleteNote(id) {
+    if (!confirm('Delete this note?')) return;
+    var fd = new FormData();
+    fd.append('action', 'note_delete');
+    fd.append('id', id);
+    fetch('tasks.php', { method: 'POST', body: fd })
+    .then(function(r) { return r.json(); })
+    .then(function(j) {
+        if (j.ok) loadNotes(currentTaskId);
+    });
+}
+
+function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+// ══════════════════════════════════════
+// EVENT BINDING
+// ══════════════════════════════════════
 document.addEventListener('click', function(e) {
     var ls = document.getElementById('lead-suggest');
     if (ls && !e.target.closest('#tf-lead-search') && !e.target.closest('#lead-suggest')) {
@@ -696,7 +925,12 @@ function quickAddTask() {
     document.getElementById('tf-title').value = title;
     document.getElementById('tf-desc').value = '';
     document.getElementById('tf-priority').value = 'medium';
-    document.getElementById('tf-due').value = '';
+    var tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    var y = tomorrow.getFullYear();
+    var m = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    var d = String(tomorrow.getDate()).padStart(2, '0');
+    document.getElementById('tf-due').value = y + '-' + m + '-' + d + 'T09:00';
     document.getElementById('tf-category').value = '';
     document.getElementById('tf-lead-id').value = '';
     document.getElementById('tf-lead-search').value = '';
@@ -707,6 +941,7 @@ function quickAddTask() {
         input.value = '';
     }
 }
+
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.kanban-cards').forEach(function(col) {
         if (col.children.length === 1 && col.querySelector('.empty-col')) return;
@@ -714,11 +949,17 @@ document.addEventListener('DOMContentLoaded', function() {
             col.innerHTML = '<div class="empty-col"><i class="ti ti-inbox"></i> Drop tasks here</div>';
         }
     });
-    // Quick add Enter key
     var qi = document.getElementById('quickTaskInput');
     if (qi) {
         qi.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') { e.preventDefault(); quickAddTask(); }
+        });
+    }
+    // Enter key in note input
+    var ni = document.getElementById('noteInput');
+    if (ni) {
+        ni.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') { e.preventDefault(); addNote(); }
         });
     }
 });
