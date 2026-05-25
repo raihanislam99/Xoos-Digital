@@ -11,21 +11,6 @@
     if (main) main.style.opacity = '1';
   });
 
-  // ── SIDEBAR TOGGLE COLLAPSE ──
-  var sidebarToggle = document.getElementById('sidebarToggle');
-  if (sidebarToggle) {
-    sidebarToggle.addEventListener('click', function(e) {
-      e.stopPropagation();
-      var sidebar = document.getElementById('sidebar');
-      sidebar.classList.toggle('collapsed');
-      localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed') ? '1' : '0');
-    });
-    // Restore state
-    if (localStorage.getItem('sidebarCollapsed') === '1' && window.innerWidth >= 1024) {
-      document.getElementById('sidebar').classList.add('collapsed');
-    }
-  }
-
   // ── BUTTON PRESS SCALE ──
   document.addEventListener('mousedown', function(e) {
     var btn = e.target.closest('.btn, .quick-action-card, .outreach-tab, .settings-tab');
