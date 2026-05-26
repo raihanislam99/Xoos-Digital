@@ -78,6 +78,14 @@ $dayName = $dayNames[(int)date('w')];
 ?>
 <?php require_once __DIR__ . '/inc/header.php'; ?>
 
+<!-- Header -->
+<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:24px;flex-wrap:wrap;gap:8px">
+  <div>
+    <div style="font-size:0.78rem;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px"><?= $dayName ?></div>
+    <div class="v3-page-title" style="font-size:1.3rem"><?= $greeting ?>, Admin</div>
+  </div>
+</div>
+
 <!-- Stats Row -->
 <div class="v3-dash-stats">
     <div class="v3-dash-stat" data-accent="orange">
@@ -170,6 +178,102 @@ $dayName = $dayNames[(int)date('w')];
         </div>
     <?php endif; ?>
 </div>
+
+<!-- Notes Widget -->
+<?php
+$notesWidgetTotal = 0;
+$notesWidgetPinned = 0;
+$notesWidgetRecent = [];
+try {
+    $notesWidgetTotal = (int)db_val("SELECT COUNT(*) FROM notes");
+    $notesWidgetPinned = (int)db_val("SELECT COUNT(*) FROM notes WHERE is_pinned = 1");
+    $notesWidgetRecent = db_rows("SELECT n.id, n.title, n.content, n.is_pinned, n.updated_at, c.name AS category_name, c.color AS category_color FROM notes n LEFT JOIN note_categories c ON c.id = n.category_id ORDER BY n.updated_at DESC LIMIT 3");
+} catch (Exception $e) {}
+?>
+<div class="v3-activity-card" style="margin-top:1.5rem">
+    <div class="ac-header">
+        <div class="ac-title">📝 NOTES</div>
+        <a href="modules/tasks.php?tab=notes" class="ac-show-more">Open →</a>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;padding:0.75rem 1.25rem;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.82rem">
+        <span style="color:rgba(255,255,255,0.4)"><?= $notesWidgetTotal ?> total</span>
+        <span style="color:rgba(255,255,255,0.2)">•</span>
+        <span style="color:rgba(255,255,255,0.4)">📌 <?= $notesWidgetPinned ?> pinned</span>
+    </div>
+    <?php if (count($notesWidgetRecent)): ?>
+        <?php foreach ($notesWidgetRecent as $nw): ?>
+            <div class="v3-activity-item">
+                <div class="ai-dot" style="background:<?= h($nw['category_color'] ?: 'rgba(255,255,255,0.15)') ?>"></div>
+                <div class="ai-text"><strong><?= h($nw['title']) ?></strong></div>
+                <div style="font-size:0.68rem;padding:2px 8px;border-radius:4px;background:<?= h($nw['category_color'] ?: 'rgba(255,255,255,0.05)') ?>20;color:<?= h($nw['category_color'] ?: 'rgba(255,255,255,0.3)') ?>;flex-shrink:0"><?= h($nw['category_name'] ?? 'General') ?></div>
+            </div>
+        <?php endforeach; ?>
+    <?php else: ?>
+        <div class="v3-activity-item">
+            <div class="ai-text" style="text-align:center;color:var(--text-muted);padding:0.5rem 0">No notes yet</div>
+        </div>
+    <?php endif; ?>
+    <button class="btn-quickaction" onclick="openQuickNoteModal()" style="border-top:1px solid rgba(255,255,255,0.04);border-radius:0 0 16px 16px;border-left:none;border-right:none;border-bottom:none;margin:0">
+        <i class="ti ti-plus"></i> Quick Note
+    </button>
+</div>
+
+<div class="modal-overlay" id="quickNoteModal">
+    <div class="modal" style="max-width:420px">
+        <h3 class="modal-title">📝 Quick Note</h3>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Title</label>
+                <input class="form-control" id="qnTitle" placeholder="Note title..." maxlength="255">
+            </div>
+            <div class="form-group">
+                <label>Category</label>
+                <select class="form-control" id="qnCategory">
+                    <option value="">No category</option>
+                    <?php
+                    $noteCats = [];
+                    try { $noteCats = db_rows("SELECT id, name, color FROM note_categories ORDER BY sort_order"); } catch (Exception $e) {}
+                    foreach ($noteCats as $nc): ?>
+                    <option value="<?= $nc['id'] ?>"><?= h($nc['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-actions" style="border:none;padding:0;margin-top:0">
+                <button class="btn btn-primary" onclick="saveQuickNote()"><i class="ti ti-device-floppy"></i> Save</button>
+                <button class="btn btn-secondary" onclick="closeQuickNoteModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openQuickNoteModal() { document.getElementById('quickNoteModal').classList.add('open'); document.getElementById('qnTitle').focus(); }
+function closeQuickNoteModal() { document.getElementById('quickNoteModal').classList.remove('open'); document.getElementById('qnTitle').value = ''; }
+function saveQuickNote() {
+    var title = document.getElementById('qnTitle').value.trim();
+    if (!title) { alert('Please enter a title'); return; }
+    var cat = document.getElementById('qnCategory').value;
+    var fd = new FormData();
+    fd.append('action', 'create_note');
+    fd.append('title', title);
+    fd.append('content', '');
+    fd.append('category_id', cat);
+    fd.append('color', '');
+    fetch('modules/notes_api.php', { method: 'POST', body: fd })
+    .then(function(r) { return r.json(); })
+    .then(function(j) {
+        if (j.ok) {
+            closeQuickNoteModal();
+            location.reload();
+        } else {
+            alert('Error: ' + (j.error || 'Could not save'));
+        }
+    })
+    .catch(function() { alert('Network error'); });
+}
+document.getElementById('quickNoteModal').addEventListener('click', function(e) { if (e.target === this) closeQuickNoteModal(); });
+document.getElementById('qnTitle').addEventListener('keydown', function(e) { if (e.key === 'Enter') saveQuickNote(); });
+</script>
 
 <!-- Mini Charts Row -->
 <div class="v3-mini-charts-row">

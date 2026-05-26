@@ -13,7 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Drop & Recreate
         if (!empty($_POST['reset'])) {
-            $dropTables = ['brands','portfolio','faq','testimonials','packages','services','blog_posts','admin_users','post_training_data','post_profiles','generated_posts'];
+            $dropTables = ['brands','portfolio','faq','testimonials','packages','services','blog_posts','admin_users','post_training_data','post_profiles','generated_posts','notes','note_categories'];
             foreach ($dropTables as $t) {
                 $pdo->exec("DROP TABLE IF EXISTS {$t}");
             }
@@ -196,14 +196,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
-        $pdo->exec("CREATE TABLE IF NOT EXISTS task_notes (
+        $pdo->exec("CREATE TABLE IF NOT EXISTS note_categories (
             id INT AUTO_INCREMENT PRIMARY KEY,
-            task_id INT NOT NULL,
-            note TEXT NOT NULL,
-            category VARCHAR(255) DEFAULT '',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (task_id) REFERENCES admin_tasks(id) ON DELETE CASCADE
+            name VARCHAR(100) NOT NULL,
+            color VARCHAR(7) DEFAULT '#c8ff00',
+            icon VARCHAR(50) DEFAULT 'note',
+            sort_order INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS notes (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(255) NOT NULL,
+            content LONGTEXT,
+            category_id INT DEFAULT NULL,
+            is_pinned TINYINT(1) DEFAULT 0,
+            color VARCHAR(7) DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (category_id) REFERENCES note_categories(id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        // Seed default note categories
+        $catCount = $pdo->query("SELECT COUNT(*) FROM note_categories")->fetchColumn();
+        if ($catCount == 0) {
+            $s = $pdo->prepare("INSERT INTO note_categories (name, color, icon, sort_order) VALUES (?, ?, ?, ?)");
+            $s->execute(['General', '#6b7280', 'note', 1]);
+            $s->execute(['Important', '#ff4757', 'star', 2]);
+            $s->execute(['Ideas', '#9b6dff', 'bulb', 3]);
+            $s->execute(['Follow-up', '#4f8ef7', 'clock', 4]);
+            $s->execute(['Client', '#ff8c42', 'person', 5]);
+        }
 
         $pdo->exec("CREATE TABLE IF NOT EXISTS leads (
             id INT AUTO_INCREMENT PRIMARY KEY,

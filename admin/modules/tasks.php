@@ -4,16 +4,13 @@ require_login();
 
 $view = $_GET['view'] ?? 'kanban';
 
-$pdo = db();
+// Redirect old ?view=notes to standalone notes module
+if (isset($_GET['view']) && $_GET['view'] === 'notes') {
+    header('Location: notes.php');
+    exit;
+}
 
-$pdo->exec("CREATE TABLE IF NOT EXISTS task_notes (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    task_id INT NOT NULL,
-    note TEXT NOT NULL,
-    category VARCHAR(255) DEFAULT '',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (task_id) REFERENCES admin_tasks(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+$pdo = db();
 
 // AJAX handlers
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
@@ -28,8 +25,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             'priority'      => $_POST['priority'] ?? 'medium',
             'due_date'      => $_POST['due_date'] ?: null,
             'category'      => trim($_POST['category'] ?? ''),
-            'lead_id'       => $_POST['lead_id'] ? (int)$_POST['lead_id'] : null,
-            'assignee_type' => $_POST['assignee_type'] ?: null,
+            'lead_id'       => isset($_POST['lead_id']) && $_POST['lead_id'] ? (int)$_POST['lead_id'] : null,
+            'assignee_type' => $_POST['assignee_type'] ?? null,
             'assignee_name' => trim($_POST['assignee_name'] ?? '') ?: null,
         ];
         if ($id) {
@@ -73,47 +70,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         json_response(['ok' => true]);
     }
 
-    if ($action === 'note_create') {
-        $task_id = (int)($_POST['task_id'] ?? 0);
-        $note = trim($_POST['note'] ?? '');
-        $category = trim($_POST['category'] ?? '');
-        if ($task_id && $note) {
-            $stmt = $pdo->prepare("INSERT INTO task_notes (task_id, note, category) VALUES (?, ?, ?)");
-            $stmt->execute([$task_id, $note, $category]);
-            $id = $pdo->lastInsertId();
-            json_response(['ok' => true, 'id' => $id, 'created_at' => date('M j, Y g:i A')]);
-        }
-        json_response(['ok' => false, 'error' => 'Missing fields'], 400);
-    }
-
-    if ($action === 'note_delete') {
-        $id = (int)($_POST['id'] ?? 0);
-        $stmt = $pdo->prepare("DELETE FROM task_notes WHERE id = ?");
-        $stmt->execute([$id]);
-        json_response(['ok' => true]);
-    }
-
-    if ($action === 'note_update') {
-        $id = (int)($_POST['id'] ?? 0);
-        $note = trim($_POST['note'] ?? '');
-        $category = trim($_POST['category'] ?? '');
-        if ($id && $note) {
-            $stmt = $pdo->prepare("UPDATE task_notes SET note = ?, category = ? WHERE id = ?");
-            $stmt->execute([$note, $category, $id]);
-            json_response(['ok' => true]);
-        }
-        json_response(['ok' => false, 'error' => 'Missing fields'], 400);
-    }
-
     if ($action === 'get_task') {
         $id = (int)($_POST['id'] ?? 0);
         $stmt = $pdo->prepare("SELECT * FROM admin_tasks WHERE id = ?");
         $stmt->execute([$id]);
         $task = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($task) {
-            $stmt2 = $pdo->prepare("SELECT * FROM task_notes WHERE task_id = ? ORDER BY created_at DESC");
-            $stmt2->execute([$id]);
-            $task['notes'] = $stmt2->fetchAll(PDO::FETCH_ASSOC);
             json_response(['ok' => true, 'task' => $task]);
         }
         json_response(['ok' => false, 'error' => 'Not found'], 404);
@@ -129,22 +91,22 @@ if (!empty($_GET['priority'])) { $where[] = 'priority = ?'; $params[] = $_GET['p
 if (!empty($_GET['category'])) { $where[] = 'category = ?'; $params[] = $_GET['category']; }
 if (!empty($_GET['assignee'])) { $where[] = 'CONCAT(assignee_type,":",assignee_name) = ?'; $params[] = $_GET['assignee']; }
 if (!empty($_GET['search'])) { $where[] = '(title LIKE ? OR description LIKE ?)'; $params[] = '%' . $_GET['search'] . '%'; $params[] = '%' . $_GET['search'] . '%'; }
-if (!empty($_GET['overdue'])) { $where[] = 'due_date IS NOT NULL AND due_date < NOW() AND status != ?'; $params[] = 'done'; }
 $whereClause = implode(' AND ', $where);
-$tasks = $pdo->query("SELECT * FROM admin_tasks WHERE $whereClause ORDER BY sort_order ASC, created_at DESC")->fetchAll();
+$sortMap = ['due-asc'=>'due_date ASC, sort_order ASC', 'due-desc'=>'due_date DESC, sort_order ASC', 'name'=>'title ASC, sort_order ASC', 'priority'=>"FIELD(priority,'urgent','high','medium','low'), sort_order ASC"];
+$sortOrder = $sortMap[$_GET['sort'] ?? ''] ?? 'created_at DESC';
+$tasks = $pdo->query("SELECT * FROM admin_tasks WHERE $whereClause ORDER BY $sortOrder")->fetchAll();
 
 $categories = $pdo->query("SELECT DISTINCT category FROM admin_tasks WHERE category != '' ORDER BY category")->fetchAll(PDO::FETCH_COLUMN);
-$noteCategories = $pdo->query("SELECT DISTINCT category FROM task_notes WHERE category != '' ORDER BY category")->fetchAll(PDO::FETCH_COLUMN);
-$allNoteCategories = array_unique(array_merge($categories, $noteCategories));
 $leads = $pdo->query("SELECT id, business_name FROM leads ORDER BY business_name")->fetchAll();
 $allAssignees = $pdo->query("SELECT DISTINCT assignee_type, assignee_name FROM admin_tasks WHERE assignee_name IS NOT NULL AND assignee_name != '' ORDER BY assignee_name")->fetchAll();
 
-$activeFilters = !empty($_GET['priority']) || !empty($_GET['category']) || !empty($_GET['search']) || !empty($_GET['overdue']) || !empty($_GET['assignee']);
+$activeFilters = !empty($_GET['priority']) || !empty($_GET['category']) || !empty($_GET['search']) || !empty($_GET['assignee']);
 
 $colTasks = ['pending' => [], 'in_progress' => [], 'done' => []];
 foreach ($tasks as $t) { $colTasks[$t['status']][] = $t; }
 $statusLabels = ['pending' => 'Pending', 'in_progress' => 'In Progress', 'done' => 'Done'];
 $statusIcons = ['pending' => 'ti ti-clock', 'in_progress' => 'ti ti-refresh', 'done' => 'ti ti-check'];
+$statusColors = ['pending' => '#ff8c42', 'in_progress' => '#4f8ef7', 'done' => '#2ecc71'];
 
 $totalCount = count($tasks);
 $stats = [
@@ -158,26 +120,96 @@ $stats = [
 <?php require_once __DIR__ . '/../inc/header.php'; ?>
 
 <style>
+:root {
+  --glass-bg: rgba(255,255,255,0.04);
+  --glass-border: rgba(255,255,255,0.08);
+  --glass-hover: rgba(200,255,0,0.2);
+}
 @keyframes cardSlideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes cardFadeOut { to { opacity: 0; transform: scale(0.95); } }
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 12px rgba(200,255,0,0.3); }
+  50% { box-shadow: 0 0 24px rgba(200,255,0,0.6); }
+}
+@keyframes modalSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-.kanban-board { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem; min-height: 65vh; }
-.kanban-col { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: var(--radius-lg); display: flex; flex-direction: column; overflow: hidden; }
-.kanban-col-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+/* ─── STAT STRIP ─── */
+.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem; }
+.stat-card { background: var(--glass-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--glass-border); border-radius: 14px; padding: 1.1rem 1rem; text-align: center; border-top: 3px solid transparent; }
+.stat-card:nth-child(1) { border-top-color: #fff; }
+.stat-card:nth-child(2) { border-top-color: #ff8c42; }
+.stat-card:nth-child(3) { border-top-color: #4f8ef7; }
+.stat-card:nth-child(4) { border-top-color: #2ecc71; }
+.stat-card:nth-child(5) { border-top-color: #c8ff00; }
+.stat-value { font-size: 2rem; font-weight: 700; line-height: 1.1; }
+.stat-card:nth-child(1) .stat-value { color: #fff; }
+.stat-card:nth-child(2) .stat-value { color: #ff8c42; }
+.stat-card:nth-child(3) .stat-value { color: #4f8ef7; }
+.stat-card:nth-child(4) .stat-value { color: #2ecc71; }
+.stat-card:nth-child(5) .stat-value { color: #c8ff00; }
+.stat-label { font-size: 0.68rem; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.12em; margin-top: 6px; font-weight: 600; }
+
+/* ─── FILTER BAR ─── */
+.tasks-toolbar { align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; text-align: right; }
+.tasks-filters { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+.tasks-filters select, .tasks-filters input { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: var(--text2); padding: 0.5rem 0.75rem; border-radius: 8px; font-size: 0.78rem; outline: none; font-family: 'Inter', sans-serif; transition: border-color 0.15s; }
+.tasks-filters select { background-color: #0e1420; color-scheme: dark; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; appearance: none; -webkit-appearance: none; padding-right: 2rem; }
+.tasks-filters select option { background: #0e1420; color: var(--text); }
+.tasks-filters select:focus, .tasks-filters input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(200,255,0,0.1); }
+.tasks-filters input { min-width: 180px; }
+.search-wrap { position: relative; }
+.search-wrap i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.3); font-size: 0.85rem; pointer-events: none; }
+.search-wrap input { padding-left: 30px !important; }
+.filter-wrap { position: relative; display: inline-flex; }
+.filter-wrap i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.3); font-size: 0.85rem; pointer-events: none; z-index: 1; line-height: 1; }
+.filter-wrap select { padding-left: 30px !important; }
+.view-toggle { display: inline-flex; gap: 0; }
+.view-toggle button { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: var(--text3); padding: 0.5rem 0.9rem; font-size: 0.78rem; cursor: pointer; transition: all 0.15s; font-family: 'Inter', sans-serif; }
+.view-toggle button:first-child { border-radius: 8px 0 0 8px; }
+.view-toggle button:last-child { border-radius: 0 8px 8px 0; }
+.view-toggle button.active { background: var(--accent); color: #080B10; border-color: var(--accent); font-weight: 700; }
+.clear-filters { font-size: 0.72rem; color: var(--text3); cursor: pointer; text-decoration: none; }
+.clear-filters:hover { color: var(--accent); }
+
+/* ─── SORT ─── */
+.sort-controls { margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
+.sort-controls label { font-size: 0.72rem; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; }
+.sort-controls select { background: #1a1f2e; border: 1px solid rgba(255,255,255,0.1); color: var(--text); padding: 0.5rem 2rem 0.5rem 0.75rem; border-radius: 10px; font-size: 0.85rem; outline: none; font-family: 'Inter', sans-serif; box-shadow: 0 8px 32px rgba(0,0,0,0.4); appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; cursor: pointer; }
+.sort-controls select option { background: #1a1f2e; color: var(--text); padding: 10px 16px; }
+.sort-controls select:focus { border-color: var(--accent); }
+
+/* ─── KANBAN ─── */
+.kanban-board { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; min-height: 65vh; width: 100%; box-sizing: border-box; }
+.kanban-col { background: rgba(255,255,255,0.02); border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(255,255,255,0.06); width: 100%; min-width: 0; box-sizing: border-box; }
+.kanban-col[data-status="pending"] { border-color: rgba(255,140,66,0.35); border-top: 3px solid #ff8c42; }
+.kanban-col[data-status="in_progress"] { border-color: rgba(79,142,247,0.35); border-top: 3px solid #4f8ef7; }
+.kanban-col[data-status="done"] { border-color: rgba(46,204,113,0.35); border-top: 3px solid #2ecc71; }
+.kanban-col-header { padding: 1rem 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: space-between; }
 .kanban-col-header h3 { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text); }
-.kanban-col-header .count { font-size: 0.7rem; background: var(--bg3); color: var(--text3); padding: 2px 10px; border-radius: 999px; font-weight: 700; }
-.kanban-cards { flex: 1; padding: 0.75rem; overflow-y: auto; display: flex; flex-direction: column; gap: 0.6rem; min-height: 150px; border-radius: var(--radius-md); transition: background 0.2s; margin: 0.5rem; }
-.kanban-cards.drag-over { background: rgba(204,255,0,0.03); border: 1px dashed var(--accent); }
-.task-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 0.9rem 1rem; cursor: grab; transition: all 0.15s ease; position: relative; animation: cardSlideIn 0.25s ease-out; user-select: none; }
-.task-card:hover { border-color: var(--border-hover); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+.kanban-col-header .count { font-size: 0.7rem; padding: 2px 10px; border-radius: 999px; font-weight: 700; }
+.kanban-col[data-status="pending"] .count { background: rgba(255,140,66,0.15); color: #ff8c42; }
+.kanban-col[data-status="in_progress"] .count { background: rgba(79,142,247,0.15); color: #4f8ef7; }
+.kanban-col[data-status="done"] .count { background: rgba(46,204,113,0.15); color: #2ecc71; }
+.kanban-cards { flex: 1; padding: 0.75rem; overflow-y: auto; display: flex; flex-direction: column; gap: 0.6rem; min-height: 150px; border-radius: var(--radius-md); transition: background 0.2s; margin: 0.5rem 0; width: 100%; min-width: 0; box-sizing: border-box; }
+.kanban-cards.drag-over { background: rgba(204,255,0,0.03); border: 1px dashed var(--accent); border-radius: 10px; }
+
+/* ─── TASK CARDS ─── */
+.task-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; cursor: grab; transition: all 0.2s ease; position: relative; animation: cardSlideIn 0.25s ease-out; user-select: none; border-left: 3px solid #6b7280; }
+.task-card[data-priority="urgent"] { border-left-color: #ff4757; }
+.task-card[data-priority="high"] { border-left-color: #f97316; }
+.task-card[data-priority="medium"] { border-left-color: #f59e0b; }
+.task-card[data-priority="low"] { border-left-color: #6b7280; }
+.task-card:hover { border-color: rgba(200,255,0,0.2); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
 .task-card.dragging { opacity: 0.4; transform: rotate(2deg); }
 .task-card.fade-out { animation: cardFadeOut 0.2s ease-out forwards; }
+.task-card .drag-handle { display: none; position: absolute; left: 2px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.2); font-size: 1.1rem; cursor: grab; }
+.task-card:hover .drag-handle { display: block; }
 .task-card .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
-.task-card .card-title { font-size: 0.82rem; font-weight: 600; color: var(--text); line-height: 1.3; flex: 1; }
-.task-card .card-priority { font-size: 0.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 8px; border-radius: 4px; flex-shrink: 0; }
-.priority-urgent { background: rgba(239,68,68,0.15); color: #ef4444; }
+.task-card .card-title { font-size: 0.82rem; font-weight: 600; color: var(--text); line-height: 1.3; }
+.task-card .card-priority { font-size: 0.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 8px; border-radius: 6px; flex-shrink: 0; }
+.priority-urgent { background: rgba(255,71,87,0.15); color: #ff4757; }
 .priority-high { background: rgba(249,115,22,0.15); color: #f97316; }
-.priority-medium { background: rgba(59,130,246,0.15); color: #3b82f6; }
+.priority-medium { background: rgba(245,158,11,0.15); color: #f59e0b; }
 .priority-low { background: rgba(107,114,128,0.15); color: #9ca3af; }
 .task-card .card-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 0.68rem; }
 .task-card .card-due { color: var(--text3); display: flex; align-items: center; gap: 4px; }
@@ -186,142 +218,208 @@ $stats = [
 .task-card .assignee-badge { font-size: 0.6rem; font-weight: 600; padding: 1px 7px; border-radius: 4px; display: inline-flex; align-items: center; gap: 3px; }
 .assignee-person { background: rgba(139,92,246,0.15); color: #a78bfa; }
 .assignee-company { background: rgba(6,182,212,0.15); color: #22d3ee; }
-.task-card .card-actions { display: none; gap: 4px; position: absolute; top: 8px; right: 8px; }
+.task-card .card-actions { display: none; gap: 2px; flex-shrink: 0; }
 .task-card:hover .card-actions { display: flex; }
-.task-card .card-actions button { background: var(--bg3); border: 1px solid var(--border); color: var(--text2); width: 26px; height: 26px; border-radius: 4px; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; transition: all 0.1s; }
-.task-card .card-actions button:hover { background: var(--border); color: var(--text); }
+.task-card .card-actions button { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.07); color: var(--text2); width: 24px; height: 24px; border-radius: 6px; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center; transition: all 0.1s; }
+.task-card .card-actions button:hover { background: rgba(255,255,255,0.15); color: var(--text); }
 .task-card .card-lead-link { font-size: 0.6rem; color: var(--blue); text-decoration: none; display: inline-flex; align-items: center; gap: 3px; }
 .task-card .card-lead-link:hover { text-decoration: underline; }
+.task-card .card-bottom { display: flex; align-items: center; justify-content: space-between; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.04); gap: 6px; flex-wrap: wrap; }
+.task-card .card-due-right { font-size: 0.68rem; color: var(--text3); display: flex; align-items: center; gap: 4px; }
+.task-card .card-due-right.overdue { color: #ef4444; font-weight: 700; }
 .empty-col { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem 1rem; color: var(--text3); font-size: 0.75rem; text-align: center; gap: 4px; flex: 1; }
 .empty-col i { font-size: 1.5rem; opacity: 0.3; }
+#kanban-view { width: 100%; }
 
-.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem; }
-.stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem 1rem; text-align: center; }
-.stat-value { font-size: 1.4rem; font-weight: 800; line-height: 1.1; }
-.stat-label { font-size: 0.6rem; color: var(--text3); text-transform: uppercase; letter-spacing: 0.12em; margin-top: 4px; font-weight: 600; }
+/* ─── MODAL ─── */
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 1000; display: none; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: #0e1420; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; box-shadow: 0 24px 64px rgba(0,0,0,0.6); width: 90%; max-width: 640px; max-height: 90vh; overflow-y: auto; animation: modalSlideUp 0.25s ease; padding: 0; }
+.modal-title { font-size: 1rem; font-weight: 700; color: var(--text); padding: 1.25rem 1.5rem 0.5rem; margin: 0; }
+.modal-body { padding: 0 1.5rem 1.5rem; }
 
-.tasks-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-.tasks-filters { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
-.tasks-filters select, .tasks-filters input { background: var(--bg3); border: 1px solid var(--border); color: var(--text2); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.78rem; outline: none; font-family: 'Inter', sans-serif; }
-.tasks-filters select:focus, .tasks-filters input:focus { border-color: var(--accent); }
-.tasks-filters input { min-width: 180px; }
-.overdue-toggle { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text3); cursor: pointer; }
-.overdue-toggle input { accent-color: var(--accent); }
-.view-toggle { display: flex; gap: 0; }
-.view-toggle button { background: var(--bg3); border: 1px solid var(--border); color: var(--text3); padding: 0.5rem 0.9rem; font-size: 0.78rem; cursor: pointer; transition: all 0.15s; font-family: 'Inter', sans-serif; }
-.view-toggle button:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
-.view-toggle button:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
-.view-toggle button.active { background: var(--accent); color: #080B10; border-color: var(--accent); font-weight: 700; }
-.clear-filters { font-size: 0.72rem; color: var(--text3); cursor: pointer; text-decoration: none; }
-.clear-filters:hover { color: var(--accent); }
+/* Form fields */
+.form-group { margin-bottom: 1rem; }
+.form-group label { display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.5); margin-bottom: 6px; font-weight: 600; }
+.form-control { width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: var(--text); padding: 12px 14px; border-radius: 10px; font-size: 0.85rem; outline: none; font-family: 'Inter', sans-serif; transition: border-color 0.15s, box-shadow 0.15s; box-sizing: border-box; }
+.form-control:focus { border-color: #c8ff00; box-shadow: 0 0 0 3px rgba(200,255,0,0.1); }
+textarea.form-control { resize: vertical; min-height: 80px; }
+select.form-control { appearance: none; -webkit-appearance: none; background-color: #0e1420; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; color-scheme: dark; }
+select.form-control option { background: #0e1420; color: var(--text); }
+.char-counter { float: right; font-size: 0.72rem; color: rgba(255,255,255,0.35); margin-top: 4px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.form-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.06); }
 
-.modal-wide { max-width: 620px; }
-.lead-suggest { position: absolute; top: 100%; left: 0; right: 0; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-sm); max-height: 160px; overflow-y: auto; z-index: 10; display: none; }
-.lead-suggest div { padding: 0.5rem 0.75rem; font-size: 0.8rem; color: var(--text2); cursor: pointer; }
-.lead-suggest div:hover { background: rgba(204,255,0,0.06); color: var(--text); }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 0.6rem 1.2rem; border-radius: 10px; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: 'Inter', sans-serif; border: none; }
+.btn:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+
+.btn-primary { background: #c8ff00; color: #000; font-weight: 700; }
+.btn-primary:hover { filter: brightness(1.1); }
+.btn-primary:active { transform: scale(0.97); }
+.btn-secondary { background: transparent; border: 1px solid rgba(255,255,255,0.1); color: var(--text2); }
+.btn-secondary:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+.btn-sm { padding: 0.4rem 0.8rem; font-size: 0.75rem; border-radius: 8px; }
+.btn-danger { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.2); color: #ef4444; }
+.btn-danger:hover { background: rgba(239,68,68,0.25); }
+
+/* ─── NEW TASK BUTTON ─── */
+.btn-pulse { animation: pulse-glow 2s ease-in-out infinite; }
+
+/* ─── LEAD SUGGEST ─── */
+.lead-suggest { position: absolute; top: 100%; left: 0; right: 0; background: #1a1f2e; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; max-height: 160px; overflow-y: auto; z-index: 10; display: none; margin-top: 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+.lead-suggest div { padding: 0.6rem 0.75rem; font-size: 0.8rem; color: var(--text2); cursor: pointer; }
+.lead-suggest div:hover { background: rgba(200,255,0,0.08); color: var(--text); }
+.lead-suggest div:first-child { border-radius: 10px 10px 0 0; }
+.lead-suggest div:last-child { border-radius: 0 0 10px 10px; }
+
+/* ─── LIST VIEW ─── */
+#list-view .card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; overflow: hidden; }
+.table-wrap { overflow-x: auto; }
+.table-wrap table { width: 100%; border-collapse: collapse; }
+.table-wrap th { text-align: left; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); padding: 0.9rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.06); font-weight: 700; user-select: none; white-space: nowrap; }
+.table-wrap th.sortable { cursor: pointer; }
+.table-wrap th.sortable:hover { color: var(--text); }
+.table-wrap td { padding: 0.75rem 1rem; font-size: 0.82rem; color: var(--text2); border-bottom: 1px solid rgba(255,255,255,0.03); vertical-align: middle; }
+.table-wrap tr:hover td { background: rgba(255,255,255,0.02); }
+.status-btn-group { display: flex; gap: 4px; }
+.status-btn-group .sbtn { font-size: 0.6rem; padding: 3px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: var(--text3); cursor: pointer; transition: all 0.12s; font-family: 'Inter', sans-serif; font-weight: 600; }
+.status-btn-group .sbtn:hover { border-color: var(--accent); color: var(--accent); }
+.status-btn-group .sbtn.active { background: var(--accent); color: #080B10; border-color: var(--accent); }
+.status-btn-group .sbtn.sbtn-pending:hover { border-color: #ff8c42; color: #ff8c42; }
+.status-btn-group .sbtn.sbtn-pending.active { background: #ff8c42; color: #fff; border-color: #ff8c42; }
+.status-btn-group .sbtn.sbtn-progress:hover { border-color: #4f8ef7; color: #4f8ef7; }
+.status-btn-group .sbtn.sbtn-progress.active { background: #4f8ef7; color: #fff; border-color: #4f8ef7; }
+.status-btn-group .sbtn.sbtn-done:hover { border-color: #2ecc71; color: #2ecc71; }
+.status-btn-group .sbtn.sbtn-done.active { background: #2ecc71; color: #fff; border-color: #2ecc71; }
+
+/* ─── QUICK BAR ─── */
+.v3-task-quick-bar { display: flex; align-items: center; gap: 8px; margin-top: 1.5rem; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 0.75rem 1rem; }
+.tqb-label { font-size: 0.72rem; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; white-space: nowrap; }
+.tqb-input { flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: var(--text); padding: 0.55rem 0.75rem; border-radius: 8px; font-size: 0.82rem; outline: none; font-family: 'Inter', sans-serif; }
+.tqb-input:focus { border-color: var(--accent); }
+.tqb-btn { background: var(--accent); color: #000; border: none; font-weight: 700; padding: 0.55rem 1rem; border-radius: 8px; font-size: 0.8rem; cursor: pointer; font-family: 'Inter', sans-serif; white-space: nowrap; }
 
 .move-select { display: none; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg3); color: var(--text2); }
 
-/* List view status buttons */
-.status-btn-group { display: flex; gap: 4px; }
-.status-btn-group .sbtn { font-size: 0.6rem; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg3); color: var(--text3); cursor: pointer; transition: all 0.12s; font-family: 'Inter', sans-serif; font-weight: 600; }
-.status-btn-group .sbtn:hover { border-color: var(--accent); color: var(--accent); }
-.status-btn-group .sbtn.active { background: var(--accent); color: #080B10; border-color: var(--accent); }
-.status-btn-group .sbtn.sbtn-pending:hover { border-color: var(--blue); color: var(--blue); }
-.status-btn-group .sbtn.sbtn-pending.active { background: var(--blue); color: #fff; border-color: var(--blue); }
-.status-btn-group .sbtn.sbtn-progress:hover { border-color: #f59e0b; color: #f59e0b; }
-.status-btn-group .sbtn.sbtn-progress.active { background: #f59e0b; color: #fff; border-color: #f59e0b; }
-.status-btn-group .sbtn.sbtn-done:hover { border-color: var(--green); color: var(--green); }
-.status-btn-group .sbtn.sbtn-done.active { background: var(--green); color: #fff; border-color: var(--green); }
-
-/* Notes section */
-.notes-section { border-top: 1px solid var(--border); margin-top: 1rem; padding-top: 1rem; }
-.notes-section .ns-header { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text2); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 6px; }
-.note-item { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 0.6rem; }
-.note-item .note-text { font-size: 0.82rem; color: var(--text); line-height: 1.5; }
-.note-item .note-meta { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; font-size: 0.65rem; color: var(--text3); }
-.note-item .note-meta .note-cat { background: rgba(204,255,0,0.06); color: var(--accent); padding: 1px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
-.note-item .note-actions { display: flex; gap: 4px; }
-.note-item .note-actions button { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 0.8rem; padding: 2px; transition: color 0.1s; }
-.note-item .note-actions button:hover { color: var(--text); }
-.note-input-row { display: flex; gap: 8px; margin-bottom: 0.75rem; }
-.note-input-row input[type="text"] { flex: 1; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.5rem 0.75rem; color: var(--text); font-size: 0.82rem; outline: none; font-family: 'Inter', sans-serif; }
-.note-input-row input:focus { border-color: var(--accent); }
-.note-input-row select { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.5rem 0.75rem; color: var(--text2); font-size: 0.78rem; outline: none; font-family: 'Inter', sans-serif; min-width: 120px; }
-.note-input-row select:focus { border-color: var(--accent); }
-
 @media(max-width:900px){
-  .kanban-board { grid-template-columns: 1fr; }
-  .tasks-toolbar { flex-direction: column; align-items: stretch; }
-  .tasks-filters { flex-wrap: wrap; }
-  .tasks-filters input { min-width: 100%; }
+  .kanban-board { grid-template-columns: 1fr; gap: 0.75rem; }
   .move-select { display: inline-block; }
   .stats-row { grid-template-columns: repeat(3, 1fr); }
   .status-btn-group { flex-direction: column; }
+  .form-row { grid-template-columns: 1fr; }
+  .tasks-tab-bar { flex-wrap: wrap; gap: 0.75rem; }
+  .tasks-tab-bar > div { flex: 1; }
+  .tasks-tab-bar > div button { flex: 1; text-align: center; padding: 10px 14px !important; font-size: 0.8rem !important; }
+  .v3-task-quick-bar { flex-wrap: wrap; }
+  .v3-task-quick-bar .tqb-input { min-width: 100%; }
+  .stat-value { font-size: 1.5rem; }
+  .stat-card { padding: 0.85rem 0.75rem; }
 }
+@media(max-width:768px){
+  .tasks-toolbar { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; scrollbar-width: none; }
+  .tasks-toolbar::-webkit-scrollbar { display: none; }
+  .tasks-filters { display: flex !important; flex-wrap: nowrap !important; flex: 1; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  .tasks-filters::-webkit-scrollbar { display: none; }
+  .tasks-filters .search-wrap { display: none; }
+  .filter-wrap { width: 44px; min-width: 44px; overflow: hidden; }
+  .filter-wrap select { padding: 8px 28px 8px 28px !important; min-width: 0 !important; width: 100% !important; }
+  .filter-wrap i { font-size: 0.9rem; left: 7px; }
+  .view-toggle { flex-shrink: 0; }
+  .view-toggle button { padding: 8px 10px !important; min-width: 0 !important; font-size: 0 !important; line-height: 1 !important; }
+  .view-toggle button i { font-size: 1.1rem; }
+  .view-label { display: none !important; }
+}
+@media(max-width:480px){
+  .page-title { font-size: 1.1rem !important; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+  .tasks-toolbar { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 4px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; scrollbar-width: none; }
+  .tasks-toolbar::-webkit-scrollbar { display: none; }
+  .tasks-filters { display: flex !important; flex-wrap: nowrap !important; flex: 1; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+  .tasks-filters::-webkit-scrollbar { display: none; }
+  .filter-wrap { width: 38px; min-width: 38px; overflow: hidden; }
+  .filter-wrap select { padding: 6px 22px 6px 22px !important; min-width: 0 !important; width: 100% !important; }
+  .filter-wrap i { font-size: 0.85rem; left: 5px; }
+  .view-toggle button { padding: 6px 8px !important; min-width: 0 !important; font-size: 0 !important; line-height: 1 !important; }
+  .view-toggle button i { font-size: 1rem; }
+  .view-label { display: none !important; }
+  .stat-label { font-size: 0.6rem; }
+  .kanban-col-header { padding: 0.75rem 0.85rem; }
+  .kanban-cards { padding: 0.5rem; margin: 0.25rem 0; gap: 0.4rem; }
+  .task-card { padding: 0.65rem 0.75rem !important; }
+  .task-card .card-title { font-size: 0.78rem; }
+  .modal { padding: 0 !important; margin: 0 0.5rem; }
+  .modal-body { padding: 0 1rem 1rem; }
+  .modal-title { padding: 1rem 1rem 0.5rem; }
+  .tasks-tab-bar > div button { padding: 8px 10px !important; font-size: 0.72rem !important; }
+  .v3-task-quick-bar { padding: 0.5rem 0.75rem; }
+  .tqb-input { padding: 0.4rem 0.6rem; font-size: 0.78rem; }
+  .tqb-btn { padding: 0.4rem 0.75rem; font-size: 0.75rem; }
+  .form-control { padding: 10px 12px; font-size: 0.82rem; }
+  .btn { padding: 0.5rem 0.9rem; font-size: 0.78rem; }
+  .btn-sm { padding: 0.35rem 0.65rem; font-size: 0.7rem; }
+  .char-counter { font-size: 0.65rem; }
+}
+
 </style>
 
-<div class="page-header">
-    <h1 class="page-title">Tasks</h1>
-    <div class="flex flex-wrap">
-        <button class="btn btn-primary" onclick="openTaskModal()"><i class="ti ti-plus"></i> New Task</button>
-    </div>
-</div>
+<div class="page-title" style="font-size:1.6rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#fff;margin-bottom:24px">TASKS</div>
+
+<div id="tasks-panel">
 
 <div class="stats-row">
-    <div class="stat-card"><div class="stat-value" style="color:var(--text)"><?= $stats['total'] ?></div><div class="stat-label">Total</div></div>
-    <div class="stat-card"><div class="stat-value" style="color:var(--blue)"><?= $stats['pending'] ?></div><div class="stat-label">Pending</div></div>
-    <div class="stat-card"><div class="stat-value" style="color:#f59e0b"><?= $stats['progress'] ?></div><div class="stat-label">In Progress</div></div>
-    <div class="stat-card"><div class="stat-value" style="color:var(--green)"><?= $stats['done'] ?></div><div class="stat-label">Done</div></div>
-    <div class="stat-card"><div class="stat-value" style="color:var(--accent)"><?= $stats['rate'] ?>%</div><div class="stat-label">Complete</div></div>
+    <div class="stat-card"><div class="stat-value"><?= $stats['total'] ?></div><div class="stat-label">Total</div></div>
+    <div class="stat-card"><div class="stat-value"><?= $stats['pending'] ?></div><div class="stat-label">Pending</div></div>
+    <div class="stat-card"><div class="stat-value"><?= $stats['progress'] ?></div><div class="stat-label">In Progress</div></div>
+    <div class="stat-card"><div class="stat-value"><?= $stats['done'] ?></div><div class="stat-label">Done</div></div>
+    <div class="stat-card"><div class="stat-value"><?= $stats['rate'] ?>%</div><div class="stat-label">Complete</div></div>
 </div>
 
 <div class="tasks-toolbar">
     <div class="tasks-filters">
+        <div class="filter-wrap"><i class="ti ti-flag"></i>
         <select id="f-priority" onchange="applyFilters()">
             <option value="">All Priorities</option>
             <option value="urgent" <?= ($_GET['priority']??'')==='urgent'?'selected':'' ?>>Urgent</option>
             <option value="high" <?= ($_GET['priority']??'')==='high'?'selected':'' ?>>High</option>
             <option value="medium" <?= ($_GET['priority']??'')==='medium'?'selected':'' ?>>Medium</option>
             <option value="low" <?= ($_GET['priority']??'')==='low'?'selected':'' ?>>Low</option>
-        </select>
+        </select></div>
+        <div class="filter-wrap"><i class="ti ti-tag"></i>
         <select id="f-category" onchange="applyFilters()">
             <option value="">All Categories</option>
             <?php foreach ($categories as $c): ?>
             <option value="<?= h($c) ?>" <?= ($_GET['category']??'')===$c?'selected':'' ?>><?= h($c) ?></option>
             <?php endforeach; ?>
-        </select>
+        </select></div>
+        <div class="filter-wrap"><i class="ti ti-user"></i>
         <select id="f-assignee" onchange="applyFilters()">
             <option value="">All Assignees</option>
             <?php foreach ($allAssignees as $a): $val = $a['assignee_type'].':'.$a['assignee_name']; ?>
             <option value="<?= h($val) ?>" <?= ($_GET['assignee']??'')===$val?'selected':'' ?>><?= h($a['assignee_name']) ?></option>
             <?php endforeach; ?>
+        </select></div>
+        <div class="search-wrap">
+            <i class="ti ti-search"></i>
+            <input type="text" id="f-search" placeholder="Search tasks..." value="<?= h($_GET['search'] ?? '') ?>" onkeydown="if(event.key==='Enter')applyFilters()">
+        </div>
+        <div class="filter-wrap"><i class="ti ti-arrows-sort"></i>
+        <select id="taskSort" onchange="applySort(this.value)" style="background-color:#0e1420;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;border:1px solid rgba(255,255,255,0.1);color:var(--text2);padding-right:2rem;border-radius:8px;font-size:0.78rem;outline:none;font-family:'Inter',sans-serif;appearance:none;-webkit-appearance:none;color-scheme:dark;cursor:pointer">
+            <option value="">Sort...</option>
+            <option value="due-asc" <?= ($_GET['sort']??'')==='due-asc'?'selected':'' ?>>Due Date ↑</option>
+            <option value="due-desc" <?= ($_GET['sort']??'')==='due-desc'?'selected':'' ?>>Due Date ↓</option>
+            <option value="name" <?= ($_GET['sort']??'')==='name'?'selected':'' ?>>Name (A-Z)</option>
+            <option value="priority" <?= ($_GET['sort']??'')==='priority'?'selected':'' ?>>Priority (High→Low)</option>
         </select>
-        <input type="text" id="f-search" placeholder="Search tasks..." value="<?= h($_GET['search'] ?? '') ?>" onkeydown="if(event.key==='Enter')applyFilters()">
-        <label class="overdue-toggle">
-            <input type="checkbox" id="f-overdue" <?= !empty($_GET['overdue'])?'checked':'' ?> onchange="applyFilters()">
-            Overdue only
-        </label>
         <?php if ($activeFilters): ?>
-        <a href="tasks.php<?= $view==='list'?'?view=list':'' ?>" class="clear-filters"><i class="ti ti-x"></i> Clear</a>
+        <a href="tasks.php?view=<?= $view ?>" class="clear-filters"><i class="ti ti-x"></i> Clear</a>
         <?php endif; ?>
     </div>
     <div class="view-toggle">
-        <button class="<?= $view==='kanban'?'active':'' ?>" onclick="setView('kanban')"><i class="ti ti-layout-columns"></i> Board</button>
-        <button class="<?= $view==='list'?'active':'' ?>" onclick="setView('list')"><i class="ti ti-list"></i> List</button>
+        <button class="<?= $view==='kanban'?'active':'' ?>" onclick="setView('kanban')" title="Board"><i class="ti ti-layout-columns"></i> <span class="view-label">Board</span></button>
+        <button class="<?= $view==='list'?'active':'' ?>" onclick="setView('list')" title="List"><i class="ti ti-list"></i> <span class="view-label">List</span></button>
     </div>
 </div>
 
-<div class="sort-controls">
-    <label>Sort:</label>
-    <select id="taskSort">
-        <option value="">Default order</option>
-        <option value="due-asc">Due Date ↑</option>
-        <option value="due-desc">Due Date ↓</option>
-        <option value="name">Name (A-Z)</option>
-        <option value="priority">Priority (High→Low)</option>
-    </select>
-</div>
 
 <div id="kanban-view" style="<?= $view==='list'?'display:none':'' ?>">
     <div class="kanban-board">
@@ -345,30 +443,33 @@ $stats = [
                      data-lead-id="<?= $t['lead_id'] ?? '' ?>"
                      data-assignee-type="<?= h($t['assignee_type'] ?? '') ?>"
                      data-assignee-name="<?= h($t['assignee_name'] ?? '') ?>">
+                    <span class="drag-handle">⠿</span>
                     <div class="card-top">
                         <span class="card-title"><?= h($t['title']) ?></span>
-                        <span class="card-priority priority-<?= $t['priority'] ?>"><?= $t['priority'] ?></span>
+                        <div class="card-actions">
+                            <button onclick="editTask(<?= $t['id'] ?>)" title="Edit"><i class="ti ti-pencil"></i></button>
+                            <button onclick="deleteTask(<?= $t['id'] ?>,'<?= h(addslashes($t['title'])) ?>')" title="Delete"><i class="ti ti-trash"></i></button>
+                        </div>
                     </div>
                     <?php if ($t['description']): ?>
                     <div style="font-size:0.72rem;color:var(--text3);margin-bottom:8px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden"><?= h($t['description']) ?></div>
                     <?php endif; ?>
+                    <?php if ($t['lead_id']): $lead = $pdo->query("SELECT id, business_name FROM leads WHERE id = " . (int)$t['lead_id'])->fetch(); if ($lead): ?>
                     <div class="card-meta">
-                        <?php if ($t['due_date']): ?>
-                        <span class="card-due <?= $overdue?'overdue':'' ?>"><i class="ti ti-calendar"></i> <?= date('M j', strtotime($t['due_date'])) ?></span>
-                        <?php endif; ?>
+                        <a href="leads.php?view=my_leads&edit=<?= $lead['id'] ?>" class="card-lead-link" target="_blank"><i class="ti ti-user"></i> <?= h($lead['business_name']) ?></a>
+                    </div>
+                    <?php endif; endif; ?>
+                    <div class="card-bottom">
+                        <span class="card-priority priority-<?= $t['priority'] ?>"><?= $t['priority'] ?></span>
                         <?php if ($t['category']): ?>
                         <span class="card-category"><?= h($t['category']) ?></span>
                         <?php endif; ?>
                         <?php if ($t['assignee_name']): ?>
                         <span class="assignee-badge assignee-<?= $t['assignee_type']?:'person' ?>"><?= h($t['assignee_name']) ?></span>
                         <?php endif; ?>
-                        <?php if ($t['lead_id']): $lead = $pdo->query("SELECT id, business_name FROM leads WHERE id = " . (int)$t['lead_id'])->fetch(); if ($lead): ?>
-                        <a href="leads.php?view=my_leads&edit=<?= $lead['id'] ?>" class="card-lead-link" target="_blank"><i class="ti ti-user"></i> <?= h($lead['business_name']) ?></a>
-                        <?php endif; endif; ?>
-                    </div>
-                    <div class="card-actions">
-                        <button onclick="editTask(<?= $t['id'] ?>)" title="Edit"><i class="ti ti-pencil"></i></button>
-                        <button onclick="deleteTask(<?= $t['id'] ?>,'<?= h(addslashes($t['title'])) ?>')" title="Delete"><i class="ti ti-trash"></i></button>
+                        <?php if ($t['due_date']): ?>
+                        <span class="card-due-right <?= $overdue?'overdue':'' ?>"><i class="ti ti-calendar"></i> <?= date('M j', strtotime($t['due_date'])) ?></span>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <?php endforeach; ?>
@@ -433,105 +534,75 @@ $stats = [
     <input class="tqb-input" id="quickTaskInput" placeholder="Task title... press Enter to add" maxlength="200">
     <button class="tqb-btn" onclick="quickAddTask()">+ Add</button>
 </div>
+</div>
 
 <div class="modal-overlay" id="taskModal">
-    <div class="modal modal-wide">
-        <h3 class="modal-title" id="taskModalTitle">New Task</h3>
-        <form id="taskForm" onsubmit="return saveTask(event)">
-            <input type="hidden" name="id" id="tf-id" value="0">
-            <input type="hidden" name="status" id="tf-status" value="pending">
-            <div class="form-group">
-                <label>Title *</label>
-                <input class="form-control" name="title" id="tf-title" maxlength="200" required placeholder="What needs to be done?">
-                <div class="char-counter" id="charCounter">0/200</div>
-            </div>
-            <div class="form-group">
-                <label>Description</label>
-                <textarea class="form-control" name="description" id="tf-desc" rows="3" placeholder="Optional details..."></textarea>
-            </div>
-            <div class="form-row">
+    <div class="modal">
+        <h3 class="modal-title" id="taskModalTitle">Task</h3>
+        <div class="modal-body">
+            <form id="taskForm" onsubmit="return saveTask(event)">
+                <input type="hidden" name="id" id="tf-id" value="0">
+                <input type="hidden" name="status" id="tf-status" value="pending">
                 <div class="form-group">
-                    <label>Priority</label>
-                    <select class="form-control" name="priority" id="tf-priority">
-                        <option value="low">Low</option>
-                        <option value="medium" selected>Medium</option>
-                        <option value="high">High</option>
-                        <option value="urgent">Urgent</option>
-                    </select>
+                    <div class="flex" style="gap:8px;align-items:center;margin-bottom:6px">
+                        <label style="margin:0">Title *</label>
+                        <button type="button" class="btn btn-ai btn-sm" id="aiTitleBtn" onclick="aiImproveTaskTitle()" disabled style="white-space:nowrap"><i class="ti ti-sparkles"></i> Improve</button>
+                    </div>
+                    <input class="form-control" name="title" id="tf-title" maxlength="200" required placeholder="What needs to be done?" oninput="document.getElementById('charCounter').textContent=this.value.length+'/200';document.getElementById('aiTitleBtn').disabled=!this.value.trim()">
+                    <div class="char-counter" id="charCounter">0/200</div>
                 </div>
                 <div class="form-group">
-                    <label>Due Date</label>
-                    <input class="form-control" type="datetime-local" name="due_date" id="tf-due">
+                    <div class="flex" style="gap:8px;align-items:center;margin-bottom:6px">
+                        <label style="margin:0">Description</label>
+                        <button type="button" class="btn btn-ai btn-sm" id="aiDescBtn" onclick="aiImproveTaskDesc()" disabled><i class="ti ti-sparkles"></i> Improve</button>
+                    </div>
+                    <textarea class="form-control" name="description" id="tf-desc" rows="3" placeholder="Optional details..." oninput="document.getElementById('aiDescBtn').disabled=!this.value.trim()"></textarea>
                 </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group" style="position:relative">
-                    <label>Category</label>
-                    <input class="form-control" name="category" id="tf-category" placeholder="e.g. Design, Client, Admin" list="cat-list" autocomplete="off">
-                    <datalist id="cat-list">
-                        <?php foreach ($categories as $c): ?>
-                        <option value="<?= h($c) ?>">
-                        <?php endforeach; ?>
-                    </datalist>
-                </div>
-                <div class="form-group">
-                    <label>Link to Lead</label>
-                    <div style="position:relative">
-                        <input class="form-control" name="lead_search" id="tf-lead-search" placeholder="Search lead..." autocomplete="off" oninput="searchLead(this.value)">
-                        <input type="hidden" name="lead_id" id="tf-lead-id" value="">
-                        <div class="lead-suggest" id="lead-suggest"></div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Priority</label>
+                        <select class="form-control" name="priority" id="tf-priority">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                            <option value="urgent">Urgent</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Due Date</label>
+                        <input class="form-control" type="datetime-local" name="due_date" id="tf-due">
                     </div>
                 </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Assignee Type</label>
-                    <select class="form-control" name="assignee_type" id="tf-assignee-type">
-                        <option value="">None</option>
-                        <option value="person">Person</option>
-                        <option value="company">Company</option>
-                    </select>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select class="form-control" name="category" id="tf-category">
+                            <option value="">None</option>
+                            <?php foreach ($categories as $c): ?>
+                            <option value="<?= h($c) ?>"><?= h($c) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Assignee</label>
+                        <select class="form-control" name="assignee_name" id="tf-assignee-name">
+                            <option value="">None</option>
+                            <?php foreach ($allAssignees as $a): ?>
+                            <option value="<?= h($a['assignee_name']) ?>"><?= h($a['assignee_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Assignee Name</label>
-                    <input class="form-control" name="assignee_name" id="tf-assignee-name" placeholder="Enter name..." list="assignee-list" autocomplete="off">
-                    <datalist id="assignee-list">
-                        <?php foreach ($allAssignees as $a): ?>
-                        <option value="<?= h($a['assignee_name']) ?>">
-                        <?php endforeach; ?>
-                    </datalist>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary"><i class="ti ti-device-floppy"></i> Save</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeTaskModal()">Cancel</button>
                 </div>
-            </div>
-            <div class="notes-section" id="notesSection" style="display:none">
-                <div class="ns-header"><i class="ti ti-notes"></i> Notes</div>
-                <div id="notesList"></div>
-                <div class="note-input-row">
-                    <input type="text" id="noteInput" placeholder="Add a note..." maxlength="500">
-                    <select id="noteCategory">
-                        <option value="">Category</option>
-                        <option value="General">General</option>
-                        <option value="Update">Update</option>
-                        <option value="Issue">Issue</option>
-                        <option value="Idea">Idea</option>
-                        <?php foreach ($allNoteCategories as $nc): if (!in_array($nc, ['General','Update','Issue','Idea'])): ?>
-                        <option value="<?= h($nc) ?>"><?= h($nc) ?></option>
-                        <?php endif; endforeach; ?>
-                    </select>
-                    <button type="button" class="btn btn-primary btn-sm" onclick="addNote()" style="padding:0.5rem 0.75rem;white-space:nowrap">Add</button>
-                </div>
-            </div>
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary"><i class="ti ti-device-floppy"></i> Save</button>
-                <button type="button" class="btn btn-secondary" onclick="closeTaskModal()">Cancel</button>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 </div>
 
 <script>
-var leads = <?= json_encode($leads) ?>;
-var currentTaskId = 0;
-
 // ══════════════════════════════════════
 // DRAG AND DROP
 // ══════════════════════════════════════
@@ -622,11 +693,14 @@ function updateStats() {
     var p = counts['pending'] || 0;
     var ip = counts['in_progress'] || 0;
     var d = counts['done'] || 0;
-    document.querySelectorAll('.stat-card')[0].querySelector('.stat-value').textContent = total;
-    document.querySelectorAll('.stat-card')[1].querySelector('.stat-value').textContent = p;
-    document.querySelectorAll('.stat-card')[2].querySelector('.stat-value').textContent = ip;
-    document.querySelectorAll('.stat-card')[3].querySelector('.stat-value').textContent = d;
-    document.querySelectorAll('.stat-card')[4].querySelector('.stat-value').textContent = total ? Math.round(d / total * 100) + '%' : '0%';
+    var cards = document.querySelectorAll('.stat-card');
+    if (cards.length >= 5) {
+        cards[0].querySelector('.stat-value').textContent = total;
+        cards[1].querySelector('.stat-value').textContent = p;
+        cards[2].querySelector('.stat-value').textContent = ip;
+        cards[3].querySelector('.stat-value').textContent = d;
+        cards[4].querySelector('.stat-value').textContent = total ? Math.round(d / total * 100) + '%' : '0%';
+    }
 }
 
 // ══════════════════════════════════════
@@ -654,17 +728,7 @@ function openTaskModal(data) {
         document.getElementById('tf-priority').value = data.priority || 'medium';
         document.getElementById('tf-due').value = data.due_date ? data.due_date.substring(0,16) : '';
         document.getElementById('tf-category').value = data.category || '';
-        document.getElementById('tf-lead-id').value = data.lead_id || '';
-        document.getElementById('tf-assignee-type').value = data.assignee_type || '';
         document.getElementById('tf-assignee-name').value = data.assignee_name || '';
-        if (data.lead_id) {
-            var lead = leads.find(function(l) { return l.id == data.lead_id; });
-            document.getElementById('tf-lead-search').value = lead ? lead.business_name : '';
-        } else {
-            document.getElementById('tf-lead-search').value = '';
-        }
-        currentTaskId = data.id;
-        loadNotes(data.id);
     } else {
         document.getElementById('taskModalTitle').textContent = 'New Task';
         document.getElementById('tf-id').value = 0;
@@ -672,7 +736,6 @@ function openTaskModal(data) {
         document.getElementById('tf-desc').value = '';
         document.getElementById('tf-status').value = 'pending';
         document.getElementById('tf-priority').value = 'medium';
-        // Auto-select next day date
         var tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         var y = tomorrow.getFullYear();
@@ -680,13 +743,11 @@ function openTaskModal(data) {
         var d = String(tomorrow.getDate()).padStart(2, '0');
         document.getElementById('tf-due').value = y + '-' + m + '-' + d + 'T09:00';
         document.getElementById('tf-category').value = '';
-        document.getElementById('tf-lead-id').value = '';
-        document.getElementById('tf-lead-search').value = '';
-        document.getElementById('tf-assignee-type').value = '';
         document.getElementById('tf-assignee-name').value = '';
-        currentTaskId = 0;
-        document.getElementById('notesSection').style.display = 'none';
     }
+    document.getElementById('charCounter').textContent = (document.getElementById('tf-title').value.length) + '/200';
+    document.getElementById('aiTitleBtn').disabled = !document.getElementById('tf-title').value.trim();
+    document.getElementById('aiDescBtn').disabled = !document.getElementById('tf-desc').value.trim();
 }
 
 function closeTaskModal() {
@@ -756,124 +817,47 @@ function deleteTask(id, title) {
     };
 }
 
-// ══════════════════════════════════════
-// LEAD SEARCH
-// ══════════════════════════════════════
-function searchLead(q) {
-    var c = document.getElementById('lead-suggest');
-    c.innerHTML = '';
-    if (!q.trim()) { c.style.display = 'none'; return; }
-    var m = leads.filter(function(l) { return l.business_name.toLowerCase().includes(q.toLowerCase()); });
-    if (!m.length) { c.style.display = 'none'; return; }
-    c.style.display = 'block';
-    m.forEach(function(l) {
-        var div = document.createElement('div');
-        div.textContent = l.business_name;
-        div.onclick = function() {
-            document.getElementById('tf-lead-search').value = l.business_name;
-            document.getElementById('tf-lead-id').value = l.id;
-            c.style.display = 'none';
-        };
-        c.appendChild(div);
-    });
-}
-
-// ══════════════════════════════════════
-// NOTES
-// ══════════════════════════════════════
-function loadNotes(taskId) {
-    var section = document.getElementById('notesSection');
-    var list = document.getElementById('notesList');
-    if (!taskId) { section.style.display = 'none'; return; }
-    section.style.display = 'block';
-    list.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text3);font-size:0.78rem">Loading...</div>';
-
-    var fd = new FormData();
-    fd.append('action', 'get_task');
-    fd.append('id', taskId);
-    fetch('tasks.php', { method: 'POST', body: fd })
-    .then(function(r) { return r.json(); })
-    .then(function(j) {
-        if (j.ok && j.task && j.task.notes) {
-            renderNotes(j.task.notes);
-        } else {
-            list.innerHTML = '';
-        }
-    })
-    .catch(function() { list.innerHTML = ''; });
-}
-
-function renderNotes(notes) {
-    var list = document.getElementById('notesList');
-    if (!notes.length) {
-        list.innerHTML = '<div style="text-align:center;padding:0.75rem;color:var(--text3);font-size:0.75rem">No notes yet</div>';
-        return;
-    }
-    list.innerHTML = notes.map(function(n) {
-        var catHtml = n.category ? '<span class="note-cat">' + n.category + '</span>' : '';
-        return '<div class="note-item" data-id="' + n.id + '">' +
-            '<div class="note-text">' + escapeHtml(n.note) + '</div>' +
-            '<div class="note-meta">' +
-                '<div>' + catHtml + ' <span>' + (n.created_at || '') + '</span></div>' +
-                '<div class="note-actions">' +
-                    '<button onclick="deleteNote(' + n.id + ')" title="Delete"><i class="ti ti-trash"></i></button>' +
-                '</div>' +
-            '</div>' +
-        '</div>';
-    }).join('');
-}
-
-function addNote() {
-    var input = document.getElementById('noteInput');
-    var cat = document.getElementById('noteCategory');
-    var text = input.value.trim();
-    if (!text || !currentTaskId) return;
-    var fd = new FormData();
-    fd.append('action', 'note_create');
-    fd.append('task_id', currentTaskId);
-    fd.append('note', text);
-    fd.append('category', cat.value);
-    fetch('tasks.php', { method: 'POST', body: fd })
-    .then(function(r) { return r.json(); })
-    .then(function(j) {
-        if (j.ok) {
-            input.value = '';
-            loadNotes(currentTaskId);
-        }
-    });
-}
-
-function deleteNote(id) {
-    if (!confirm('Delete this note?')) return;
-    var fd = new FormData();
-    fd.append('action', 'note_delete');
-    fd.append('id', id);
-    fetch('tasks.php', { method: 'POST', body: fd })
-    .then(function(r) { return r.json(); })
-    .then(function(j) {
-        if (j.ok) loadNotes(currentTaskId);
-    });
-}
-
-function escapeHtml(str) {
-    var div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
-
-// ══════════════════════════════════════
-// EVENT BINDING
-// ══════════════════════════════════════
-document.addEventListener('click', function(e) {
-    var ls = document.getElementById('lead-suggest');
-    if (ls && !e.target.closest('#tf-lead-search') && !e.target.closest('#lead-suggest')) {
-        ls.style.display = 'none';
-    }
-});
-
 document.getElementById('taskModal').addEventListener('click', function(e) {
     if (e.target === this) closeTaskModal();
 });
+
+// ══════════════════════════════════════
+// AI IMPROVE — Task Title & Description
+// ══════════════════════════════════════
+function aiImproveTaskTitle() {
+    var inp = document.getElementById('tf-title');
+    var btn = document.getElementById('aiTitleBtn');
+    var text = inp.value.trim();
+    if (!text) return;
+    btn.disabled = true; btn.innerHTML = '<span class="ai-spinner"></span> Improve';
+    fetch('../ai.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({task: 'improve', context: text})
+    }).then(function(r) { return r.json(); }).then(function(j) {
+        btn.disabled = false; btn.innerHTML = '<i class="ti ti-sparkles"></i> Improve';
+        if (j.success) { inp.value = j.data; inp.dispatchEvent(new Event('input')); }
+    }).catch(function() {
+        btn.disabled = false; btn.innerHTML = '<i class="ti ti-sparkles"></i> Improve';
+    });
+}
+function aiImproveTaskDesc() {
+    var ta = document.getElementById('tf-desc');
+    var btn = document.getElementById('aiDescBtn');
+    var text = ta.value.trim();
+    if (!text) return;
+    btn.disabled = true; btn.innerHTML = '<span class="ai-spinner"></span> Improve';
+    fetch('../ai.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({task: 'improve', context: text})
+    }).then(function(r) { return r.json(); }).then(function(j) {
+        btn.disabled = false; btn.innerHTML = '<i class="ti ti-sparkles"></i> Improve';
+        if (j.success) ta.value = j.data;
+    }).catch(function() {
+        btn.disabled = false; btn.innerHTML = '<i class="ti ti-sparkles"></i> Improve';
+    });
+}
 
 function applyFilters() {
     var params = [];
@@ -881,12 +865,10 @@ function applyFilters() {
     var c = document.getElementById('f-category').value;
     var a = document.getElementById('f-assignee').value;
     var s = document.getElementById('f-search').value;
-    var o = document.getElementById('f-overdue').checked ? '1' : '';
     if (p) params.push('priority=' + p);
     if (c) params.push('category=' + encodeURIComponent(c));
     if (a) params.push('assignee=' + encodeURIComponent(a));
     if (s) params.push('search=' + encodeURIComponent(s));
-    if (o) params.push('overdue=1');
     params.push('view=<?= $view ?>');
     window.location.href = 'tasks.php?' + params.join('&');
 }
@@ -899,12 +881,19 @@ document.getElementById('f-search').addEventListener('input', function() {
 
 function setView(v) {
     var params = [];
-    <?php foreach (['priority','category','assignee','search','overdue'] as $k): ?>
+    <?php foreach (['priority','category','assignee','search'] as $k): ?>
     var val = <?= json_encode($_GET[$k] ?? '') ?>;
     if (val) params.push('<?= $k ?>=' + encodeURIComponent(val));
     <?php endforeach; ?>
     params.push('view=' + v);
     window.location.href = 'tasks.php?' + params.join('&');
+}
+
+function applySort(val) {
+    if (!val) return;
+    var params = new URLSearchParams(window.location.search);
+    params.set('sort', val);
+    window.location.href = 'tasks.php?' + params.toString();
 }
 
 function sortTable(col) {
@@ -941,9 +930,6 @@ function quickAddTask() {
     var d = String(tomorrow.getDate()).padStart(2, '0');
     document.getElementById('tf-due').value = y + '-' + m + '-' + d + 'T09:00';
     document.getElementById('tf-category').value = '';
-    document.getElementById('tf-lead-id').value = '';
-    document.getElementById('tf-lead-search').value = '';
-    document.getElementById('tf-assignee-type').value = '';
     document.getElementById('tf-assignee-name').value = '';
     if (typeof saveTask === 'function') {
         saveTask(new Event('submit'));
@@ -964,14 +950,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (e.key === 'Enter') { e.preventDefault(); quickAddTask(); }
         });
     }
-    // Enter key in note input
-    var ni = document.getElementById('noteInput');
-    if (ni) {
-        ni.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') { e.preventDefault(); addNote(); }
-        });
-    }
 });
+
 </script>
 
 <?php require_once __DIR__ . '/../inc/footer.php'; ?>

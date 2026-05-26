@@ -43,9 +43,9 @@ try { $newLeadsWeek = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklist
             --border-hover: rgba(204, 255, 0, 0.25); /* Accent lime borders */
             --accent: #CCFF00; /* Modern toxic/lime primary accent */
             --accent-glow: rgba(204, 255, 0, 0.15); /* Accent shadow color */
-            --text: #F3F4F6; /* Clear off-white */
-            --text2: #9CA3AF; /* Cool grey for text descriptions */
-            --text3: #6B7280; /* Muted secondary text and placeholders */
+            --text: #FFFFFF;
+            --text2: #E5E7EB;
+            --text3: #C4C9D4;
             --red: #FF4D6D; --red-bg: rgba(255, 77, 109, 0.1);
             --green: #00E676; --green-bg: rgba(0, 230, 118, 0.1);
             --blue: #00B0FF; --blue-bg: rgba(0, 176, 255, 0.1);
@@ -692,7 +692,7 @@ try { $newLeadsWeek = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklist
                     </div>
                 <?php endif; ?>
                 <?php if ($tasksDueToday > 0): ?>
-                    <div class="bd-item" onclick="window.location.href='<?= ADMIN_URL ?>/modules/tasks.php?view=kanban'">
+                    <div class="bd-item" onclick="window.location.href='<?= ADMIN_URL ?>/modules/tasks.php?tab=tasks'">
                         <div class="bd-title"><?= $tasksDueToday ?> task<?= $tasksDueToday !== 1 ? 's' : '' ?> due today</div>
                         <div class="bd-meta">Check your Tasks board</div>
                     </div>
@@ -716,9 +716,28 @@ try { $newLeadsWeek = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklist
                 <span class="fi-label">Dashboard</span>
             </a>
 
+            <!-- Tasks -->
+            <?php $isTasksPage = strpos($_SERVER['SCRIPT_NAME'] ?? '', 'tasks.php') !== false; $taskCount = (int)$pendingTasks; ?>
+            <a href="<?= ADMIN_URL ?>/modules/tasks.php" class="v3-focus-item <?= $isTasksPage ? 'active' : '' ?>">
+                <span class="fi-icon tasks"><i class="ti ti-checklist"></i></span>
+                <span class="fi-label">Tasks</span>
+                <?php if ($taskCount > 0): ?>
+                    <span class="fi-badge has-items"><?= $taskCount ?></span>
+                <?php else: ?>
+                    <span class="fi-badge">0</span>
+                <?php endif; ?>
+            </a>
+
+            <!-- Notes -->
+            <?php $isNotesPage = strpos($_SERVER['SCRIPT_NAME'] ?? '', 'notes.php') !== false; ?>
+            <a href="<?= ADMIN_URL ?>/modules/notes.php" class="v3-focus-item <?= $isNotesPage ? 'active' : '' ?>">
+                <span class="fi-icon" style="background:rgba(200,255,0,0.1);color:#c8ff00"><i class="ti ti-notes"></i></span>
+                <span class="fi-label">Notes</span>
+                <span class="fi-badge">0</span>
+            </a>
+
             <?php
             $focusItems = [
-                ['tasks',        'Tasks',         'ti ti-checklist', 'tasks',     $tasksDueToday],
                 ['blog',         'Blog Posts',    'ti ti-news',      'blog',      $blogDrafts],
                 ['post-generator','Post Generator','ti ti-file-text','posts',     $unpubPosts],
                 ['leads',        'Outreach',      'ti ti-users-plus','outreach',  $newLeadsWeek],

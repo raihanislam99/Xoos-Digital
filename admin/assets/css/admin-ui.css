@@ -2,6 +2,9 @@
    XOOS Digital Admin — UI/UX Upgrade
    ═══════════════════════════════════════════════ */
 
+/* Prevent horizontal overflow globally */
+body { overflow-x: hidden; }
+
 :root {
   --glass-bg: rgba(255,255,255,0.04);
   --glass-border: rgba(255,255,255,0.08);
@@ -993,4 +996,139 @@ tr:hover td {
   .outreach-strip { grid-template-columns: 1fr; gap: 0.35rem; }
   .quick-action-card { padding: 1rem 0.5rem; font-size: 0.65rem; }
   .quick-action-card i { font-size: 1.2rem; }
+}
+
+/* ═══════════════════════════════════════════════
+   FIX 1 — MAIN CONTENT AREA
+   ═══════════════════════════════════════════════ */
+.admin-main,
+.admin-main.v3-main,
+main.admin-main {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* ═══════════════════════════════════════════════
+   FIX 2 — TASKS PANEL
+   ═══════════════════════════════════════════════ */
+#tasks-panel {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* ═══════════════════════════════════════════════
+   FIX 3 — TASKS TOOLBAR (root cause)
+   ═══════════════════════════════════════════════ */
+.tasks-toolbar {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  overflow: visible;
+}
+
+/* ═══════════════════════════════════════════════
+   FIX 4 — KANBAN VIEW & BOARD
+   ═══════════════════════════════════════════════ */
+#kanban-view {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.kanban-board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════
+   FIX 5 — KANBAN COLUMNS
+   ═══════════════════════════════════════════════ */
+.kanban-col {
+  min-width: 0 !important;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ═══════════════════════════════════════════════
+   FIX 6 — KANBAN CARDS CONTAINER
+   ═══════════════════════════════════════════════ */
+.kanban-cards {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ═══════════════════════════════════════════════
+   FIX 7 — INDIVIDUAL TASK CARDS
+   ═══════════════════════════════════════════════ */
+.task-card {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
+.task-card * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* ═══════════════════════════════════════════════
+   FIX 9 — MOBILE OVERRIDES
+   ═══════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  .kanban-board {
+    grid-template-columns: 1fr !important;
+    overflow: hidden !important;
+  }
+
+  .kanban-col {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .tasks-toolbar {
+    flex-wrap: wrap !important;
+    overflow: visible !important;
+  }
+
+  .tasks-filters {
+    flex-wrap: wrap !important;
+    width: 100% !important;
+  }
+
+  .tasks-filters > *,
+  .tasks-filters select {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
 }

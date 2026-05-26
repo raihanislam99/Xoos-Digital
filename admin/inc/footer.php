@@ -30,11 +30,11 @@
 <div class="v3-toast-container" id="v3ToastContainer"></div>
 
 <div class="modal-overlay" id="deleteModal">
-    <div class="modal" style="text-align:center">
+    <div class="modal" style="text-align:center;padding:1.5rem">
         <div style="width:56px;height:56px;border-radius:50%;background:var(--red-bg);border:1px solid rgba(255, 77, 109, 0.2);display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem">
             <i class="ti ti-trash" style="font-size:24px;color:var(--red)"></i>
         </div>
-        <h3 class="modal-title">Confirm Delete</h3>
+        <h3 class="modal-title" style="padding:0 0 0.5rem">Confirm Delete</h3>
         <p style="color:var(--text2);font-size:0.875rem;margin-bottom:1.5rem" id="deleteMsg">
             This action cannot be undone.
         </p>

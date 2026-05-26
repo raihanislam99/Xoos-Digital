@@ -30,9 +30,9 @@ html { font-size: 17px; }
   --v3-border: rgba(255,255,255,0.07);
   --v3-accent: #c8ff00;
   --v3-accent-glow: rgba(200,255,0,0.15);
-  --v3-text: #f0f0f0;
-  --v3-text2: rgba(255,255,255,0.45);
-  --v3-text3: rgba(255,255,255,0.25);
+  --v3-text: #FFFFFF;
+  --v3-text2: rgba(255,255,255,0.8);
+  --v3-text3: rgba(255,255,255,0.6);
   --v3-divider: rgba(255,255,255,0.06);
   --v3-tasks: #4f8ef7;
   --v3-blog: #9b6dff;
@@ -1204,12 +1204,12 @@ html { font-size: 17px; }
   .v3-bell-dropdown .bd-item { padding: 0.65rem 1rem; }
 }
 @media(max-width:480px) {
-  .v3-dash-stats { grid-template-columns: 1fr; gap: 0.5rem; }
+  .v3-dash-stats { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
   .v3-dash-stat { padding: 14px 16px; min-height: auto; }
   .v3-dash-stat .ds-value { font-size: 1.5rem; }
   .v3-main { padding: 0.85rem; }
   .v3-page-title { font-size: 0.85rem; }
-  .v3-focus-grid { gap: 0.65rem; }
+  .v3-focus-grid { grid-template-columns: 1fr 1fr; gap: 0.65rem; }
   .v3-focus-card { padding: 14px; }
   .v3-focus-card .fc-count { font-size: 1.1rem; }
   .v3-mini-charts-row { gap: 0.65rem; }
