@@ -21,6 +21,8 @@ $unpubPosts = 0;
 try { $unpubPosts = (int)db_val("SELECT COUNT(*) FROM generated_posts WHERE status = 'draft'"); } catch (Exception $e) {}
 $newLeadsWeek = 0;
 try { $newLeadsWeek = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklisted = 0 AND created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)"); } catch (Exception $e) {}
+$noteCount = 0;
+try { $noteCount = (int)db_val("SELECT COUNT(*) FROM notes"); } catch (Exception $e) {}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -733,7 +735,11 @@ try { $newLeadsWeek = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklist
             <a href="<?= ADMIN_URL ?>/modules/notes.php" class="v3-focus-item <?= $isNotesPage ? 'active' : '' ?>">
                 <span class="fi-icon" style="background:rgba(200,255,0,0.1);color:#c8ff00"><i class="ti ti-notes"></i></span>
                 <span class="fi-label">Notes</span>
-                <span class="fi-badge">0</span>
+                <?php if ($noteCount > 0): ?>
+                    <span class="fi-badge has-items"><?= $noteCount ?></span>
+                <?php else: ?>
+                    <span class="fi-badge">0</span>
+                <?php endif; ?>
             </a>
 
             <?php

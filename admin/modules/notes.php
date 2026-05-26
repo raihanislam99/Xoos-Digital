@@ -87,10 +87,10 @@ $pdo = db();
         <input type="text" id="ns-title" placeholder="Note title..." class="editor-title-input" style="flex:1;min-width:0;margin-bottom:0">
         <button id="ns-ai-title-btn" class="ns-ai-btn" disabled style="flex-shrink:0;white-space:nowrap"><i class="ti ti-sparkles"></i> Improve</button>
       </div>
-      <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:4px;width:100%">
+      <textarea id="ns-content" placeholder="Write your note here..." class="editor-content-area"></textarea>
+      <div style="display:flex;align-items:center;justify-content:flex-end;margin-top:4px;width:100%">
         <button id="ns-ai-content-btn" class="ns-ai-btn" disabled style="white-space:nowrap"><i class="ti ti-sparkles"></i> Improve Content</button>
       </div>
-      <textarea id="ns-content" placeholder="Write your note here..." class="editor-content-area"></textarea>
       <input type="hidden" id="ns-id" value="">
       <div class="editor-footer">
         <span id="ns-status">—</span>
@@ -128,7 +128,7 @@ $pdo = db();
   }
 
   function loadCats() {
-    fetchApi({action:'get_categories'}).then(function(data){
+    fetch(API+'?action=get_categories').then(function(r){return r.json();}).then(function(data){
       if(!data || !data.categories) return;
       cats=data.categories;
       var total=data.totalNotes||0;
