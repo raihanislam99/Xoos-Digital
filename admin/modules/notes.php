@@ -69,9 +69,18 @@ $pdo = db();
         </div>
       </div>
       <div class="editor-meta">
-        <select id="ns-cat-select" class="notes-select">
-          <option value="">No Category</option>
-        </select>
+        <div class="cat-select-wrap" style="display:flex;align-items:center;gap:4px">
+          <select id="ns-cat-select" class="notes-select" style="flex:1">
+            <option value="">No Category</option>
+          </select>
+          <button id="ns-cat-add-btn" title="Add category" style="background:rgba(200,255,0,0.12);border:1px solid rgba(200,255,0,0.25);color:#c8ff00;border-radius:8px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">+</button>
+        </div>
+        <div id="ns-cat-inline-form" style="display:none;align-items:center;gap:6px">
+          <input type="text" id="ns-cat-inline-name" placeholder="Category name" style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;padding:6px 8px;font-size:0.8rem;outline:none;min-width:0">
+          <input type="color" id="ns-cat-inline-color" value="#6b7280" style="width:26px;height:26px;border:2px solid rgba(255,255,255,0.12);border-radius:50%;cursor:pointer;padding:1px;background:none;flex-shrink:0">
+          <button id="ns-cat-inline-save" style="background:#c8ff00;color:#000;border:none;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:1rem;line-height:1;font-weight:700;flex-shrink:0">+</button>
+          <button id="ns-cat-inline-cancel" style="background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);border:none;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:1rem;line-height:1;flex-shrink:0">×</button>
+        </div>
         <div class="color-swatches" id="ns-swatches">
           <span class="swatch active" data-color="" style="background:#444" title="Default"></span>
           <span class="swatch" data-color="#ff4757" style="background:#ff4757"></span>
@@ -359,6 +368,41 @@ $pdo = db();
     document.getElementById('ns-title').addEventListener('input',scheduleSave);
     document.getElementById('ns-content').addEventListener('input',scheduleSave);
     document.getElementById('ns-cat-select').addEventListener('change',scheduleSave);
+
+    // Inline category add
+    document.getElementById('ns-cat-add-btn').addEventListener('click',function(){
+      document.querySelector('.cat-select-wrap').style.display='none';
+      document.getElementById('ns-cat-inline-form').style.display='flex';
+      document.getElementById('ns-cat-inline-name').focus();
+    });
+    document.getElementById('ns-cat-inline-name').addEventListener('keydown',function(e){
+      if(e.key==='Enter') document.getElementById('ns-cat-inline-save').click();
+      if(e.key==='Escape') document.getElementById('ns-cat-inline-cancel').click();
+    });
+    document.getElementById('ns-cat-inline-cancel').addEventListener('click',function(){
+      document.getElementById('ns-cat-inline-form').style.display='none';
+      document.querySelector('.cat-select-wrap').style.display='flex';
+    });
+    document.getElementById('ns-cat-inline-save').addEventListener('click',function(){
+      var name=document.getElementById('ns-cat-inline-name').value.trim();
+      if(!name) return;
+      var color=document.getElementById('ns-cat-inline-color').value;
+      var btn=this;
+      btn.disabled=true;
+      fetchApi({action:'create_category',name:name,color:color}).then(function(r){
+        btn.disabled=false;
+        if(r.success||r.id){
+          document.getElementById('ns-cat-inline-form').style.display='none';
+          document.querySelector('.cat-select-wrap').style.display='flex';
+          document.getElementById('ns-cat-inline-name').value='';
+          loadCats();
+          var sel=document.getElementById('ns-cat-select');
+          for(var i=0;i<sel.options.length;i++){
+            if(sel.options[i].value==String(r.id)){sel.value=r.id;break;}
+          }
+        }
+      });
+    });
 
     // AI button enable/disable on input
     document.getElementById('ns-title').addEventListener('input',updateAiButtons);

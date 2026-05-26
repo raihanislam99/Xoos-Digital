@@ -202,7 +202,7 @@ $stats = [
 .task-card .drag-handle { display: none; position: absolute; left: 2px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.2); font-size: 1.1rem; cursor: grab; }
 .task-card:hover .drag-handle { display: block; }
 .task-card .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
-.task-card .card-title { font-size: 0.82rem; font-weight: 600; color: var(--text); line-height: 1.3; }
+.task-card .card-title { font-size: 0.82rem; font-weight: 600; color: var(--text); line-height: 1.3; text-align:left; }
 .task-card .card-priority { font-size: 0.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 8px; border-radius: 6px; flex-shrink: 0; }
 .priority-urgent { background: rgba(255,71,87,0.15); color: #ff4757; }
 .priority-high { background: rgba(249,115,22,0.15); color: #f97316; }
@@ -243,6 +243,9 @@ $stats = [
 textarea.form-control { resize: vertical; min-height: 80px; }
 select.form-control { appearance: none; -webkit-appearance: none; background-color: #0e1420; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; color-scheme: dark; }
 select.form-control option { background: #0e1420; color: var(--text); }
+
+.tf-add-form { display:flex; align-items:center; gap:6px; padding:6px 0; }
+.tf-add-btn:hover { background:rgba(200,255,0,0.2) !important; }
 .char-counter { float: right; font-size: 0.72rem; color: rgba(255,255,255,0.35); margin-top: 4px; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 .form-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.06); }
@@ -507,22 +510,38 @@ select.form-control option { background: #0e1420; color: var(--text); }
                 <div class="form-row">
                     <div class="form-group">
                         <label>Category</label>
-                        <select class="form-control" name="category" id="tf-category">
-                            <option value="">None</option>
-                            <?php foreach ($categories as $c): ?>
-                            <option value="<?= h($c) ?>"><?= h($c) ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                        <div class="tf-combo-wrap" style="display:flex;gap:4px">
+                            <select class="form-control" name="category" id="tf-category" style="flex:1">
+                                <option value="">None</option>
+                                <?php foreach ($categories as $c): ?>
+                                <option value="<?= h($c) ?>"><?= h($c) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <button type="button" class="tf-add-btn" data-target="category" title="Add category" style="flex-shrink:0;width:34px;height:34px;border-radius:8px;border:1px solid rgba(200,255,0,0.25);background:rgba(200,255,0,0.1);color:#c8ff00;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem">+</button>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Assignee</label>
-                        <select class="form-control" name="assignee_name" id="tf-assignee-name">
-                            <option value="">None</option>
-                            <?php foreach ($allAssignees as $a): ?>
-                            <option value="<?= h($a['assignee_name']) ?>"><?= h($a['assignee_name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                        <div class="tf-combo-wrap" style="display:flex;gap:4px">
+                            <select class="form-control" name="assignee_name" id="tf-assignee-name" style="flex:1">
+                                <option value="">None</option>
+                                <?php foreach ($allAssignees as $a): ?>
+                                <option value="<?= h($a['assignee_name']) ?>"><?= h($a['assignee_name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <button type="button" class="tf-add-btn" data-target="assignee" title="Add assignee" style="flex-shrink:0;width:34px;height:34px;border-radius:8px;border:1px solid rgba(200,255,0,0.25);background:rgba(200,255,0,0.1);color:#c8ff00;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem">+</button>
+                        </div>
                     </div>
+                </div>
+                <div id="tf-category-add-form" class="tf-add-form" style="display:none">
+                    <input type="text" id="tf-new-category" placeholder="Category name" class="form-control" style="flex:1;margin-bottom:0">
+                    <button type="button" id="tf-category-add-save" class="btn btn-primary btn-sm">Add</button>
+                    <button type="button" id="tf-category-add-cancel" class="btn btn-secondary btn-sm">×</button>
+                </div>
+                <div id="tf-assignee-add-form" class="tf-add-form" style="display:none">
+                    <input type="text" id="tf-new-assignee" placeholder="Assignee name" class="form-control" style="flex:1;margin-bottom:0">
+                    <button type="button" id="tf-assignee-add-save" class="btn btn-primary btn-sm">Add</button>
+                    <button type="button" id="tf-assignee-add-cancel" class="btn btn-secondary btn-sm">×</button>
                 </div>
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary"><i class="ti ti-device-floppy"></i> Save</button>
@@ -844,6 +863,60 @@ document.addEventListener('DOMContentLoaded', function() {
             if (e.key === 'Enter') { e.preventDefault(); quickAddTask(); }
         });
     }
+
+    // Inline category add
+    document.querySelectorAll('.tf-add-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var t=this.dataset.target;
+        var wrap=this.parentElement;
+        wrap.style.display='none';
+        var form=document.getElementById('tf-'+t+'-add-form');
+        form.style.display='flex';
+        form.querySelector('input').focus();
+      });
+    });
+    document.getElementById('tf-new-category').addEventListener('keydown',function(e){
+      if(e.key==='Enter') document.getElementById('tf-category-add-save').click();
+      if(e.key==='Escape') document.getElementById('tf-category-add-cancel').click();
+    });
+    document.getElementById('tf-new-assignee').addEventListener('keydown',function(e){
+      if(e.key==='Enter') document.getElementById('tf-assignee-add-save').click();
+      if(e.key==='Escape') document.getElementById('tf-assignee-add-cancel').click();
+    });
+    document.getElementById('tf-category-add-cancel').addEventListener('click',function(){
+      this.parentElement.style.display='none';
+      document.querySelector('#tf-category').closest('.tf-combo-wrap').style.display='flex';
+    });
+    document.getElementById('tf-assignee-add-cancel').addEventListener('click',function(){
+      this.parentElement.style.display='none';
+      document.querySelector('#tf-assignee-name').closest('.tf-combo-wrap').style.display='flex';
+    });
+    document.getElementById('tf-category-add-save').addEventListener('click',function(){
+      var input=document.getElementById('tf-new-category');
+      var name=input.value.trim();
+      if(!name) return;
+      var sel=document.getElementById('tf-category');
+      var opt=document.createElement('option');
+      opt.value=name; opt.textContent=name;
+      sel.appendChild(opt);
+      sel.value=name;
+      input.value='';
+      this.parentElement.style.display='none';
+      document.querySelector('#tf-category').closest('.tf-combo-wrap').style.display='flex';
+    });
+    document.getElementById('tf-assignee-add-save').addEventListener('click',function(){
+      var input=document.getElementById('tf-new-assignee');
+      var name=input.value.trim();
+      if(!name) return;
+      var sel=document.getElementById('tf-assignee-name');
+      var opt=document.createElement('option');
+      opt.value=name; opt.textContent=name;
+      sel.appendChild(opt);
+      sel.value=name;
+      input.value='';
+      this.parentElement.style.display='none';
+      document.querySelector('#tf-assignee-name').closest('.tf-combo-wrap').style.display='flex';
+    });
 });
 
 </script>
