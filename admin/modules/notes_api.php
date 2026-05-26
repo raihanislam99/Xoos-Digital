@@ -54,7 +54,9 @@ switch ($action) {
             GROUP BY nc.id
             ORDER BY nc.sort_order ASC
         ");
-        json_response($stmt->fetchAll(PDO::FETCH_ASSOC));
+        $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $totalNotes = (int)$pdo->query("SELECT COUNT(*) FROM notes")->fetchColumn();
+        json_response(['categories' => $categories, 'totalNotes' => $totalNotes]);
         break;
 
     case 'create_category':

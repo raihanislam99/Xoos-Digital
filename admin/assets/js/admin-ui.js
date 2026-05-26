@@ -124,18 +124,6 @@
     });
   }
 
-  // ── LIST VIEW: ROW HOVER BORDER ──
-  document.querySelectorAll('.table-wrap table tbody tr').forEach(function(row) {
-    row.addEventListener('mouseenter', function() {
-      this.style.borderLeft = '3px solid var(--neon-green)';
-      this.style.paddingLeft = 'calc(1.25rem - 3px)';
-    });
-    row.addEventListener('mouseleave', function() {
-      this.style.borderLeft = '';
-      this.style.paddingLeft = '';
-    });
-  });
-
   // ── STAT CARD COUNT-UP ANIMATION ──
   document.querySelectorAll('.stat-value[data-count]').forEach(function(el) {
     var target = parseInt(el.dataset.count);

@@ -2,8 +2,6 @@
 require_once __DIR__ . '/../inc/functions.php';
 require_login();
 
-$view = $_GET['view'] ?? 'kanban';
-
 // Redirect old ?view=notes to standalone notes module
 if (isset($_GET['view']) && $_GET['view'] === 'notes') {
     header('Location: notes.php');
@@ -163,11 +161,10 @@ $stats = [
 .filter-wrap { position: relative; display: inline-flex; }
 .filter-wrap i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.3); font-size: 0.85rem; pointer-events: none; z-index: 1; line-height: 1; }
 .filter-wrap select { padding-left: 30px !important; }
-.view-toggle { display: inline-flex; gap: 0; }
-.view-toggle button { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: var(--text3); padding: 0.5rem 0.9rem; font-size: 0.78rem; cursor: pointer; transition: all 0.15s; font-family: 'Inter', sans-serif; }
-.view-toggle button:first-child { border-radius: 8px 0 0 8px; }
-.view-toggle button:last-child { border-radius: 0 8px 8px 0; }
-.view-toggle button.active { background: var(--accent); color: #080B10; border-color: var(--accent); font-weight: 700; }
+.btn-new-task { display: inline-flex; align-items: center; gap: 6px; background: var(--accent); color: #080B10; border: none; font-weight: 700; padding: 0.6rem 1.2rem; border-radius: 10px; font-size: 0.85rem; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.15s; white-space: nowrap; }
+.btn-new-task:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.btn-new-task:active { transform: scale(0.97); }
+.btn-new-task i { font-size: 1.1rem; }
 .clear-filters { font-size: 0.72rem; color: var(--text3); cursor: pointer; text-decoration: none; }
 .clear-filters:hover { color: var(--accent); }
 
@@ -272,25 +269,7 @@ select.form-control option { background: #0e1420; color: var(--text); }
 .lead-suggest div:first-child { border-radius: 10px 10px 0 0; }
 .lead-suggest div:last-child { border-radius: 0 0 10px 10px; }
 
-/* ─── LIST VIEW ─── */
-#list-view .card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; overflow: hidden; }
-.table-wrap { overflow-x: auto; }
-.table-wrap table { width: 100%; border-collapse: collapse; }
-.table-wrap th { text-align: left; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); padding: 0.9rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.06); font-weight: 700; user-select: none; white-space: nowrap; }
-.table-wrap th.sortable { cursor: pointer; }
-.table-wrap th.sortable:hover { color: var(--text); }
-.table-wrap td { padding: 0.75rem 1rem; font-size: 0.82rem; color: var(--text2); border-bottom: 1px solid rgba(255,255,255,0.03); vertical-align: middle; }
-.table-wrap tr:hover td { background: rgba(255,255,255,0.02); }
-.status-btn-group { display: flex; gap: 4px; }
-.status-btn-group .sbtn { font-size: 0.6rem; padding: 3px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: var(--text3); cursor: pointer; transition: all 0.12s; font-family: 'Inter', sans-serif; font-weight: 600; }
-.status-btn-group .sbtn:hover { border-color: var(--accent); color: var(--accent); }
-.status-btn-group .sbtn.active { background: var(--accent); color: #080B10; border-color: var(--accent); }
-.status-btn-group .sbtn.sbtn-pending:hover { border-color: #ff8c42; color: #ff8c42; }
-.status-btn-group .sbtn.sbtn-pending.active { background: #ff8c42; color: #fff; border-color: #ff8c42; }
-.status-btn-group .sbtn.sbtn-progress:hover { border-color: #4f8ef7; color: #4f8ef7; }
-.status-btn-group .sbtn.sbtn-progress.active { background: #4f8ef7; color: #fff; border-color: #4f8ef7; }
-.status-btn-group .sbtn.sbtn-done:hover { border-color: #2ecc71; color: #2ecc71; }
-.status-btn-group .sbtn.sbtn-done.active { background: #2ecc71; color: #fff; border-color: #2ecc71; }
+
 
 /* ─── QUICK BAR ─── */
 .v3-task-quick-bar { display: flex; align-items: center; gap: 8px; margin-top: 1.5rem; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 0.75rem 1rem; }
@@ -305,7 +284,6 @@ select.form-control option { background: #0e1420; color: var(--text); }
   .kanban-board { grid-template-columns: 1fr; gap: 0.75rem; }
   .move-select { display: inline-block; }
   .stats-row { grid-template-columns: repeat(3, 1fr); }
-  .status-btn-group { flex-direction: column; }
   .form-row { grid-template-columns: 1fr; }
   .tasks-tab-bar { flex-wrap: wrap; gap: 0.75rem; }
   .tasks-tab-bar > div { flex: 1; }
@@ -324,10 +302,9 @@ select.form-control option { background: #0e1420; color: var(--text); }
   .filter-wrap { width: 44px; min-width: 44px; overflow: hidden; }
   .filter-wrap select { padding: 8px 28px 8px 28px !important; min-width: 0 !important; width: 100% !important; }
   .filter-wrap i { font-size: 0.9rem; left: 7px; }
-  .view-toggle { flex-shrink: 0; }
-  .view-toggle button { padding: 8px 10px !important; min-width: 0 !important; font-size: 0 !important; line-height: 1 !important; }
-  .view-toggle button i { font-size: 1.1rem; }
-  .view-label { display: none !important; }
+  .btn-new-task { width: 40px; min-width: 40px; padding: 8px !important; overflow: hidden; border-radius: 8px !important; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .btn-new-task i { font-size: 1.1rem; }
+  .new-task-label { display: none !important; }
 }
 @media(max-width:480px){
   .page-title { font-size: 1.1rem !important; }
@@ -339,9 +316,9 @@ select.form-control option { background: #0e1420; color: var(--text); }
   .filter-wrap { width: 38px; min-width: 38px; overflow: hidden; }
   .filter-wrap select { padding: 6px 22px 6px 22px !important; min-width: 0 !important; width: 100% !important; }
   .filter-wrap i { font-size: 0.85rem; left: 5px; }
-  .view-toggle button { padding: 6px 8px !important; min-width: 0 !important; font-size: 0 !important; line-height: 1 !important; }
-  .view-toggle button i { font-size: 1rem; }
-  .view-label { display: none !important; }
+  .btn-new-task { width: 36px; min-width: 36px; padding: 6px !important; overflow: hidden; border-radius: 6px !important; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .btn-new-task i { font-size: 1rem; }
+  .new-task-label { display: none !important; }
   .stat-label { font-size: 0.6rem; }
   .kanban-col-header { padding: 0.75rem 0.85rem; }
   .kanban-cards { padding: 0.5rem; margin: 0.25rem 0; gap: 0.4rem; }
@@ -411,17 +388,16 @@ select.form-control option { background: #0e1420; color: var(--text); }
             <option value="priority" <?= ($_GET['sort']??'')==='priority'?'selected':'' ?>>Priority (High→Low)</option>
         </select>
         <?php if ($activeFilters): ?>
-        <a href="tasks.php?view=<?= $view ?>" class="clear-filters"><i class="ti ti-x"></i> Clear</a>
+        <a href="tasks.php" class="clear-filters"><i class="ti ti-x"></i> Clear</a>
         <?php endif; ?>
     </div>
-    <div class="view-toggle">
-        <button class="<?= $view==='kanban'?'active':'' ?>" onclick="setView('kanban')" title="Board"><i class="ti ti-layout-columns"></i> <span class="view-label">Board</span></button>
-        <button class="<?= $view==='list'?'active':'' ?>" onclick="setView('list')" title="List"><i class="ti ti-list"></i> <span class="view-label">List</span></button>
-    </div>
+    <button class="btn-new-task" onclick="openTaskModal()" title="New Task">
+        <i class="ti ti-plus"></i> <span class="new-task-label">New Task</span>
+    </button>
 </div>
 
 
-<div id="kanban-view" style="<?= $view==='list'?'display:none':'' ?>">
+<div id="kanban-view">
     <div class="kanban-board">
         <?php foreach (['pending', 'in_progress', 'done'] as $s): $cardList = $colTasks[$s]; ?>
         <div class="kanban-col" data-status="<?= $s ?>">
@@ -482,52 +458,7 @@ select.form-control option { background: #0e1420; color: var(--text); }
     </div>
 </div>
 
-<div id="list-view" style="<?= $view==='kanban'?'display:none':'' ?>">
-    <div class="card">
-        <div class="table-wrap">
-            <?php if (count($tasks)): ?>
-            <table>
-                <thead>
-                    <tr>
-                        <th class="sortable" onclick="sortTable(0)">Title <i class="ti ti-arrows-sort"></i></th>
-                        <th>Priority</th>
-                        <th>Status</th>
-                        <th class="sortable" onclick="sortTable(3)">Due <i class="ti ti-arrows-sort"></i></th>
-                        <th>Category</th>
-                        <th>Assignee</th>
-                        <th style="text-align:right">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($tasks as $t): ?>
-                    <?php $overdue = $t['due_date'] && $t['due_date'] < date('Y-m-d H:i:s') && $t['status'] !== 'done'; ?>
-                    <tr>
-                        <td><strong style="color:var(--text);font-size:0.82rem"><?= h($t['title']) ?></strong></td>
-                        <td><span class="card-priority priority-<?= $t['priority'] ?>"><?= $t['priority'] ?></span></td>
-                        <td>
-                            <div class="status-btn-group">
-                                <button class="sbtn sbtn-pending <?= $t['status']==='pending'?'active':'' ?>" onclick="updateListStatus(<?= $t['id'] ?>,'pending',this)">Pend</button>
-                                <button class="sbtn sbtn-progress <?= $t['status']==='in_progress'?'active':'' ?>" onclick="updateListStatus(<?= $t['id'] ?>,'in_progress',this)">Prog</button>
-                                <button class="sbtn sbtn-done <?= $t['status']==='done'?'active':'' ?>" onclick="updateListStatus(<?= $t['id'] ?>,'done',this)">Done</button>
-                            </div>
-                        </td>
-                        <td style="<?= $overdue?'color:#ef4444;font-weight:700':'' ?>"><?= $t['due_date'] ? date('M j, Y', strtotime($t['due_date'])) : '-' ?></td>
-                        <td><?= $t['category'] ? '<span class="card-category">'.h($t['category']).'</span>' : '-' ?></td>
-                        <td><?= $t['assignee_name'] ? '<span class="assignee-badge assignee-'.($t['assignee_type']?:'person').'">'.h($t['assignee_name']).'</span>' : '-' ?></td>
-                        <td style="text-align:right">
-                            <button class="btn btn-secondary btn-sm" onclick="editTask(<?= $t['id'] ?>)" style="padding:4px 10px"><i class="ti ti-pencil"></i></button>
-                            <button class="btn btn-danger btn-sm" onclick="deleteTask(<?= $t['id'] ?>,'<?= h(addslashes($t['title'])) ?>')" style="padding:4px 10px"><i class="ti ti-trash"></i></button>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-            <?php else: ?>
-            <div class="empty-state"><i class="ti ti-checklist"></i><p>No tasks found.</p><button class="btn btn-primary mt-1" onclick="openTaskModal()">Create Task</button></div>
-            <?php endif; ?>
-        </div>
-    </div>
-</div>
+
 
 <div class="v3-task-quick-bar">
     <span class="tqb-label">⚡ Quick Add</span>
@@ -704,17 +635,6 @@ function updateStats() {
 }
 
 // ══════════════════════════════════════
-// LIST VIEW STATUS CHANGE
-// ══════════════════════════════════════
-function updateListStatus(id, status, btn) {
-    updateStatusAjax(id, status);
-    var row = btn.closest('tr');
-    row.querySelectorAll('.sbtn').forEach(function(b) { b.classList.remove('active'); });
-    btn.classList.add('active');
-    showToast('Status updated');
-}
-
-// ══════════════════════════════════════
 // TASK MODAL
 // ══════════════════════════════════════
 function openTaskModal(data) {
@@ -869,7 +789,6 @@ function applyFilters() {
     if (c) params.push('category=' + encodeURIComponent(c));
     if (a) params.push('assignee=' + encodeURIComponent(a));
     if (s) params.push('search=' + encodeURIComponent(s));
-    params.push('view=<?= $view ?>');
     window.location.href = 'tasks.php?' + params.join('&');
 }
 
@@ -879,36 +798,11 @@ document.getElementById('f-search').addEventListener('input', function() {
     searchDebounce = setTimeout(applyFilters, 300);
 });
 
-function setView(v) {
-    var params = [];
-    <?php foreach (['priority','category','assignee','search'] as $k): ?>
-    var val = <?= json_encode($_GET[$k] ?? '') ?>;
-    if (val) params.push('<?= $k ?>=' + encodeURIComponent(val));
-    <?php endforeach; ?>
-    params.push('view=' + v);
-    window.location.href = 'tasks.php?' + params.join('&');
-}
-
 function applySort(val) {
     if (!val) return;
     var params = new URLSearchParams(window.location.search);
     params.set('sort', val);
     window.location.href = 'tasks.php?' + params.toString();
-}
-
-function sortTable(col) {
-    var tbody = document.querySelector('#list-view table tbody');
-    if (!tbody) return;
-    var rows = Array.from(tbody.querySelectorAll('tr'));
-    var dir = tbody.dataset.sortDir === 'asc' ? 'desc' : 'asc';
-    tbody.dataset.sortDir = dir;
-    rows.sort(function(a, b) {
-        var va = a.children[col].textContent.trim().toLowerCase();
-        var vb = b.children[col].textContent.trim().toLowerCase();
-        if (va === vb) return 0;
-        return dir === 'asc' ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1);
-    });
-    rows.forEach(function(r) { tbody.appendChild(r); });
 }
 
 // Quick add task

@@ -129,13 +129,12 @@ $pdo = db();
 
   function loadCats() {
     fetchApi({action:'get_categories'}).then(function(data){
-      if(!Array.isArray(data)) return;
-      cats=data;
+      if(!data || !data.categories) return;
+      cats=data.categories;
+      var total=data.totalNotes||0;
       var el=document.getElementById('ns-cat-list');
       el.querySelectorAll('li:not(:first-child)').forEach(function(e){e.remove();});
-      var total=0;
       cats.forEach(function(c){
-        total+=parseInt(c.note_count)||0;
         var li=document.createElement('li');
         li.className='notes-cat-item'+(curCat==c.id?' active':'');
         li.dataset.id=c.id;
@@ -145,10 +144,12 @@ $pdo = db();
       document.getElementById('ns-total-count').textContent=total;
       document.getElementById('ns-stat-total').textContent=total;
       var sel=document.getElementById('ns-cat-select');
+      var prevCat=sel.value;
       sel.innerHTML='<option value="">No Category</option>';
       cats.forEach(function(c){
         var o=document.createElement('option'); o.value=c.id; o.textContent=c.name; sel.appendChild(o);
       });
+      if (prevCat) sel.value=prevCat;
     });
   }
 
@@ -232,7 +233,7 @@ $pdo = db();
     document.querySelectorAll('#ns-swatches .swatch').forEach(function(s){s.classList.toggle('active',s.dataset.color===c);});
   }
 
-  function saveNote() {
+  function saveNote(closeAfter) {
     var id=document.getElementById('ns-id').value;
     var title=document.getElementById('ns-title').value.trim()||'Untitled';
     var content=document.getElementById('ns-content').value;
@@ -242,10 +243,11 @@ $pdo = db();
     document.getElementById('ns-status').textContent='Saving...';
     (id
       ? fetchApi({action:'update_note',id:id,title:title,content:content,category_id:catId,note_color:color})
-      : fetchApi({action:'create_note',title:title,content:content,category_id:catId,note_color:color}).then(function(r){if(r.success){document.getElementById('ns-id').value=r.id;curId=r.id;}})
+      : fetchApi({action:'create_note',title:title,content:content,category_id:catId,note_color:color}).then(function(r){if(r.success){document.getElementById('ns-id').value=r.id;curId=r.id;} return r;})
     ).then(function(r){
       if(r&&r.success){
-        document.getElementById('ns-status').textContent='Saved ✓ '+new Date().toLocaleTimeString();
+        if (closeAfter) { closeEditor(); }
+        else { document.getElementById('ns-status').textContent='Saved ✓ '+new Date().toLocaleTimeString(); }
         loadCats();
       } else {
         document.getElementById('ns-status').textContent='Error saving';
@@ -353,7 +355,7 @@ $pdo = db();
     });
 
     document.getElementById('ns-back').addEventListener('click',closeEditor);
-    document.getElementById('ns-save-btn').addEventListener('click',saveNote);
+    document.getElementById('ns-save-btn').addEventListener('click',function(){saveNote(true);});
     document.getElementById('ns-title').addEventListener('input',scheduleSave);
     document.getElementById('ns-content').addEventListener('input',scheduleSave);
     document.getElementById('ns-cat-select').addEventListener('change',scheduleSave);

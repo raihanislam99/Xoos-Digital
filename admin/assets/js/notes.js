@@ -35,19 +35,17 @@ const NotesApp = (() => {
   // ── RENDER CATEGORIES ──
   async function loadCategories() {
     const data = await api({ action: 'get_categories' });
-    if (!Array.isArray(data)) {
-      console.error('NotesApp: get_categories returned non-array', data);
+    if (!data || !data.categories) {
+      console.error('NotesApp: get_categories returned invalid data', data);
       return;
     }
-    categories = data;
+    categories = data.categories;
+    const totalNotes = data.totalNotes || 0;
     const list = document.getElementById('ns-cat-list');
 
     list.querySelectorAll('li:not(:first-child)').forEach(el => el.remove());
 
-    let totalCount = 0;
-
     categories.forEach(cat => {
-      totalCount += parseInt(cat.note_count) || 0;
       const li = document.createElement('li');
       li.className = 'notes-cat-item' + (currentCategoryId == cat.id ? ' active' : '');
       li.dataset.id = cat.id;
@@ -59,8 +57,8 @@ const NotesApp = (() => {
       list.appendChild(li);
     });
 
-    document.getElementById('ns-total-count').textContent = totalCount;
-    document.getElementById('ns-stat-total').textContent = totalCount;
+    document.getElementById('ns-total-count').textContent = totalNotes;
+    document.getElementById('ns-stat-total').textContent = totalNotes;
   }
 
   // ── RENDER NOTES ──
@@ -236,7 +234,7 @@ const NotesApp = (() => {
     });
   }
 
-  async function saveNote() {
+  async function saveNote(closeAfter) {
     const id = document.getElementById('ns-id').value;
     const title = document.getElementById('ns-title').value.trim() || 'Untitled';
     const content = document.getElementById('ns-content').value;
@@ -258,7 +256,8 @@ const NotesApp = (() => {
     }
 
     if (result.success) {
-      document.getElementById('ns-status').textContent = 'Saved ✓ ' + new Date().toLocaleTimeString();
+      if (closeAfter) { closeEditor(); }
+      else { document.getElementById('ns-status').textContent = 'Saved ✓ ' + new Date().toLocaleTimeString(); }
       loadCategories();
     } else {
       document.getElementById('ns-status').textContent = 'Error saving';
@@ -393,7 +392,7 @@ const NotesApp = (() => {
     // Editor events
     document.getElementById('ns-back').addEventListener('click', closeEditor);
 
-    document.getElementById('ns-save-btn').addEventListener('click', saveNote);
+    document.getElementById('ns-save-btn').addEventListener('click', () => saveNote(true));
 
     document.getElementById('ns-title').addEventListener('input', scheduleAutoSave);
     document.getElementById('ns-content').addEventListener('input', scheduleAutoSave);

@@ -628,8 +628,7 @@
   z-index: 10;
 }
 #ns-status {
-  font-size: 0.78rem;
-  color: rgba(255,255,255,0.3);
+  display: none;
 }
 #ns-save-btn {
   background: #c8ff00 !important;
@@ -690,6 +689,150 @@
 .notes-toast.show { opacity: 1; transform: translateX(0); }
 .notes-toast-success { border-color: #2ecc71; }
 .notes-toast-error   { border-color: #ff4757; }
+
+/* ═══════════════════════════════════
+   TOOLBAR — Single-line uniform fix
+   ═══════════════════════════════════ */
+.notes-toolbar,
+.ns-toolbar {
+  flex-wrap: nowrap !important;
+  gap: 8px !important;
+}
+.notes-toolbar-left,
+.ns-toolbar-left {
+  flex-wrap: nowrap !important;
+  gap: 8px !important;
+  flex: 1 !important;
+}
+.notes-toolbar-right,
+.ns-toolbar-right {
+  flex-shrink: 0 !important;
+}
+
+/* Uniform 38px height + 10px radius for all toolbar controls */
+.notes-toolbar .notes-pill-btn,
+.notes-toolbar .notes-select,
+.notes-toolbar #ns-new-btn,
+.ns-toolbar .ns-pill,
+.ns-toolbar .ns-sort-select,
+.ns-toolbar .ns-view-toggle button,
+.ns-toolbar .ns-view-toggle {
+  height: 38px !important;
+  border-radius: 10px !important;
+  box-sizing: border-box !important;
+}
+
+/* Pill buttons: flatten to uniform shape */
+.notes-toolbar .notes-pill-btn,
+.ns-toolbar .ns-pill {
+  padding: 0 14px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+/* Select dropdowns */
+.notes-toolbar .notes-select,
+.ns-toolbar .ns-sort-select {
+  padding: 0 32px 0 12px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  background-position: right 10px center !important;
+  min-width: 110px !important;
+}
+
+/* View toggle: flatten the joined buttons into a single uniform group */
+.ns-toolbar .ns-view-toggle {
+  display: inline-flex !important;
+  overflow: hidden !important;
+}
+.ns-toolbar .ns-view-toggle button {
+  border-radius: 0 !important;
+  padding: 0 10px !important;
+  min-width: 38px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.ns-toolbar .ns-view-toggle button:first-child {
+  border-radius: 10px 0 0 10px !important;
+}
+.ns-toolbar .ns-view-toggle button:last-child {
+  border-radius: 0 10px 10px 0 !important;
+}
+
+/* New Note button: brand color + icon */
+.notes-toolbar #ns-new-btn,
+.ns-toolbar .btn-primary {
+  padding: 0 16px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+/* ─── MOBILE: allow wrap at very small sizes ─── */
+@media(max-width:600px){
+  .notes-toolbar,
+  .ns-toolbar {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+  .notes-toolbar-left,
+  .ns-toolbar-left {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
+  .notes-toolbar .notes-select,
+  .ns-toolbar .ns-sort-select {
+    min-width: 90px !important;
+  }
+}
+@media(max-width:480px){
+  .notes-toolbar .notes-select,
+  .ns-toolbar .ns-sort-select {
+    min-width: 80px !important;
+    padding: 0 28px 0 8px !important;
+  }
+  #ns-sidebar-toggle {
+    padding: 0 !important;
+    font-size: 1rem !important;
+    width: 38px !important;
+    min-width: 38px !important;
+    justify-content: center !important;
+  }
+  #ns-pin-filter {
+    padding: 0 !important;
+    font-size: 0 !important;
+    width: 38px !important;
+    min-width: 38px !important;
+    justify-content: center !important;
+  }
+  #ns-pin-filter::before {
+    content: "★";
+    font-size: 0.95rem !important;
+  }
+  .ns-toolbar .ns-pill {
+    padding: 0 !important;
+    font-size: 0 !important;
+    width: 38px !important;
+    min-width: 38px !important;
+    justify-content: center !important;
+  }
+  .notes-toolbar #ns-new-btn,
+  #ns-new-btn,
+  .ns-toolbar .btn-primary {
+    padding: 0 10px !important;
+    font-size: 0 !important;
+    min-width: 38px !important;
+    justify-content: center !important;
+  }
+  .notes-toolbar #ns-new-btn i,
+  #ns-new-btn i,
+  .ns-toolbar .btn-primary i {
+    font-size: 1.05rem !important;
+    margin: 0 !important;
+  }
+}
 
 /* ─── SELECT/DROPDOWN FIXES ─── */
 #ns-cat-select,
@@ -809,13 +952,6 @@ select.notes-select {
 @media(max-width:480px){
   .page-title { font-size: 1.1rem !important; }
   .notes-main { padding: 8px; }
-  .notes-toolbar { gap: 4px; }
-  .notes-toolbar-left { gap: 4px; }
-  .notes-sort { font-size: 0.75rem; padding: 6px 8px; padding-right: 24px; min-width: 0; }
-  #ns-pin-filter { font-size: 0.72rem; padding: 5px 8px; }
-  #ns-new-btn { font-size: 0.75rem !important; padding: 5px 10px !important; margin-left: 4px !important; }
-  #ns-new-btn i { margin-right: 2px; }
-  #ns-new-btn span { display: none; }
   .view-btn { font-size: 1rem; padding: 5px 8px; }
 
   .notes-sidebar { width: 220px; left: -240px; padding: 16px 12px; }
