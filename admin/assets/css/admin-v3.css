@@ -178,13 +178,11 @@ html { font-size: 17px; }
   transition: all 0.15s ease;
   margin: 1px 0;
   position: relative;
-  border-left: 3px solid transparent;
 }
 .v3-focus-item:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
 .v3-focus-item.active {
   color: var(--accent);
   background: rgba(200,255,0,0.08);
-  border-left-color: var(--accent);
   font-weight: 600;
 }
 .v3-focus-item .fi-icon {
@@ -226,13 +224,11 @@ html { font-size: 17px; }
   font-weight: 500;
   transition: all 0.15s ease;
   margin: 1px 0;
-  border-left: 3px solid transparent;
   border-radius: 10px;
 }
 .v3-more-item:hover { color: var(--text-primary); background: rgba(255,255,255,0.04); }
 .v3-more-item.active {
   color: var(--accent);
-  border-left-color: var(--accent);
   background: rgba(200,255,0,0.08);
   font-weight: 600;
 }
@@ -267,7 +263,7 @@ html { font-size: 17px; }
   margin: 0 0.5rem;
 }
 .v3-sidebar-footer a:hover { color: var(--text-secondary); background: rgba(255,255,255,0.04); }
-.v3-sidebar-footer a.active { color: var(--accent); background: rgba(200,255,0,0.08); font-weight: 600; border-left: 3px solid var(--accent); }
+.v3-sidebar-footer a.active { color: var(--accent); background: rgba(200,255,0,0.08); font-weight: 600; }
 .v3-sidebar-footer a i { font-size: 1rem; width: 18px; text-align: center; }
 .v3-version-badge {
   text-align: center;

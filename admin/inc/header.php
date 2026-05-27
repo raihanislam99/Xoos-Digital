@@ -17,6 +17,8 @@ $tasksDueToday = 0;
 try { $tasksDueToday = (int)db_val("SELECT COUNT(*) FROM admin_tasks WHERE status IN ('pending','in_progress') AND DATE(due_date) = CURDATE()"); } catch (Exception $e) {}
 $blogDrafts = 0;
 try { $blogDrafts = (int)db_val("SELECT COUNT(*) FROM blog_posts WHERE status = 'draft'"); } catch (Exception $e) {}
+$blogCount = 0;
+try { $blogCount = (int)db_val("SELECT COUNT(*) FROM blog_posts"); } catch (Exception $e) {}
 $unpubPosts = 0;
 try { $unpubPosts = (int)db_val("SELECT COUNT(*) FROM generated_posts WHERE status = 'draft'"); } catch (Exception $e) {}
 $newLeadsWeek = 0;
@@ -618,8 +620,6 @@ try { $noteCount = (int)db_val("SELECT COUNT(*) FROM notes"); } catch (Exception
             .kanban-col-header { position: sticky; top: 0; z-index: 2; }
             .task-card { padding: 0.75rem 0.85rem !important; }
             /* Blog page */
-            .blog-sidebar { position: static !important; width: 100% !important; margin-top: 1.5rem; }
-            .blog-layout { flex-direction: column; }
             .bulk-bar { flex-direction: column; align-items: stretch; }
             .lead-filters { flex-direction: column; }
             .lead-filters select, .lead-filters input { width: 100%; }
@@ -744,7 +744,7 @@ try { $noteCount = (int)db_val("SELECT COUNT(*) FROM notes"); } catch (Exception
 
             <?php
             $focusItems = [
-                ['blog',         'Blog Posts',    'ti ti-news',      'blog',      $blogDrafts],
+                ['blog',         'Blog Posts',    'ti ti-news',      'blog',      $blogCount],
                 ['post-generator','Post Generator','ti ti-file-text','posts',     $unpubPosts],
                 ['leads',        'Outreach',      'ti ti-users-plus','outreach',  $newLeadsWeek],
             ];

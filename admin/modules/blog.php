@@ -55,6 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cat_action'])) {
                 $_SESSION['flash_msg'] = 'Category added.';
                 $_SESSION['flash_type'] = 'success';
             }
+            redirect('blog.php');
         } elseif ($cat_action === 'edit_cat' && !empty($_POST['cat_id'])) {
             $name = trim($_POST['cat_name'] ?? '');
             if ($name) {
@@ -104,14 +105,9 @@ $showForm = $isEdit || isset($_GET['new']);
 .idea-skeleton{height:36px;border-radius:6px;background:linear-gradient(90deg,var(--bg) 25%,var(--bg3) 50%,var(--bg) 75%);background-size:200% auto;animation:shimmer 1.5s linear infinite;margin-bottom:6px}
 .ai-btn-loading{opacity:.7;cursor:wait!important;pointer-events:none}
 .ai-btn-loading::before{content:'\23F3 ';font-size:.75rem}
-.blog-form-layout{display:grid;grid-template-columns:1fr 300px;gap:1.5rem;align-items:start}
-.blog-sidebar{position:sticky;top:1rem}
-.blog-sidebar .sidebar-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.25rem}
-.suggestion-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem}
-.suggestion-header h3{font-family:'Orbitron',sans-serif;font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--accent)}
-.suggestion-list{display:flex;flex-direction:column;gap:6px;max-height:calc(100vh - 220px);overflow-y:auto}
-.suggestion-item{padding:0.5rem 0.75rem;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:0.78rem;color:var(--text2);cursor:pointer;transition:all 0.15s;line-height:1.4}
-.suggestion-item:hover{border-color:var(--accent);color:var(--accent)}
+.blog-form-layout{display:block}
+.suggestion-item{padding:0.4rem 0.6rem;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:6px;font-size:0.76rem;color:rgba(255,255,255,0.55);cursor:pointer;transition:all 0.12s;line-height:1.35}
+.suggestion-item:hover{border-color:rgba(200,255,0,0.3);color:#c8ff00}
 .field-counter{font-size:0.65rem;color:var(--text3);margin-top:2px;text-align:right}
 .field-counter.warn{color:var(--red)}
 .btn-generate-all{background:var(--accent);color:var(--bg);font-weight:700;padding:0.5rem 1rem;font-size:0.8rem}
@@ -120,7 +116,7 @@ $showForm = $isEdit || isset($_GET['new']);
 .image-prompt-field{min-height:80px;resize:vertical;line-height:1.5}
 .toast-msg{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);background:var(--accent);color:var(--bg);padding:0.5rem 1.25rem;border-radius:8px;font-size:0.82rem;font-weight:600;opacity:0;transition:opacity 0.3s;z-index:999;pointer-events:none}
 .toast-msg.show{opacity:1}
-@media(max-width:1024px){.blog-form-layout{grid-template-columns:1fr}.blog-sidebar{position:static}}
+@media(max-width:1024px){.blog-form-layout{grid-template-columns:1fr}}
 </style>
 
 <?php if ($flash_msg): ?>
@@ -132,64 +128,114 @@ $showForm = $isEdit || isset($_GET['new']);
     <div class="flash flash-error" style="padding:0.75rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:0.85rem;background:var(--red-bg);color:var(--red)"><?= h($msg) ?></div>
 <?php endif; ?>
 
-<div class="page-header">
-    <h1 class="page-title">Blog Posts</h1>
-    <div class="flex flex-wrap">
-        <div class="search-box">
-            <i class="ti ti-search" style="color:var(--text3)"></i>
-            <input class="form-control" type="text" placeholder="Search posts..." oninput="searchTable(this)" style="width:200px">
-        </div>
-        <a href="blog.php?new=1" class="btn btn-primary"><i class="ti ti-plus"></i> New Post</a>
-    </div>
-</div>
+<div class="blog-layout">
 
-<div class="card" style="margin-bottom:1rem">
-    <div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:0.75rem 1rem;font-size:0.85rem;color:var(--text2);user-select:none">
-        <i class="ti ti-folder"></i> Manage Categories <span style="margin-left:auto;font-size:0.75rem;color:var(--text3)">▼</span>
+  <div class="page-title" style="font-size:1.6rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#fff;margin-bottom:24px">BLOG POSTS</div>
+
+<!-- ─── LEFT SIDEBAR ─── -->
+<div class="blog-sidebar">
+  <div class="blog-sidebar-inner">
+    <div class="blog-search-wrap" style="position:relative">
+      <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.3);font-size:0.85rem;pointer-events:none"></i>
+      <input class="form-control blog-search-input" type="text" placeholder="Search posts..." oninput="searchTable(this)" style="width:100%;padding:9px 12px 9px 32px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.84rem;box-sizing:border-box;outline:none">
     </div>
-    <div style="display:none;padding:1rem;border-top:1px solid var(--border)">
-        <form method="post" action="blog.php" style="display:flex;gap:8px;margin-bottom:1rem">
-            <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
-            <input type="hidden" name="cat_action" value="add_cat">
-            <input class="form-control" name="cat_name" placeholder="New category name" required style="flex:1">
-            <button class="btn btn-primary btn-sm">Add</button>
+    <div class="blog-cat-header">
+      <span>CATEGORIES</span>
+      <button type="button" id="blogCatAddBtn" title="Add category">+</button>
+    </div>
+    <div id="blogCatAddForm" class="add-cat-form" style="display:none;align-items:center;gap:6px;padding:8px 0">
+      <form method="post" action="blog.php" style="display:flex;gap:6px;margin:0;width:100%;align-items:center">
+        <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
+        <input type="hidden" name="cat_action" value="add_cat">
+        <input type="text" name="cat_name" placeholder="Category name" required style="flex:1;min-width:0;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;padding:6px 8px;font-size:0.8rem;outline:none">
+        <input type="color" value="#6b7280" style="width:26px;height:26px;border:2px solid rgba(255,255,255,0.12);border-radius:50%;cursor:pointer;padding:1px;background:none;flex-shrink:0;-webkit-appearance:none;appearance:none">
+        <button style="background:#c8ff00;color:#000;border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:1.1rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0">+</button>
+        <button type="button" id="blogCatAddCancel" style="background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0">&#x2715;</button>
+      </form>
+    </div>
+    <?php $catCounts = []; foreach (db()->query("SELECT category_id, COUNT(*) as c FROM blog_posts WHERE category_id > 0 GROUP BY category_id") as $row) { $catCounts[$row['category_id']] = $row['c']; } ?>
+    <?php $palette = ['#ff4757','#ff8c42','#f59e0b','#2ecc71','#4f8ef7','#9b6dff','#c8ff00','#ff6b9d','#00d2d3','#54a0ff']; ?>
+    <?php $blogPublished = count(array_filter($posts, function($p) { return ($p['status'] ?? 'draft') === 'published'; })); $blogDrafts = count($posts) - $blogPublished; ?>
+    <ul class="blog-cat-list" id="blog-cat-list">
+      <li class="blog-cat-item active" data-id="0">
+        <span class="cat-dot" style="background:#c8ff00"></span>
+        <span class="cat-name">All Posts</span>
+        <span class="cat-count"><?= count($posts) ?></span>
+      </li>
+      <?php foreach ($categories as $i => $cat):
+        $color = $palette[$i % count($palette)];
+        $cnt = (int)($catCounts[$cat['id']] ?? 0);
+      ?>
+      <li class="blog-cat-item" data-id="<?= $cat['id'] ?>">
+        <span class="cat-dot" style="background:<?= $color ?>"></span>
+        <span class="cat-name"><?= h($cat['name']) ?></span>
+        <span class="cat-count"><?= $cnt ?></span>
+        <form method="post" action="blog.php" style="margin:0;display:inline;flex-shrink:0" onsubmit="return confirm('Delete category &ldquo;<?= h($cat['name']) ?>&rdquo;?')">
+          <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
+          <input type="hidden" name="cat_action" value="delete_cat">
+          <input type="hidden" name="cat_id" value="<?= $cat['id'] ?>">
+          <button class="cat-del-btn" title="Delete">&#x2715;</button>
         </form>
-        <?php if (count($categories)): ?>
-        <div style="display:flex;flex-direction:column;gap:6px">
-            <?php $counts = []; foreach (db()->query("SELECT category_id, COUNT(*) as c FROM blog_posts WHERE category_id > 0 GROUP BY category_id") as $row) { $counts[$row['category_id']] = $row['c']; } ?>
-            <?php foreach ($categories as $cat): ?>
-            <div style="display:flex;align-items:center;gap:8px;padding:0.5rem 0.75rem;background:var(--bg);border-radius:6px;border:1px solid var(--border)">
-                <form method="post" action="blog.php" style="flex:1;display:flex;gap:6px;margin:0">
-                    <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
-                    <input type="hidden" name="cat_action" value="edit_cat">
-                    <input type="hidden" name="cat_id" value="<?= $cat['id'] ?>">
-                    <input class="form-control" name="cat_name" value="<?= h($cat['name']) ?>" required style="flex:1;font-size:0.85rem;padding:0.35rem 0.6rem">
-                    <button class="btn btn-secondary btn-sm" title="Rename"><i class="ti ti-check"></i></button>
-                </form>
-                <span class="text-muted" style="font-size:0.8rem;white-space:nowrap"><?= (int)($counts[$cat['id']] ?? 0) ?> posts</span>
-                <form method="post" action="blog.php" style="margin:0" onsubmit="return confirm('Delete category &#8220;<?= h($cat['name']) ?>&#8221;? Existing posts will be uncategorized.');">
-                    <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
-                    <input type="hidden" name="cat_action" value="delete_cat">
-                    <input type="hidden" name="cat_id" value="<?= $cat['id'] ?>">
-                    <button class="btn btn-danger btn-sm" title="Delete"><i class="ti ti-trash"></i></button>
-                </form>
-            </div>
-            <?php endforeach; ?>
+      </li>
+      <?php endforeach; ?>
+    </ul>
+
+    <div class="blog-suggestions">
+      <div class="suggestion-header" style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:0.62rem;letter-spacing:0.14em;color:rgba(255,255,255,0.3);text-transform:uppercase">Post Ideas</span>
+        <div style="display:flex;gap:4px">
+          <button type="button" class="btn btn-secondary btn-sm" id="clearIdeasBtn" onclick="clearIdeas()" title="Clear" style="padding:2px 6px;font-size:0.65rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.3);cursor:pointer;border-radius:4px"><i class="ti ti-x"></i></button>
+          <button type="button" class="btn btn-secondary btn-sm" id="refreshBtn" onclick="loadSuggestions()" title="Refresh" style="padding:2px 6px;font-size:0.65rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.3);cursor:pointer;border-radius:4px"><i class="ti ti-refresh"></i></button>
         </div>
-        <?php else: ?>
-        <p class="text-muted" style="font-size:0.85rem">No categories yet. Create one above.</p>
-        <?php endif; ?>
+      </div>
+      <div class="suggestion-list" id="suggestionList" style="display:flex;flex-direction:column;gap:4px;max-height:260px;overflow-y:auto;margin-top:8px">
+        <div style="text-align:center;color:rgba(255,255,255,0.2);font-size:0.75rem;padding:1rem 0">Click Refresh to load ideas</div>
+      </div>
     </div>
+
+    <div class="blog-stats">
+      <div>Total <span><?= count($posts) ?></span></div>
+      <div>Published <span><?= $blogPublished ?></span></div>
+      <div>Drafts <span><?= $blogDrafts ?></span></div>
+    </div>
+  </div>
 </div>
+<div id="blog-sidebar-backdrop" class="blog-sidebar-backdrop"></div>
+
+<!-- ─── RIGHT MAIN ─── -->
+<div class="blog-main">
 
 <div id="module-list" style="<?= $showForm ? 'display:none' : 'display:block' ?>">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+    <div class="blog-toolbar">
+        <button id="blog-sidebar-toggle" class="blog-pill-btn" title="Categories">☰</button>
         <div class="v3-view-toggle">
-            <button class="active" id="v3GridBtn" onclick="setBlogView('grid')"><i class="ti ti-layout-grid"></i> Grid</button>
-            <button id="v3TableBtn" onclick="setBlogView('table')"><i class="ti ti-list"></i> Table</button>
+<button class="active" id="v3GridBtn" onclick="setBlogView('grid')"><i class="ti ti-layout-grid"></i></button>
+<button id="v3TableBtn" onclick="setBlogView('table')"><i class="ti ti-list"></i></button>
         </div>
-        <span style="font-size:0.75rem;color:var(--v3-text3)"><?= count($posts) ?> post<?= count($posts) !== 1 ? 's' : '' ?></span>
+        <span class="blog-post-count"><?= count($posts) ?> post<?= count($posts) !== 1 ? 's' : '' ?></span>
+        <a href="blog.php?new=1" class="blog-new-btn"><i class="ti ti-plus"></i> New Post</a>
     </div>
+
+<script>
+document.getElementById('blogCatAddBtn')?.addEventListener('click',function(){
+    var f=document.getElementById('blogCatAddForm');
+    f.style.display=f.style.display==='none'?'flex':'none';
+    if(f.style.display==='flex') f.querySelector('input').focus();
+});
+document.getElementById('blogCatAddCancel')?.addEventListener('click',function(){
+    document.getElementById('blogCatAddForm').style.display='none';
+});
+// Sidebar toggle for mobile
+document.getElementById('blog-sidebar-toggle')?.addEventListener('click',function(){
+    document.querySelector('.blog-sidebar').classList.toggle('open');
+    document.getElementById('blog-sidebar-backdrop').classList.toggle('open');
+});
+document.getElementById('blog-sidebar-backdrop')?.addEventListener('click',function(){
+    document.querySelector('.blog-sidebar').classList.remove('open');
+    document.getElementById('blog-sidebar-backdrop').classList.remove('open');
+});
+// Sidebar toggle managed via CSS media query
+</script>
 
     <!-- Card Grid View -->
     <div id="v3BlogGrid" class="v3-blog-grid">
@@ -404,20 +450,6 @@ $showForm = $isEdit || isset($_GET['new']);
             </form>
         </div>
 
-        <div class="blog-sidebar">
-            <div class="sidebar-card">
-                <div class="suggestion-header">
-                    <h3>Post Ideas <span id="ideasCount" style="font-size:0.65rem;color:var(--text3);font-weight:400"></span></h3>
-                    <div class="flex" style="gap:4px">
-                        <button type="button" class="btn btn-secondary btn-sm" id="clearIdeasBtn" onclick="clearIdeas()" title="Clear keyword and content"><i class="ti ti-x"></i></button>
-                        <button type="button" class="btn btn-secondary btn-sm" id="refreshBtn" onclick="loadSuggestions()"><i class="ti ti-refresh"></i></button>
-                    </div>
-                </div>
-                <div class="suggestion-list" id="suggestionList">
-                    <div style="text-align:center;color:var(--text3);font-size:0.78rem;padding:2rem 0">Click Refresh to load ideas</div>
-                </div>
-            </div>
-        </div>
     </div>
 </div>
 
@@ -811,4 +843,6 @@ function copyAllJson() {
 }
 </script>
 
+</div><!-- /blog-main -->
+</div><!-- /blog-layout -->
 <?php require_once __DIR__ . '/../inc/footer.php'; ?>

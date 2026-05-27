@@ -59,8 +59,8 @@ $settings = ai_feature_settings('chatbot');
 try {
     $reply = ai_call($settings, $messages, 350, 0.7);
 } catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode(['error' => $e->getMessage()]);
+    $wa = h(get_setting('whatsapp_number', '8801600008085'));
+    echo json_encode(['reply' => "I'm currently offline. Please reach out to our team on WhatsApp for immediate assistance.<br><br><a href=\"https://wa.me/$wa\" target=\"_blank\" style=\"display:inline-flex;align-items:center;gap:6px;background:#25D366;color:#fff;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:600;font-size:0.85rem\">Contact us on WhatsApp</a>"]);
     exit;
 }
 

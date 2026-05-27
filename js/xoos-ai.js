@@ -122,11 +122,11 @@ const XD_SYSTEM_PROMPT = [
       });
 
       if (!response.ok) {
-        let errMsg = 'Service unavailable. Please try again.';
+        let errMsg = "I'm currently offline. Please reach out to our team on WhatsApp for immediate assistance.";
         try {
           const errData = await response.json();
           if (response.status === 429) {
-            errMsg = errData.error || 'Too many messages. Please wait a moment.';
+            errMsg = 'Too many messages. Please wait a moment.';
           } else if (errData.error) {
             errMsg = errData.error;
           }
