@@ -247,6 +247,7 @@ function ai_provider_presets(): array {
         'together'  => ['endpoint' => 'https://api.together.xyz/v1/chat/completions',                     'label' => 'Together',  'url' => 'https://api.together.xyz/settings/api-keys'],
         'gemini'    => ['endpoint' => '',                                                                  'label' => 'Gemini',    'url' => 'https://aistudio.google.com/apikey'],
         'custom'    => ['endpoint' => '',                                                                  'label' => 'Custom',    'url' => ''],
+        'claude'    => ['endpoint' => 'https://api.anthropic.com/v1/messages',                              'label' => 'Claude',    'url' => 'https://console.anthropic.com/'],
     ];
 }
 
@@ -259,6 +260,7 @@ function ai_best_model(string $provider): string {
         'together'  => 'mistralai/Mixtral-8x22B-Instruct-v0.1',
         'gemini'    => 'gemini-2.5-flash-lite',
         'custom'    => 'gpt-4o',
+        'claude'    => 'claude-sonnet-4-20250514',
     ];
     return $models[$provider] ?? 'gpt-4o';
 }
@@ -273,6 +275,43 @@ function ai_feature_settings(string $feature): array {
 }
 
 function ai_call(array $settings, array $messages, int $maxTokens = 1000, float $temperature = 0.7): string {
+    if ($settings['provider'] === 'claude') {
+        $systemMsg = null;
+        $chatMessages = [];
+        foreach ($messages as $m) {
+            if ($m['role'] === 'system') { $systemMsg = $m['content']; continue; }
+            $chatMessages[] = ['role' => $m['role'], 'content' => $m['content']];
+        }
+        $payload = ['model' => $settings['model'], 'max_tokens' => $maxTokens, 'temperature' => $temperature, 'messages' => $chatMessages];
+        if ($systemMsg) $payload['system'] = $systemMsg;
+
+        $ch = curl_init($settings['endpoint']);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => json_encode($payload),
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'x-api-key: ' . $settings['key'],
+                'anthropic-version: 2023-06-01',
+            ],
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_SSL_VERIFYPEER => true,
+        ]);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErr  = curl_error($ch);
+        curl_close($ch);
+        if ($curlErr) throw new RuntimeException('AI connection failed: ' . $curlErr);
+        if ($httpCode !== 200) {
+            $body = json_decode($response, true);
+            $msg  = $body['error']['message'] ?? $body['error'] ?? "Claude service error (HTTP $httpCode)";
+            throw new RuntimeException($msg);
+        }
+        $data = json_decode($response, true);
+        return trim($data['content'][0]['text'] ?? '');
+    }
+
     if ($settings['provider'] === 'gemini') {
         $geminiModel = $settings['model'];
         $url = "https://generativelanguage.googleapis.com/v1/models/{$geminiModel}:generateContent?key=" . urlencode($settings['key']);
