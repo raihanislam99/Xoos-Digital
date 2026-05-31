@@ -89,6 +89,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($action === 'profile_add') {
         $stmt = $pdo->prepare("INSERT INTO post_profiles (platform, profile_url, name, notes, language, tone, niche, color, post_length, type, business_type, target_audience, brand_voice, avoid_topics) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([$_POST['platform'], trim($_POST['profile_url'] ?? ''), trim($_POST['name']), trim($_POST['notes'] ?? ''), $_POST['language'] ?? 'english', $_POST['tone'] ?? 'semi-professional', trim($_POST['niche'] ?? ''), $_POST['color'] ?? '#c8f135', (int)($_POST['post_length'] ?? 200), $_POST['type'] ?? 'personal', trim($_POST['business_type'] ?? ''), trim($_POST['target_audience'] ?? ''), trim($_POST['brand_voice'] ?? ''), trim($_POST['avoid_topics'] ?? '')]);
+        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+            json_response(['ok' => true]);
+        }
         $_SESSION['flash_msg'] = 'Profile added.';
         $_SESSION['flash_type'] = 'success';
         redirect('post-generator.php?view=profiles');
@@ -128,17 +131,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($action === 'update_post') {
         $id = (int)$_POST['id'];
         $pdo->prepare("UPDATE generated_posts SET content = ? WHERE id = ?")->execute([trim($_POST['content']), $id]);
-        json_response(['ok' => true]);
-    }
-
-    // ── Hashtag CRUD ──
-    if ($action === 'hashtag_add') {
-        $stmt = $pdo->prepare("INSERT INTO post_hashtags (platform, tag) VALUES (?, ?)");
-        $stmt->execute([$_POST['platform'], trim($_POST['tag'])]);
-        json_response(['ok' => true, 'id' => $pdo->lastInsertId()]);
-    }
-    if ($action === 'hashtag_delete') {
-        $pdo->prepare("DELETE FROM post_hashtags WHERE id = ?")->execute([(int)$_POST['id']]);
         json_response(['ok' => true]);
     }
 
@@ -187,8 +179,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $trainingStr = $trainingTexts ? "TRAINING STYLE EXAMPLES (match this writing style, never copy directly):\n" . implode("\n\n---\n\n", array_slice($trainingTexts, -5)) . "\n" : '';
 
         $activeTone = $selectedTone ?: $prof['tone'];
-        $system = "You are a social media content strategist for Xoos Digital, Bangladesh. Generate exactly 5 unique post IDEAS based on the inputs below. Return ONLY valid JSON, no markdown, no explanation.";
-        $user = "PROFILE NAME: {$prof['name']}\nPLATFORM: {$prof['platform']}\nTONE: {$activeTone}\nLANGUAGE: {$prof['language']}\nNICHE: {$prof['niche']}\nTOPIC: {$topic}\n\n{$trainingStr}\nRULES:\n- Each idea must have a strong hook: curiosity / pain_point / story / controversy / result\n- Ideas inspired by training style but 100% original\n- Relevant to profile niche and tone\n- One punchy sentence per idea\n- If language is \"mixed\" — ideas can be Bangla-English mix\n\nReturn ONLY this JSON:\n[{\"id\":1,\"idea\":\"idea text\",\"hook\":\"pain_point\"},{\"id\":2,\"idea\":\"idea text\",\"hook\":\"curiosity\"},{\"id\":3,\"idea\":\"idea text\",\"hook\":\"story\"},{\"id\":4,\"idea\":\"idea text\",\"hook\":\"controversy\"},{\"id\":5,\"idea\":\"idea text\",\"hook\":\"result\"}]";
+        $ideasTypeLabel = $prof['type'] === 'client' ? 'Business' : 'Personal';
+        $system = "You are a social media content strategist. Generate exactly 5 unique post IDEAS based on the inputs below. Return ONLY valid JSON, no markdown, no explanation.";
+        $user = "PROFILE: {$prof['name']}\nTYPE: {$ideasTypeLabel}\nPLATFORM: {$prof['platform']}\nTONE: {$activeTone}\nLANGUAGE: {$prof['language']}\nNICHE: {$prof['niche']}\nTOPIC: {$topic}\n\n{$trainingStr}\nRULES:\n- Each idea must have a strong hook: curiosity / pain_point / story / controversy / result\n- Ideas inspired by training style but 100% original\n- Relevant to profile niche and tone\n- One punchy sentence per idea\n- If language is \"mixed\" — ideas can be Bangla-English mix\n\nReturn ONLY this JSON:\n[{\"id\":1,\"idea\":\"idea text\",\"hook\":\"pain_point\"},{\"id\":2,\"idea\":\"idea text\",\"hook\":\"curiosity\"},{\"id\":3,\"idea\":\"idea text\",\"hook\":\"story\"},{\"id\":4,\"idea\":\"idea text\",\"hook\":\"controversy\"},{\"id\":5,\"idea\":\"idea text\",\"hook\":\"result\"}]";
 
         try {
             $response = ai_call($settings, [
@@ -236,16 +229,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $trainingTexts = $stmt->fetchAll(PDO::FETCH_COLUMN);
         }
 
-        $tagStmt = $pdo->prepare("SELECT tag FROM post_hashtags WHERE platform=?");
-        $tagStmt->execute([$prof['platform']]);
-        $platformTags = $tagStmt->fetchAll(PDO::FETCH_COLUMN);
-        $liTags = $platformTags; // used in prompt as platform-specific hashtags
+        // Auto-generate hashtags from profile data
+        $autoTags = function($source) {
+            $tags = [];
+            $parts = preg_split('/[,\/;]+/', $source);
+            foreach ($parts as $p) {
+                $p = trim(preg_replace('/[^a-zA-Z0-9\s]/', '', $p));
+                if (!$p) continue;
+                $words = preg_split('/\s+/', $p);
+                $tag = '';
+                foreach ($words as $w) {
+                    $w = trim($w); if (!$w) continue;
+                    $tag .= ucfirst(strtolower($w));
+                }
+                if ($tag) $tags[] = '#' . $tag;
+            }
+            return $tags;
+        };
+        $liTags = ['#' . preg_replace('/[^a-zA-Z0-9]/', '', str_replace(' ', '', $prof['name']))];
+        $liTags = array_merge($liTags, $autoTags($prof['niche'] ?? ''));
+        if ($prof['type'] === 'client' && !empty($prof['business_type']))
+            $liTags = array_merge($liTags, $autoTags($prof['business_type']));
+        $liTags = array_merge($liTags, $autoTags($topic));
+        $liTags = array_slice(array_unique($liTags), 0, 10);
+        $fbTags = $liTags;
 
         $settings = ai_feature_settings('posts');
         if (empty($settings['key'])) { json_response(['ok' => false, 'error' => 'AI not configured.'], 400); exit; }
 
         $trainingStr = $trainingTexts ? implode("\n\n---\n\n", array_slice($trainingTexts, -5)) : '';
-        $tagStr = $platformTags ? implode(' ', $platformTags) : '';
+        $liStr = $liTags ? implode(' ', $liTags) : '';
+        $fbStr = $fbTags ? implode(' ', $fbTags) : '';
         $hookLabel = $hookType ?: 'general';
 
         $lengthConfigs = [
@@ -274,95 +288,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $activeTone = $selectedTone ?: $prof['tone'];
 
         // Build profile context block
-        $profileContext = "PROFILE: {$prof['name']}\nTYPE: " . ($prof['type'] === 'client' ? 'Client Brand Page' : 'Personal Profile') . "\nPLATFORM: {$prof['platform']}\nTONE: {$activeTone}\nLANGUAGE: {$prof['language']}\nNICHE: {$prof['niche']}\nPOST LENGTH: minimum {$lc['minWords']} words";
+        $typeLabel = $prof['type'] === 'client' ? 'Business' : 'Personal';
+        $profileContext = "PROFILE: {$prof['name']}\nTYPE: {$typeLabel}\nPLATFORM: {$prof['platform']}\nLANGUAGE: {$prof['language']}\nTONE: {$activeTone}\nNICHE: {$prof['niche']}\nPOST LENGTH: minimum {$lc['minWords']} words";
 
         if ($prof['type'] === 'client') {
-            $profileContext .= "\nBUSINESS TYPE: " . h($prof['business_type'] ?? '') . "\nTARGET AUDIENCE: " . h($prof['target_audience'] ?? '') . "\nBRAND VOICE: " . h($prof['brand_voice'] ?? '') . "\nAVOID TOPICS: " . h($prof['avoid_topics'] ?? '') . "\n\nIMPORTANT: You are writing ON BEHALF OF {$prof['name']}.\nWrite as the brand, not as a person.\nThe post should feel like it comes from {$prof['name']} directly.\nDo NOT mention personal experiences or \"I did this\" stories unless it fits a brand storytelling format.";
+            $profileContext .= "\nBUSINESS TYPE: " . h($prof['business_type'] ?? '') . "\nTARGET AUDIENCE: " . h($prof['target_audience'] ?? '') . "\nBRAND VOICE: " . h($prof['brand_voice'] ?? '') . "\nAVOID TOPICS: " . h($prof['avoid_topics'] ?? '') . "\nNOTE: Write AS the brand. Not as a person.";
         }
 
-        $system = "You are an expert social media copywriter for Xoos Digital, Bangladesh. Your writing style is: engaging, storytelling-first, human, and conversational.";
+        $system = "You are an expert social media copywriter.";
 
         $user = <<<PROMPT
-Write TWO {$lc['label']} social media posts based on the inputs below.
-
 {$profileContext}
 TOPIC: {$topic}
 HOOK TYPE: {$hookLabel}
 
-WRITING STYLE — study this carefully and match the voice, never copy:
+TRAINING STYLE (match voice, never copy):
 {$trainingStr}
 
-PLATFORM HASHTAGS: {$tagStr}
+HASHTAGS — LinkedIn: {$liStr} | Facebook: {$fbStr}
 
-════════════════════════════════════════
-LENGTH REQUIREMENT
-════════════════════════════════════════
-Minimum {$lc['minWords']} words per post.
-Maximum {$lc['maxWords']} words per post.
-Style: {$lc['style']}
-NEVER go below {$lc['minWords']} words. This is non-negotiable.
+WRITE TWO POSTS — one LinkedIn, one Facebook.
+If platform is "linkedin" only → return facebook as "".
+If platform is "facebook" only → return linkedin as "".
+If platform is "both" → write both posts.
 
-════════════════════════════════════════
-POST STRUCTURE (follow exactly)
-════════════════════════════════════════
-{$lc['structure']}
+LENGTH: Every post must be minimum {$lc['minWords']} words. Count before returning.
 
-════════════════════════════════════════
-TONE GUIDE
-════════════════════════════════════════
-- professional      → authoritative but human. no jargon.
-- semi-professional → smart friend. credible + personality.
-- casual            → relaxed. short punchy sentences.
-- humorous          → witty, trendy, punchy one-liners mixed in.
+STRUCTURE:
+- SHORT (100w): Hook → Core Message → CTA
+- MEDIUM (200w): Hook → Context → Value → CTA
+- LONG (300w): Hook → Problem → Turning Point → Value → CTA
 
-════════════════════════════════════════
-LANGUAGE GUIDE
-════════════════════════════════════════
-- english → 100% English. Natural, no robotic phrasing.
-- bangla  → 100% Bangla. Warm and readable.
-- mixed   → Primarily Bangla. Mix English naturally like educated
-            Bangladeshis write on social media.
-            Use English for: tech terms, brand names, trendy words.
-            NEVER force-translate natural English words.
-            NEVER write robotic Bangla nobody actually speaks.
+TONE GUIDE:
+professional      → authoritative, no slang, data-driven
+semi-professional → smart friend, credible + personality
+casual            → relaxed, punchy sentences, like texting
+humorous          → witty, trendy, self-aware, punchy one-liners
 
-════════════════════════════════════════
-PLATFORM RULES
-════════════════════════════════════════
-PLATFORM-SPECIFIC:
-- Adjust tone and style to match the PLATFORM above
-- LinkedIn: professional tone, longer paragraphs, industry insights, → for lists, thought-provoking question at end
-- Facebook: warm, relatable, conversational, uses line breaks generously, ✅ or numbered lists, direct CTA
-- Instagram: short punchy lines, emojis per line, hashtags in caption, conversational and trendy
-- X (Twitter): very concise, single hook + insight, max 280 chars for each post, use #hashtags sparingly
-- Reddit: informative, neutral tone, community-focused, avoid marketing language, value-first
-- YouTube: script-style, conversational, hook in first line, call to action (subscribe/comment)
-- TikTok: ultra-short, trendy, hook in first 2 lines, hashtags, emoji-heavy
-- Telegram: direct, news-style, bullet points, no fluff, clear CTA
-- WhatsApp: casual, personal, short, direct, one message per paragraph
-- Hashtags at the end only, separated by spaces
-- 1-3 emojis max, placed naturally
-- Write for the specific platform's audience and culture
+LANGUAGE GUIDE:
+english → 100% English, natural, no robotic phrasing
+bangla  → 100% Bangla, warm and readable
+mixed   → Bangla primary. English for tech/trendy words naturally.
+          Write like educated Bangladeshis actually text.
+          NEVER robotic. NEVER force-translate.
 
-════════════════════════════════════════
-QUALITY CHECK — verify before returning:
-════════════════════════════════════════
-☑ Post: minimum {$lc['minWords']} words
-☑ Follows the {$pl}-word structure above
-☑ Fits the platform's style and format
-☑ No generic AI-sounding opening lines
+LINKEDIN RULES:
+- Never start with "I"
+- Blank line between every paragraph
+- Use → for lists
+- Max 2 emojis, placed naturally
+- Hashtags at end only
+
+FACEBOOK RULES:
+- Personal, relatable, Bangladeshi tone
+- New paragraph every 2-3 sentences
+- Use ✅ or → or ১.২.৩. for lists
+- Max 2 emojis, naturally placed
+- Warm direct CTA at end
+- Hashtags at end only
+
+QUALITY CHECK before returning:
+☑ LinkedIn minimum {$lc['minWords']} words
+☑ Facebook minimum {$lc['minWords']} words
+☑ No generic AI opening lines
 ☑ Language feels human, not translated
-☑ Hashtags at end only, not inside body
-☑ Proper line breaks for readability
+☑ Hashtags at end only
 
-════════════════════════════════════════
-OUTPUT — return ONLY valid JSON, no markdown:
-════════════════════════════════════════
-{
-  "content": "full post text\nwith \\n for line breaks"
-}
-
-If a platform is not applicable for this profile, return "" for content.
+RETURN valid JSON only, no markdown:
+{"linkedin": "post\ntext", "facebook": "post\ntext"}
 PROMPT;
 
         try {
@@ -375,13 +368,15 @@ PROMPT;
             if (!$posts) throw new RuntimeException('Invalid JSON response');
 
             // Save to DB
-            $content = $posts['content'] ?? '';
+            $linkedinContent = $posts['linkedin'] ?? '';
+            $facebookContent = $posts['facebook'] ?? '';
+            $mainContent = $linkedinContent ?: $facebookContent;
             $platform = $prof['platform'];
             $stmt = $pdo->prepare("INSERT INTO generated_posts (platform, content, linkedin_content, facebook_content, language, status, topic, profile_id, hashtags_used, training_ids, profile_ids) VALUES (?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?)");
-            $stmt->execute([$platform, $content, '', '', $prof['language'], $topic, $profileId, '', json_encode($trainingIds), json_encode([$profileId])]);
+            $stmt->execute([$platform, $mainContent, $linkedinContent, $facebookContent, $prof['language'], $topic, $profileId, '', json_encode($trainingIds), json_encode([$profileId])]);
 
             $postId = $pdo->lastInsertId();
-            json_response(['ok' => true, 'data' => ['id' => $postId, 'content' => $content, 'platform' => $platform]]);
+            json_response(['ok' => true, 'data' => ['id' => $postId, 'linkedin' => $linkedinContent, 'facebook' => $facebookContent, 'platform' => $platform]]);
         } catch (Exception $e) {
             json_response(['ok' => false, 'error' => 'AI error: ' . $e->getMessage()], 500);
         }
@@ -399,12 +394,13 @@ PROMPT;
 
 // ── Load data ──
 $profiles = $pdo->query("SELECT * FROM post_profiles ORDER BY created_at DESC")->fetchAll();
+$personalProfiles = []; $clientProfiles = [];
+foreach ($profiles as $p) {
+    if (($p['type'] ?? 'personal') === 'client') $clientProfiles[] = $p;
+    else $personalProfiles[] = $p;
+}
 $trainingData = $pdo->query("SELECT t.*, p.name as profile_name FROM post_training_data t LEFT JOIN post_profiles p ON t.profile_id = p.id ORDER BY t.created_at DESC")->fetchAll();
 $generatedPosts = $pdo->query("SELECT g.*, p.name as profile_name FROM generated_posts g LEFT JOIN post_profiles p ON g.profile_id = p.id ORDER BY g.created_at DESC LIMIT 50")->fetchAll();
-$hashtags = $pdo->query("SELECT * FROM post_hashtags ORDER BY platform, tag")->fetchAll();
-
-$hashtagsByPlatform = [];
-foreach ($hashtags as $h) $hashtagsByPlatform[$h['platform']][] = $h;
 
 $flash_msg = $_SESSION['flash_msg'] ?? '';
 $flash_type = $_SESSION['flash_type'] ?? '';
@@ -431,7 +427,7 @@ if (isset($_SESSION['restore_data'])) {
     unset($_SESSION['restore_data']);
 }
 
-$pageTitles = ['dashboard' => 'Post Generator', 'training' => 'Training Data', 'profiles' => 'Profiles', 'hashtags' => 'Hashtags', 'history' => 'Post History'];
+$pageTitles = ['dashboard' => 'Post Generator', 'training' => 'Training Data', 'profiles' => 'Profiles', 'history' => 'Post History'];
 $pageTitle = $pageTitles[$view] ?? 'Post Generator';
 ?>
 <?php require_once __DIR__ . '/../inc/header.php'; ?>
@@ -483,17 +479,7 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
 .copy-btn { cursor:pointer; }
 .copy-btn:hover { color:var(--accent); }
 
-/* Hashtag pills */
-.pg-hashtag-area { margin-bottom:1.5rem; }
-.pg-hashtag-area h4 { font-family:'Orbitron',sans-serif; font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--accent); margin-bottom:0.75rem; }
-.pg-hashtag-pool { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
-.pg-hashtag-pill { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:6px; font-size:0.78rem; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.03); color:var(--text2); }
-.pg-hashtag-pill .ht-del { background:none; border:none; color:var(--text3); cursor:pointer; padding:0; font-size:0.8rem; line-height:1; }
-.pg-hashtag-pill .ht-del:hover { color:#ff4757; }
-.pg-hashtag-add { display:flex; gap:6px; align-items:center; }
-.pg-hashtag-add input { flex:1; max-width:200px; padding:6px 10px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); color:#fff; font-size:0.8rem; outline:none; }
-.pg-hashtag-add input:focus { border-color:var(--accent); }
-.pg-hashtag-add button { padding:6px 12px; border-radius:6px; border:none; background:var(--accent); color:#000; font-weight:600; font-size:0.78rem; cursor:pointer; }
+
 
 /* Filter pill for training */
 .pg-filter-bar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:1rem; align-items:center; }
@@ -535,6 +521,23 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
 /* Profile dropdown in dashboard */
 #profileSelect { max-width:100%; }
 
+/* Profile card grid */
+.profile-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:1rem; margin-bottom:1.5rem; }
+.profile-card { display:flex; align-items:center; gap:12px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius-md); padding:1rem; cursor:pointer; transition:all 0.15s; position:relative; }
+.profile-card:hover { border-color:rgba(255,255,255,0.2); }
+.profile-card-add { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; background:var(--bg2); border:2px dashed rgba(255,255,255,0.15); border-radius:var(--radius-md); padding:1.5rem; cursor:pointer; transition:all 0.15s; min-height:80px; color:var(--text3); }
+.profile-card-add:hover { border-color:var(--accent); color:var(--accent); background:rgba(200,255,0,0.03); }
+.profile-card-add i { font-size:1.5rem; }
+.profile-card-add span { font-size:0.8rem; font-weight:600; }
+.profile-card-avatar { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1rem; font-weight:700; color:#000; flex-shrink:0; }
+.profile-card-info { flex:1; min-width:0; }
+.profile-card-name { font-size:0.88rem; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.profile-card-desc { font-size:0.75rem; color:var(--text3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
+.profile-card-actions { display:flex; gap:2px; opacity:0; transition:opacity 0.12s; flex-shrink:0; }
+.profile-card:hover .profile-card-actions { opacity:1; }
+.profile-card-actions button { background:none; border:none; color:var(--text3); cursor:pointer; padding:4px; border-radius:4px; font-size:0.9rem; transition:all 0.12s; }
+.profile-card-actions button:hover { color:var(--text); background:rgba(255,255,255,0.06); }
+
 @media (max-width:480px) {
   .pg-mode-btn { padding:0.4rem 0.7rem; font-size:0.65rem; }
   .pg-profile-chip { padding:6px 10px; font-size:0.76rem; }
@@ -553,7 +556,6 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
     <a href="post-generator.php" class="pg-tab <?= $view==='dashboard'?'active':'' ?>"><i class="ti ti-sparkles"></i> Dashboard</a>
     <a href="post-generator.php?view=training" class="pg-tab <?= $view==='training'?'active':'' ?>"><i class="ti ti-database"></i> Training</a>
     <a href="post-generator.php?view=profiles" class="pg-tab <?= $view==='profiles'?'active':'' ?>"><i class="ti ti-users"></i> Profiles</a>
-    <a href="post-generator.php?view=hashtags" class="pg-tab <?= $view==='hashtags'?'active':'' ?>"><i class="ti ti-hash"></i> Hashtags</a>
     <a href="post-generator.php?view=history" class="pg-tab <?= $view==='history'?'active':'' ?>"><i class="ti ti-clock"></i> History</a>
 </div>
 
@@ -577,7 +579,7 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
             <?php $i++; endforeach; ?>
         </optgroup>
         <?php if (count($clientProfiles)): ?>
-        <optgroup label="🏪 Client">
+        <optgroup label="🏢 Business">
             <?php foreach ($clientProfiles as $pr): ?>
             <option value="<?= $pr['id'] ?>" data-length="<?= (int)($pr['post_length'] ?? 200) ?>" data-tone="<?= h($pr['tone']) ?>"><?= h($pr['name']) ?> · <?= h($pr['business_type']) ?> · <?= $pr['platform'] ?></option>
             <?php endforeach; ?>
@@ -622,19 +624,27 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
 
 <!-- Result posts -->
 <div id="gen-result" class="generate-result">
-    <div class="post-card" id="genResultBox" style="display:none">
+    <div class="post-card" id="genResultLinkedin" style="display:none;border-left:3px solid #0a66c2">
         <div class="post-header">
-            <span class="post-platform" id="genResultLabel" style="color:#0a66c2"><i class="ti ti-brand-linkedin"></i> <span id="genResultPlatform">Post</span></span>
+            <span class="post-platform" style="color:#0a66c2"><i class="ti ti-brand-linkedin"></i> LinkedIn Post</span>
             <div class="post-actions">
-                <button class="btn btn-secondary btn-sm" onclick="copyPostText()"><i class="ti ti-copy"></i></button>
+                <button class="btn btn-secondary btn-sm" onclick="copyPostText('linkedin')"><i class="ti ti-copy"></i></button>
                 <button class="btn btn-success btn-sm" onclick="publishGenPost()"><i class="ti ti-check"></i> Publish</button>
             </div>
         </div>
-        <div class="post-content"><textarea id="genResultContent" rows="5"></textarea></div>
-        <div class="post-meta"><span id="genResultMeta">Hashtags will be appended on publish</span></div>
-        <input type="hidden" id="gen-result-id" value="0">
-        <input type="hidden" id="gen-result-platform" value="">
+        <div class="post-content"><textarea id="genResultContentLinkedin" rows="5"></textarea></div>
     </div>
+    <div class="post-card" id="genResultFacebook" style="display:none;border-left:3px solid #1877f2">
+        <div class="post-header">
+            <span class="post-platform" style="color:#1877f2"><i class="ti ti-brand-facebook"></i> Facebook Post</span>
+            <div class="post-actions">
+                <button class="btn btn-secondary btn-sm" onclick="copyPostText('facebook')"><i class="ti ti-copy"></i></button>
+                <button class="btn btn-success btn-sm" onclick="publishGenPost()"><i class="ti ti-check"></i> Publish</button>
+            </div>
+        </div>
+        <div class="post-content"><textarea id="genResultContentFacebook" rows="5"></textarea></div>
+    </div>
+    <input type="hidden" id="gen-result-id" value="0">
 </div>
 
 <div style="margin-top:2rem">
@@ -725,160 +735,53 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
 
 <?php elseif ($view === 'profiles'): ?>
 
-<div class="card" style="margin-bottom:1.5rem">
-    <h3 style="font-family:'Orbitron',sans-serif;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-bottom:1rem"><i class="ti ti-plus"></i> Add Profile</h3>
-    <form method="post" action="post-generator.php">
-        <input type="hidden" name="action" value="profile_add">
+<div class="profile-grid">
+    <!-- Add Profile card -->
+    <div class="profile-card-add" onclick="openAddProfileModal()">
+        <i class="ti ti-plus"></i>
+        <span>Add Profile</span>
+    </div>
 
-        <div class="form-group">
-            <label>Profile Type</label>
-            <div class="type-toggle">
-                <input type="radio" name="type" value="personal" id="addTypePersonal" checked onchange="toggleClientFields('add')">
-                <label for="addTypePersonal">👤 Personal</label>
-                <input type="radio" name="type" value="client" id="addTypeClient" onchange="toggleClientFields('add')">
-                <label for="addTypeClient">🏪 Client</label>
-            </div>
+    <?php foreach ($profiles as $pr):
+        $isClient = ($pr['type'] ?? 'personal') === 'client';
+        $avatarLetter = mb_strtoupper(mb_substr($pr['name'], 0, 1));
+        $desc = $isClient ? ($pr['business_type'] ?? '') : ($pr['niche'] ?? '');
+        $color = $pr['color'] ?: '#c8f135';
+    ?>
+    <div class="profile-card" onclick="editProfile(<?= $pr['id'] ?>)">
+        <div class="profile-card-avatar" style="background:<?= h($color) ?>"><?= h($avatarLetter) ?></div>
+        <div class="profile-card-info">
+            <div class="profile-card-name"><?= h($pr['name']) ?></div>
+            <div class="profile-card-desc"><?= h(mb_strimwidth($desc, 0, 40, '...')) ?></div>
         </div>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label>Profile Name</label>
-                <input class="form-control" name="name" placeholder="e.g. Elon Musk" required>
-            </div>
-            <div class="form-group">
-                <label>Platform</label>
-                <select class="form-control" name="platform" required>
-                    <?php foreach ($platforms as $pk => $pv): ?>
-                    <option value="<?= $pk ?>"><?= h($pv['label']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+        <div class="profile-card-actions">
+            <button onclick="event.stopPropagation();editProfile(<?= $pr['id'] ?>)" title="Edit"><i class="ti ti-pencil"></i></button>
+            <button onclick="event.stopPropagation();deleteProfile(<?= $pr['id'] ?>)" title="Delete"><i class="ti ti-trash"></i></button>
         </div>
-
-        <div class="client-fields" id="addClientFields" style="display:none">
-            <div class="form-group">
-                <label>Business Type</label>
-                <input class="form-control" name="business_type" placeholder="e.g. Organic Food Store, EdTech Platform">
-            </div>
-            <div class="form-group">
-                <label>Target Audience</label>
-                <textarea class="form-control" name="target_audience" rows="2" placeholder="e.g. health-conscious urban Bangladeshis, mothers, age 25-45"></textarea>
-            </div>
-            <div class="form-group">
-                <label>Brand Voice</label>
-                <textarea class="form-control" name="brand_voice" rows="2" placeholder="e.g. warm, friendly, trustworthy, natural, community-focused"></textarea>
-            </div>
-            <div class="form-group">
-                <label>Avoid Topics</label>
-                <textarea class="form-control" name="avoid_topics" rows="2" placeholder="e.g. politics, religion, competitors"></textarea>
-            </div>
-        </div>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label>Language</label>
-                <select class="form-control" name="language">
-                    <option value="english">English</option>
-                    <option value="bangla">Bangla</option>
-                    <option value="mixed">Mixed (Banglish)</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Default Tone</label>
-                <select class="form-control" name="tone">
-                    <option value="professional">Professional</option>
-                    <option value="semi-professional" selected>Semi-Professional</option>
-                    <option value="casual">Casual</option>
-                    <option value="humorous">Humorous</option>
-                </select>
-            </div>
-        </div>
-        <div class="form-group">
-            <label>Niche <span class="text-muted">(comma-separated topics)</span></label>
-            <input class="form-control" name="niche" placeholder="e.g. Digital marketing, freelancing, agency growth" value="Digital marketing, agency, freelancing">
-        </div>
-        <div class="form-group">
-            <label>Post Length</label>
-            <div class="length-options">
-                <input type="radio" name="post_length" value="100" id="addLen100">
-                <label for="addLen100"><span>Short</span><small>~100 words</small></label>
-                <input type="radio" name="post_length" value="200" id="addLen200" checked>
-                <label for="addLen200"><span>Medium</span><small>~200 words</small></label>
-                <input type="radio" name="post_length" value="300" id="addLen300">
-                <label for="addLen300"><span>Long</span><small>~300 words</small></label>
-            </div>
-        </div>
-        <div class="form-row">
-            <div class="form-group">
-                <label>Profile URL</label>
-                <input class="form-control" name="profile_url" placeholder="https://linkedin.com/in/...">
-            </div>
-            <div class="form-group">
-                <label>Color</label>
-                <input class="form-control" name="color" type="color" value="#c8f135" style="height:38px;padding:4px">
-            </div>
-        </div>
-        <div class="form-group">
-            <label>Notes <span class="text-muted">(style notes)</span></label>
-            <textarea class="form-control" name="notes" rows="2" placeholder="e.g. Posts are conversational, uses storytelling..."></textarea>
-        </div>
-        <div class="form-actions">
-            <button type="submit" class="btn btn-primary"><i class="ti ti-device-floppy"></i> Save Profile</button>
-        </div>
-    </form>
+    </div>
+    <?php endforeach; ?>
 </div>
 
-<?php
-$personalProfiles = []; $clientProfiles = [];
-foreach ($profiles as $p) {
-    if (($p['type'] ?? 'personal') === 'client') $clientProfiles[] = $p;
-    else $personalProfiles[] = $p;
-}
-?>
-
-<div class="card" style="margin-bottom:1.5rem">
-    <h4 style="font-family:'Orbitron',sans-serif;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-bottom:0.75rem">👤 Personal Profiles</h4>
-    <div class="table-wrap">
-        <table>
-            <thead><tr><th>Name</th><th>Platform</th><th>Language</th><th>Tone</th><th>Length</th><th style="text-align:right">Action</th></tr></thead>
-            <tbody>
-                <?php foreach ($personalProfiles as $pr): ?>
-                <tr>
-                    <td><strong style="color:var(--text)"><?= h($pr['name']) ?></strong></td>
-                    <td><span style="font-size:0.6rem;color:<?= h(plat($pr['platform'],'color')) ?>"><i class="ti <?= h(plat($pr['platform'],'icon')) ?>"></i> <?= h(plat($pr['platform'],'label') ?: $pr['platform']) ?></span></td>
-                    <td class="text-muted"><?= $pr['language'] ?></td>
-                    <td class="text-muted"><?= $pr['tone'] ?></td>
-                    <td class="text-muted"><?= (int)($pr['post_length'] ?? 200) ?>w</td>
-                    <td style="text-align:right"><button class="btn btn-secondary btn-sm" onclick="editProfile(<?= $pr['id'] ?>)" style="padding:3px 8px;margin-right:4px"><i class="ti ti-pencil"></i></button><button class="btn btn-danger btn-sm" onclick="deleteProfile(<?= $pr['id'] ?>)"><i class="ti ti-trash"></i></button></td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+<!-- Add Profile Type Selector -->
+<div class="modal-overlay" id="addProfileModal">
+    <div class="modal" style="max-width:380px;text-align:center">
+        <h3 class="modal-title" style="margin-bottom:0.5rem">Select Profile Type</h3>
+        <p style="color:var(--text3);font-size:0.82rem;margin-bottom:1.25rem">What kind of profile do you want to create?</p>
+        <div style="display:flex;gap:12px">
+            <button onclick="openAddForm('personal')" style="flex:1;padding:1.25rem 1rem;border-radius:var(--radius-md);border:1px solid var(--border);background:var(--bg3);color:var(--text);cursor:pointer;font-size:1rem;font-weight:600;transition:all 0.15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor=''">
+                <div style="font-size:2rem;margin-bottom:0.5rem">👤</div>
+                <div>Personal</div>
+            </button>
+            <button onclick="openAddForm('client')" style="flex:1;padding:1.25rem 1rem;border-radius:var(--radius-md);border:1px solid var(--border);background:var(--bg3);color:var(--text);cursor:pointer;font-size:1rem;font-weight:600;transition:all 0.15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor=''">
+                <div style="font-size:2rem;margin-bottom:0.5rem">🏢</div>
+                <div>Business</div>
+            </button>
+        </div>
+        <div style="margin-top:1rem">
+            <button class="btn btn-secondary btn-sm" onclick="closeAddProfileModal()">Cancel</button>
+        </div>
     </div>
 </div>
-
-<?php if (count($clientProfiles)): ?>
-<div class="card">
-    <h4 style="font-family:'Orbitron',sans-serif;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-bottom:0.75rem">🏪 Client Profiles</h4>
-    <div class="table-wrap">
-        <table>
-            <thead><tr><th>Name</th><th>Business</th><th>Platform</th><th>Language</th><th>Tone</th><th style="text-align:right">Action</th></tr></thead>
-            <tbody>
-                <?php foreach ($clientProfiles as $pr): ?>
-                <tr>
-                    <td><strong style="color:var(--text)"><?= h($pr['name']) ?></strong></td>
-                    <td class="text-muted" style="font-size:0.78rem"><?= h($pr['business_type'] ?: '-') ?></td>
-                    <td><span style="font-size:0.6rem;color:<?= h(plat($pr['platform'],'color')) ?>"><i class="ti <?= h(plat($pr['platform'],'icon')) ?>"></i> <?= h(plat($pr['platform'],'label') ?: $pr['platform']) ?></span></td>
-                    <td class="text-muted"><?= $pr['language'] ?></td>
-                    <td class="text-muted"><?= $pr['tone'] ?></td>
-                    <td style="text-align:right"><button class="btn btn-secondary btn-sm" onclick="editProfile(<?= $pr['id'] ?>)" style="padding:3px 8px;margin-right:4px"><i class="ti ti-pencil"></i></button><button class="btn btn-danger btn-sm" onclick="deleteProfile(<?= $pr['id'] ?>)"><i class="ti ti-trash"></i></button></td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
-</div>
-<?php endif; ?>
 
 <div class="modal-overlay" id="profileModal">
     <div class="modal modal-wide">
@@ -892,7 +795,7 @@ foreach ($profiles as $p) {
                     <input type="radio" name="edit-type" value="personal" id="editTypePersonal" onchange="toggleClientFields('edit')">
                     <label for="editTypePersonal">👤 Personal</label>
                     <input type="radio" name="edit-type" value="client" id="editTypeClient" onchange="toggleClientFields('edit')">
-                    <label for="editTypeClient">🏪 Client</label>
+                    <label for="editTypeClient">🏢 Business</label>
                 </div>
             </div>
 
@@ -985,23 +888,6 @@ foreach ($profiles as $p) {
         </form>
     </div>
 </div>
-
-<?php elseif ($view === 'hashtags'): ?>
-
-<?php foreach ($platforms as $pk => $pv): ?>
-<div class="pg-hashtag-area">
-    <h4 style="color:<?= h($pv['color']) ?>"><i class="ti <?= h($pv['icon']) ?>"></i> <?= h($pv['label']) ?> Hashtags</h4>
-    <div class="pg-hashtag-pool" id="<?= $pk ?>HashPool">
-        <?php foreach ($hashtagsByPlatform[$pk] ?? [] as $h): ?>
-        <span class="pg-hashtag-pill"><?= h($h['tag']) ?> <button class="ht-del" onclick="deleteHashtag(<?= $h['id'] ?>,this)">✕</button></span>
-        <?php endforeach; ?>
-    </div>
-    <div class="pg-hashtag-add">
-        <input type="text" id="<?= $pk ?>HashInput" placeholder="#AddTag" onkeydown="if(event.key==='Enter'){event.preventDefault();addHashtag('<?= $pk ?>')}">
-        <button onclick="addHashtag('<?= $pk ?>')">Add</button>
-    </div>
-</div>
-<?php endforeach; ?>
 
 <?php elseif ($view === 'history'): ?>
 
@@ -1218,6 +1104,7 @@ function callGeneratePosts(topic, hookType, done) {
     fd.append('hook_type', hookType);
     fd.append('profile_id', selectedProfileId);
     fd.append('selected_tone', getActiveTone());
+    fd.append('selected_length', getActiveLength());
     fd.append('training_ids', '[]');
 
     fetch('post-generator.php', { method: 'POST', body: fd })
@@ -1237,20 +1124,20 @@ function callGeneratePosts(topic, hookType, done) {
 function showPostResults(data) {
     document.getElementById('gen-result').classList.add('show');
     currentPostId = data.id;
-    var platform = data.platform || 'linkedin';
-
-    var box = document.getElementById('genResultBox');
-    var label = document.getElementById('genResultLabel');
-    var nameEl = document.getElementById('genResultPlatform');
-
-    box.style.display = 'block';
-    box.style.borderLeftColor = platformColors[platform] || '#0a66c2';
-    label.style.color = platformColors[platform] || '#0a66c2';
-    label.innerHTML = (platformIcons[platform] || 'ti ti-brand-generic') + ' ' + (platformLabels[platform] || platform) + ' Post</i>';
-    nameEl.textContent = platformLabels[platform] || platform;
-    document.getElementById('genResultContent').value = data.content || '';
     document.getElementById('gen-result-id').value = data.id;
-    document.getElementById('gen-result-platform').value = platform;
+
+    var liBox = document.getElementById('genResultLinkedin');
+    var fbBox = document.getElementById('genResultFacebook');
+
+    if (data.linkedin) {
+        liBox.style.display = 'block';
+        document.getElementById('genResultContentLinkedin').value = data.linkedin;
+    } else { liBox.style.display = 'none'; }
+
+    if (data.facebook) {
+        fbBox.style.display = 'block';
+        document.getElementById('genResultContentFacebook').value = data.facebook;
+    } else { fbBox.style.display = 'none'; }
 }
 
 var platformColors = {
@@ -1271,8 +1158,9 @@ var platformLabels = {
     telegram: 'Telegram', whatsapp: 'WhatsApp'
 };
 
-function copyPostText() {
-    var textarea = document.getElementById('genResultContent');
+function copyPostText(platform) {
+    var id = platform === 'facebook' ? 'genResultContentFacebook' : 'genResultContentLinkedin';
+    var textarea = document.getElementById(id);
     navigator.clipboard.writeText(textarea.value).then(function() { showToast('Copied!'); });
 }
 
@@ -1340,13 +1228,44 @@ function editProfile(id) {
     });
 }
 
+function openAddProfileModal() {
+    document.getElementById('addProfileModal').classList.add('open');
+}
+
+function closeAddProfileModal() {
+    document.getElementById('addProfileModal').classList.remove('open');
+}
+
+function openAddForm(type) {
+    closeAddProfileModal();
+    document.getElementById('edit-profile-id').value = '0';
+    document.getElementById('editTypePersonal').checked = type === 'personal';
+    document.getElementById('editTypeClient').checked = type === 'client';
+    document.getElementById('editClientFields').style.display = type === 'client' ? 'block' : 'none';
+    document.getElementById('edit-profile-name').value = '';
+    document.getElementById('edit-profile-platform').value = 'linkedin';
+    document.getElementById('edit-profile-language').value = 'english';
+    document.getElementById('edit-profile-tone').value = 'semi-professional';
+    document.getElementById('edit-profile-niche').value = '';
+    document.getElementById('edit-profile-url').value = '';
+    document.getElementById('edit-profile-color').value = '#c8f135';
+    document.getElementById('edit-profile-notes').value = '';
+    document.getElementById('edit-business-type').value = '';
+    document.getElementById('edit-target-audience').value = '';
+    document.getElementById('edit-brand-voice').value = '';
+    document.getElementById('edit-avoid-topics').value = '';
+    document.getElementById('editLen200').checked = true;
+    document.getElementById('profileModal').classList.add('open');
+}
+
 function closeProfileModal() { document.getElementById('profileModal').classList.remove('open'); }
 
 function saveProfile(e) {
     e.preventDefault();
     var id = document.getElementById('edit-profile-id').value;
+    var isAdd = id === '0';
     var fd = new FormData();
-    fd.append('action', 'profile_update');
+    fd.append('action', isAdd ? 'profile_add' : 'profile_update');
     fd.append('id', id);
     fd.append('name', document.getElementById('edit-profile-name').value);
     fd.append('platform', document.getElementById('edit-profile-platform').value);
@@ -1362,7 +1281,7 @@ function saveProfile(e) {
     fd.append('target_audience', document.getElementById('edit-target-audience').value);
     fd.append('brand_voice', document.getElementById('edit-brand-voice').value);
     fd.append('avoid_topics', document.getElementById('edit-avoid-topics').value);
-    fetch('post-generator.php', { method: 'POST', body: fd })
+    fetch('post-generator.php', { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
     .then(function(r) { return r.json(); })
     .then(function(j) { if (j.ok) { closeProfileModal(); location.reload(); } });
 }
@@ -1422,47 +1341,11 @@ document.addEventListener('DOMContentLoaded', function() {
     var content = <?= json_encode($restoreContent) ?>;
     if (content) {
         document.getElementById('gen-result').classList.add('show');
-        document.getElementById('genResultBox').style.display = 'block';
-        document.getElementById('genResultContent').value = content;
+        document.getElementById('genResultLinkedin').style.display = 'block';
+        document.getElementById('genResultContentLinkedin').value = content;
     }
 });
 <?php endif; ?>
-
-// Hashtag functions
-function addHashtag(platform) {
-    var input = document.getElementById(platform + 'HashInput');
-    var tag = input.value.trim();
-    if (!tag) return;
-    if (!tag.startsWith('#')) tag = '#' + tag;
-    var fd = new FormData();
-    fd.append('action', 'hashtag_add');
-    fd.append('platform', platform);
-    fd.append('tag', tag);
-    var pool = document.getElementById(platform + 'HashPool');
-    fetch('post-generator.php', { method: 'POST', body: fd })
-    .then(function(r) { return r.json(); })
-    .then(function(j) {
-        if (j.ok) {
-            var pill = document.createElement('span');
-            pill.className = 'pg-hashtag-pill';
-            pill.innerHTML = tag + ' <button class="ht-del" onclick="deleteHashtag(' + j.id + ',this)">✕</button>';
-            pool.appendChild(pill);
-            input.value = '';
-            showToast('Hashtag added');
-        }
-    });
-}
-
-function deleteHashtag(id, btn) {
-    var fd = new FormData();
-    fd.append('action', 'hashtag_delete');
-    fd.append('id', id);
-    fetch('post-generator.php', { method: 'POST', body: fd })
-    .then(function(r) { return r.json(); })
-    .then(function(j) {
-        if (j.ok) { btn.closest('.pg-hashtag-pill').remove(); showToast('Removed'); }
-    });
-}
 
 // Training filter
 function filterTraining(el, id) {
@@ -1477,6 +1360,7 @@ function filterTraining(el, id) {
 function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 document.getElementById('editModal').addEventListener('click', function(e) { if (e.target === this) closeEditModal(); });
+document.getElementById('addProfileModal').addEventListener('click', function(e) { if (e.target === this) closeAddProfileModal(); });
 document.getElementById('profileModal').addEventListener('click', function(e) { if (e.target === this) closeProfileModal(); });
 
 </script>
