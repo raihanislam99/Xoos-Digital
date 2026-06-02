@@ -172,21 +172,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $subject = trim($_POST['subject']) ?: 'Your Invoice';
         $message = trim($_POST['message']) ?: 'Please find your invoice attached.';
 
-        // Generate PDF first
         $pdfUrl = ADMIN_URL . '/pdf-gen.php?type=invoice&id=' . $id;
         
-        // Send via mail function (simple)
         $headers = "From: " . (get_setting('smtp_user') ?: 'noreply@' . $_SERVER['HTTP_HOST']) . "\r\n";
         $headers .= "MIME-Version: 1.0\r\n";
         $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
 
         $body = nl2br(h($message));
-        $body .= '<br><br><a href="' . $pdfUrl . '">Download Invoice</a>';
+        $body .= '<br><br><a href="' . $pdfUrl . '">View Invoice</a>';
 
         $sent = @mail($to, $subject, $body, $headers);
 
         if ($sent) {
             $pdo->prepare("UPDATE invoices SET status = 'sent' WHERE id = ?")->execute([$id]);
+            json_response(['ok' => true]);
+        } else {
+            json_response(['ok' => false, 'error' => 'Email could not be sent. Check SMTP settings.']);
+        }
+        exit;
+    }
+
+    if ($action === 'email_quote') {
+        $id = (int)$_POST['id'];
+        $to = trim($_POST['to']);
+        $subject = trim($_POST['subject']) ?: 'Your Quotation';
+        $message = trim($_POST['message']) ?: 'Please find your quotation attached.';
+
+        $pdfUrl = ADMIN_URL . '/pdf-gen.php?type=quote&id=' . $id;
+        
+        $headers = "From: " . (get_setting('smtp_user') ?: 'noreply@' . $_SERVER['HTTP_HOST']) . "\r\n";
+        $headers .= "MIME-Version: 1.0\r\n";
+        $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+
+        $body = nl2br(h($message));
+        $body .= '<br><br><a href="' . $pdfUrl . '">View Quotation</a>';
+
+        $sent = @mail($to, $subject, $body, $headers);
+
+        if ($sent) {
+            $pdo->prepare("UPDATE quotations SET status = 'sent' WHERE id = ?")->execute([$id]);
             json_response(['ok' => true]);
         } else {
             json_response(['ok' => false, 'error' => 'Email could not be sent. Check SMTP settings.']);
@@ -386,6 +410,7 @@ unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
                     <td style="text-align:right">
                         <a href="?edit_quote=<?= $q['id'] ?>" class="btn btn-secondary btn-sm" style="padding:4px 8px"><i class="ti ti-pencil"></i></a>
                         <a href="<?= ADMIN_URL ?>/pdf-gen.php?type=quote&id=<?= $q['id'] ?>" target="_blank" class="btn btn-secondary btn-sm" style="padding:4px 8px"><i class="ti ti-file-download"></i></a>
+                        <button class="btn btn-secondary btn-sm" onclick="emailQuote(<?= $q['id'] ?>)" style="padding:4px 8px"><i class="ti ti-mail"></i></button>
                         <button class="btn btn-danger btn-sm" onclick="deleteQuote(<?= $q['id'] ?>,'<?= h(addslashes($q['quote_number'])) ?>')" style="padding:4px 8px"><i class="ti ti-trash"></i></button>
                     </td>
                 </tr>
@@ -412,9 +437,10 @@ unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
 <!-- Email Modal -->
 <div class="modal-overlay" id="emailModal">
     <div class="modal modal-wide">
-        <h3 class="modal-title">Email Invoice</h3>
+        <h3 class="modal-title" id="email-modal-title">Email Invoice</h3>
         <form onsubmit="return sendEmail(event)">
-            <input type="hidden" id="email-inv-id" value="0">
+            <input type="hidden" id="email-doc-id" value="0">
+            <input type="hidden" id="email-doc-type" value="invoice">
             <div class="form-group">
                 <label>To</label>
                 <input class="form-control" id="email-to" type="email" required placeholder="client@example.com">
@@ -581,20 +607,29 @@ function updateInvoiceStatus(id, status) {
 }
 
 // ── Email ──
-function emailInvoice(id) {
-    document.getElementById('email-inv-id').value = id;
+function emailModalOpen(id, type) {
+    document.getElementById('email-doc-id').value = id;
+    document.getElementById('email-doc-type').value = type;
+    var label = type === 'quote' ? 'Quotation' : 'Invoice';
+    document.getElementById('email-modal-title').textContent = 'Email ' + label;
+    document.getElementById('email-subject').value = 'Your ' + label;
+    document.getElementById('email-message').value = 'Please find your ' + label.toLowerCase() + ' attached. Let us know if you have any questions.';
     document.getElementById('emailModal').classList.add('open');
 }
+function emailInvoice(id) { emailModalOpen(id, 'invoice'); }
+function emailQuote(id) { emailModalOpen(id, 'quote'); }
 function closeEmailModal() { document.getElementById('emailModal').classList.remove('open'); }
 function sendEmail(e) {
     e.preventDefault();
-    var id = document.getElementById('email-inv-id').value;
+    var id = document.getElementById('email-doc-id').value;
+    var type = document.getElementById('email-doc-type').value;
+    var action = type === 'quote' ? 'email_quote' : 'email_invoice';
     var fd = new FormData();
-    fd.append('action','email_invoice');
-    fd.append('id',id);
-    fd.append('to',document.getElementById('email-to').value);
-    fd.append('subject',document.getElementById('email-subject').value);
-    fd.append('message',document.getElementById('email-message').value);
+    fd.append('action', action);
+    fd.append('id', id);
+    fd.append('to', document.getElementById('email-to').value);
+    fd.append('subject', document.getElementById('email-subject').value);
+    fd.append('message', document.getElementById('email-message').value);
     fetch('quote-invoice.php',{method:'POST',body:fd})
     .then(function(r){return r.json()})
     .then(function(j){

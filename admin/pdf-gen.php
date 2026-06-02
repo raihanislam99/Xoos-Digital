@@ -199,7 +199,6 @@ body{font-family:'Inter','Segoe UI',Arial,sans-serif;background:#FFFFFF;color:#1
     <div class="header-right">
         <div class="doc-type"><?= htmlspecialchars($docTypeLabel) ?></div>
         <div class="doc-number-top"><?= htmlspecialchars($docNumberField) ?></div>
-        <div class="status-badge status-<?= htmlspecialchars(strtolower($status)) ?>"><?= htmlspecialchars($statusUp) ?></div>
     </div>
 </div>
 
