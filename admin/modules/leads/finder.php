@@ -42,13 +42,59 @@ $niches = ['Web Design Needed','Restaurant','Clinic/Doctor','Real Estate Agent',
                 <div class="form-group">
                     <label>Country</label>
                     <select class="form-control" id="f_country" style="font-size:0.82rem">
+                        <option value="">Any Country</option>
                         <option value="Bangladesh">Bangladesh</option>
                         <option value="India">India</option>
                         <option value="Pakistan">Pakistan</option>
                         <option value="Nepal">Nepal</option>
                         <option value="Sri Lanka">Sri Lanka</option>
+                        <option value="Maldives">Maldives</option>
+                        <option value="Bhutan">Bhutan</option>
+                        <option value="Myanmar">Myanmar</option>
                         <option value="USA">USA</option>
-                        <option value="UK">UK</option>
+                        <option value="UK">United Kingdom</option>
+                        <option value="Canada">Canada</option>
+                        <option value="Australia">Australia</option>
+                        <option value="UAE">UAE</option>
+                        <option value="Saudi Arabia">Saudi Arabia</option>
+                        <option value="Qatar">Qatar</option>
+                        <option value="Kuwait">Kuwait</option>
+                        <option value="Oman">Oman</option>
+                        <option value="Bahrain">Bahrain</option>
+                        <option value="Singapore">Singapore</option>
+                        <option value="Malaysia">Malaysia</option>
+                        <option value="Indonesia">Indonesia</option>
+                        <option value="Thailand">Thailand</option>
+                        <option value="Vietnam">Vietnam</option>
+                        <option value="Philippines">Philippines</option>
+                        <option value="China">China</option>
+                        <option value="Japan">Japan</option>
+                        <option value="South Korea">South Korea</option>
+                        <option value="Germany">Germany</option>
+                        <option value="France">France</option>
+                        <option value="Italy">Italy</option>
+                        <option value="Spain">Spain</option>
+                        <option value="Netherlands">Netherlands</option>
+                        <option value="Switzerland">Switzerland</option>
+                        <option value="Sweden">Sweden</option>
+                        <option value="Norway">Norway</option>
+                        <option value="Denmark">Denmark</option>
+                        <option value="Belgium">Belgium</option>
+                        <option value="Austria">Austria</option>
+                        <option value="Ireland">Ireland</option>
+                        <option value="Portugal">Portugal</option>
+                        <option value="Poland">Poland</option>
+                        <option value="Turkey">Turkey</option>
+                        <option value="Egypt">Egypt</option>
+                        <option value="Nigeria">Nigeria</option>
+                        <option value="South Africa">South Africa</option>
+                        <option value="Kenya">Kenya</option>
+                        <option value="Morocco">Morocco</option>
+                        <option value="Brazil">Brazil</option>
+                        <option value="Argentina">Argentina</option>
+                        <option value="Mexico">Mexico</option>
+                        <option value="Colombia">Colombia</option>
+                        <option value="Chile">Chile</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -83,7 +129,7 @@ $niches = ['Web Design Needed','Restaurant','Clinic/Doctor','Real Estate Agent',
             <div class="card" style="grid-column:1/-1;text-align:center;padding:3rem">
                 <i class="ti ti-search" style="font-size:2.5rem;color:var(--text3);display:block;margin-bottom:1rem"></i>
                 <p style="color:var(--text3);font-size:0.9rem">Select filters and click "Find Leads" to search for potential clients.</p>
-                <p style="color:var(--text3);font-size:0.78rem;margin-top:0.5rem">Powered by SerpAPI or manual CSV import.</p>
+                <p style="color:var(--text3);font-size:0.78rem;margin-top:0.5rem">Powered by Google Places API — real business data.</p>
             </div>
         </div>
         <div style="margin-top:1.5rem;padding:1rem;background:rgba(204,255,0,0.03);border:1px solid rgba(204,255,0,0.08);border-radius:12px;font-size:0.72rem;color:var(--text3);text-align:center">
@@ -130,7 +176,6 @@ $niches = ['Web Design Needed','Restaurant','Clinic/Doctor','Real Estate Agent',
 
 <script>
 let _csrf = '<?= csrf_token() ?>';
-let savedIds = [];
 
 document.querySelector('#finderForm select[name="niche"]')?.addEventListener('change', function() {
     document.getElementById('f_niche').value = this.value;
@@ -146,48 +191,33 @@ function searchLeads(e) {
     let keyword = document.getElementById('f_keyword').value;
     let country = document.getElementById('f_country').value;
 
-    // If SerpAPI key exists, use real search
-    // For now, generate simulated results based on niche
-    simulateResults(niche, city, country, keyword, btn);
-}
+    let fd = new URLSearchParams();
+    fd.append('niche', niche);
+    fd.append('city', city);
+    fd.append('country', country);
+    fd.append('keyword', keyword);
+    fd.append('max', '15');
 
-function simulateResults(niche, city, country, keyword, btn) {
-    let results = [];
-    let count = 5 + Math.floor(Math.random() * 8);
-
-    let exampleNames = {
-        'Restaurant': ['Spice Garden','Biryani House','Tandoori Nights','The Food Lab','Urban Cafe Bistro','Pizza Planet','Sushi Zen','Golden Dragon'],
-        'Clinic/Doctor': ['MediCare Clinic','HealthFirst Hospital','City Hospital','Green Life Clinic','Wellness Center','Prime Diagnostics'],
-        'Real Estate Agent': ['Property Hub','HomeFinder BD','Dream Homes Ltd','Estate Solutions','LandMark Properties','Urban Nest'],
-        'School/Coaching': ['Bright Future Academy','Elite Coaching Center','Smart Kids School','Learning Tree','Star Learners','Pathfinder Academy'],
-        'E-Commerce Store': ['ShopVerse BD','Trendy Mart','Daily Deals BD','Fashion Cart','Gadget Hub','Home Essentials'],
-        '': ['Tech Solutions BD','Prime Services Ltd','City Enterprise','Metro Services','Star Business Group','Royal Traders']
-    };
-
-    let names = exampleNames[niche] || exampleNames[''] || ['Business Corp','Enterprise Ltd','Solution Provider','Smart Services'];
-    let domains = ['com','bd','net','org','info'];
-
-    for (let i = 0; i < count; i++) {
-        let name = names[i % names.length] + (i >= names.length ? ' ' + (i+1) : '');
-        let hasWebsite = Math.random() > 0.4;
-        let hasEmail = Math.random() > 0.3;
-        let c = city || 'Dhaka';
-        results.push({
-            business_name: name,
-            niche: niche || 'General Business',
-            city: c,
-            country: country,
-            website: hasWebsite ? 'https://' + name.toLowerCase().replace(/[^a-z0-9]/g,'') + '.' + domains[i % domains.length] : '',
-            email: hasEmail ? 'info@' + name.toLowerCase().replace(/[^a-z0-9]/g,'') + '.' + domains[i % domains.length] : '',
-            phone: '+8801' + (Math.floor(Math.random() * 900000000) + 100000000),
-            has_website: hasWebsite ? 1 : 0,
-            lead_score: Math.floor(Math.random() * 60) + 20,
-            facebook: Math.random() > 0.5 ? 'facebook.com/' + name.toLowerCase().replace(/[^a-z0-9]/g,'') : '',
-        });
-    }
-
-    displayResults(results);
-    btn.disabled = false; btn.innerHTML = '<i class="ti ti-search"></i> Find Leads';
+    fetch('../api/leads_google.php', {method:'POST', body: fd})
+    .then(r => r.json())
+    .then(j => {
+        btn.disabled = false; btn.innerHTML = '<i class="ti ti-search"></i> Find Leads';
+        if (j.success) {
+            displayResults(j.data);
+        } else {
+            document.getElementById('finderResults').innerHTML = `
+                <div class="card" style="grid-column:1/-1;text-align:center;padding:2rem">
+                    <i class="ti ti-alert-triangle" style="font-size:2rem;color:var(--red);display:block;margin-bottom:1rem"></i>
+                    <p style="color:var(--red);font-size:0.85rem">${h(j.error)}</p>
+                    <p style="color:var(--text3);font-size:0.78rem;margin-top:0.5rem">Set up your Google Places API key in Settings > API & Integrations.</p>
+                    <button class="btn btn-primary btn-sm" style="margin-top:1rem" onclick="clearResults()">Dismiss</button>
+                </div>`;
+        }
+    })
+    .catch(() => {
+        btn.disabled = false; btn.innerHTML = '<i class="ti ti-search"></i> Find Leads';
+        showToast('Network error. Check console.', 'error');
+    });
 }
 
 function displayResults(results) {
@@ -195,32 +225,46 @@ function displayResults(results) {
     document.getElementById('resultCount').textContent = results.length;
     document.getElementById('bulkFinderBar').style.display = 'flex';
 
+    if (!results.length) {
+        container.innerHTML = `
+            <div class="card" style="grid-column:1/-1;text-align:center;padding:2rem">
+                <i class="ti ti-search-off" style="font-size:2rem;color:var(--text3);display:block;margin-bottom:1rem"></i>
+                <p style="color:var(--text3)">No results found. Try different filters.</p>
+            </div>`;
+        return;
+    }
+
     container.innerHTML = '';
-    results.forEach(function(r) {
-        let isSaved = savedIds.includes(r.business_name);
+    results.forEach(function(r, idx) {
         let card = document.createElement('div');
-        card.className = 'lead-card' + (isSaved ? ' saved' : '');
+        card.className = 'lead-card';
         card.dataset.name = r.business_name;
+        let hasWebsite = !!r.website;
+        let score = r.lead_score;
+        let stars = r.rating ? '★'.repeat(Math.round(r.rating)) + '☆'.repeat(5 - Math.round(r.rating)) + ' ' + r.rating : '';
+        let enc = function(s) { return (s||'').replace(/'/g,"\\'"); };
         card.innerHTML = `
             <h3>${h(r.business_name)}</h3>
             <div class="meta">
-                <span class="badge">${h(r.niche || 'General')}</span>
+                <span class="badge">${h(r.niche || (r.types && r.types.length ? r.types[0].replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : 'Business'))}</span>
                 <span style="color:var(--text3)">${h(r.city)}${r.country ? ', '+h(r.country) : ''}</span>
             </div>
-            <div class="row"><span>Website:</span> ${r.website ? '<span style="color:var(--green)">✓</span> <a href="'+h(r.website)+'" target="_blank" style="color:var(--accent);font-size:0.72rem">'+h(r.website)+'</a>' : '<span style="color:var(--red)">✗</span>'}</div>
-            <div class="row"><span>Email:</span> ${r.email ? '<span style="color:var(--green)">✓</span> '+h(r.email) : '<span style="color:var(--red)">✗</span>'}</div>
+            ${stars ? '<div style="font-size:0.75rem;color:var(--text3);margin-bottom:6px">'+stars+' ('+r.user_ratings_total+' reviews)</div>' : ''}
+            <div class="row"><span>Website:</span> ${r.website ? '<span style="color:var(--green)">✓</span> <a href="'+h(r.website)+'" target="_blank" style="color:var(--accent);font-size:0.72rem;word-break:break-all">'+h(r.website)+'</a>' : '<span style="color:var(--red)">✗</span>'}</div>
+            <div class="row"><span>Phone:</span> ${r.phone ? '<span style="color:var(--green)">✓</span> '+h(r.phone) : '<span style="color:var(--red)">✗</span>'}</div>
+            <div class="row" style="font-size:0.72rem;color:var(--text3)">${h(r.address)}</div>
             <div class="row">
                 <span>Score:</span>
-                <span style="font-weight:700;color:${r.lead_score > 60 ? 'var(--accent)' : (r.lead_score > 30 ? '#F59E0B' : '#ef4444')}">${r.lead_score}</span>
+                <span style="font-weight:700;color:${score > 60 ? 'var(--accent)' : (score > 30 ? '#F59E0B' : '#ef4444')}">${score}</span>
                 <div style="flex:1;height:4px;background:var(--bg3);border-radius:99px;overflow:hidden;margin-top:6px">
-                    <div style="width:${r.lead_score}%;height:100%;background:${r.lead_score > 60 ? 'var(--accent)' : (r.lead_score > 30 ? '#F59E0B' : '#ef4444')};border-radius:99px"></div>
+                    <div style="width:${score}%;height:100%;background:${score > 60 ? 'var(--accent)' : (score > 30 ? '#F59E0B' : '#ef4444')};border-radius:99px"></div>
                 </div>
             </div>
             <div style="display:flex;gap:6px;margin-top:10px">
-                <button class="btn btn-sm ${isSaved ? 'btn-success' : 'btn-primary'}" onclick="${isSaved ? '' : 'saveFinderLead(this,\''+h(r.business_name)+'\',\''+h(r.niche||'')+'\',\''+h(r.city||'')+'\',\''+h(r.country||'')+'\',\''+h(r.website||'')+'\',\''+h(r.email||'')+'\',\''+h(r.phone||'')+'\',\''+r.lead_score+'\','+r.has_website+')'}">
-                    <i class="ti ti-${isSaved ? 'check' : 'device-floppy'}"></i> ${isSaved ? 'Saved ✓' : 'Save to My Leads'}
+                <button class="btn btn-sm btn-primary" onclick="saveFinderLead(this,'${enc(r.business_name)}','${enc(r.niche||'')}','${enc(r.city||'')}','${enc(r.country||'')}','${enc(r.website||'')}','${enc(r.phone||'')}','${score}','${hasWebsite?1:0}')">
+                    <i class="ti ti-device-floppy"></i> Save to My Leads
                 </button>
-                ${r.website ? '<button class="btn btn-sm btn-ai" onclick="quickAudit(\''+h(r.website)+'\',\''+h(r.business_name)+'\',this)"><i class="ti ti-eye"></i> Audit</button>' : ''}
+                ${r.website ? '<button class="btn btn-sm btn-ai" onclick="quickAudit(\''+enc(r.website)+'\',\''+enc(r.business_name)+'\',this)"><i class="ti ti-eye"></i> Audit</button>' : ''}
             </div>
             <div class="quickAuditResult" style="margin-top:8px;display:none"></div>
         `;
@@ -228,7 +272,7 @@ function displayResults(results) {
     });
 }
 
-function saveFinderLead(btn, name, niche, city, country, website, email, phone, score, hasWebsite) {
+function saveFinderLead(btn, name, niche, city, country, website, phone, score, hasWebsite) {
     let fd = new URLSearchParams();
     fd.append('_csrf', _csrf);
     fd.append('action', 'quick_save');
@@ -237,18 +281,16 @@ function saveFinderLead(btn, name, niche, city, country, website, email, phone, 
     fd.append('city', city);
     fd.append('country', country);
     fd.append('website', website);
-    fd.append('email', email);
     fd.append('phone', phone);
     fd.append('lead_score', score);
     fd.append('has_website', hasWebsite);
-    fd.append('source', 'finder');
+    fd.append('source', 'google_places');
 
     fetch('../api/leads_save.php', {method:'POST', body: fd})
     .then(r=>r.json()).then(j=>{
         if (j.success) {
             btn.className = 'btn btn-sm btn-success';
             btn.innerHTML = '<i class="ti ti-check"></i> Saved ✓';
-            savedIds.push(name);
             btn.closest('.lead-card').classList.add('saved');
             btn.onclick = null;
             showToast('Lead saved!');
@@ -365,5 +407,9 @@ function h(s) {
     let d = document.createElement('div');
     d.textContent = s;
     return d.innerHTML;
+}
+function escAttr(s) {
+    if (!s) return '';
+    return s.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 </script>

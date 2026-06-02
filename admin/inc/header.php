@@ -414,6 +414,7 @@ try { $noteCount = (int)db_val("SELECT COUNT(*) FROM notes"); } catch (Exception
             align-items: center;
             justify-content: center;
             padding: 1rem;
+            overflow-y: auto;
             transition: all 0.3s;
         }
         .modal-overlay.open { display: flex; }
@@ -599,7 +600,7 @@ try { $noteCount = (int)db_val("SELECT COUNT(*) FROM notes"); } catch (Exception
             .table-wrap { border-radius: var(--radius-sm); }
             th, td { padding: 0.75rem 0.85rem; font-size: 0.78rem; }
             th { font-size: 0.62rem; }
-            .modal { padding: 1.25rem; max-width: 100%; margin: 0 0.5rem; }
+            .modal { padding: 1.25rem; max-width: 100%; margin: 0 0.5rem; max-height: 90vh; overflow-y: auto; }
             .modal-title { font-size: 0.85rem; }
             .modal-actions { flex-wrap: wrap; }
             .modal-actions .btn { flex: 1; min-width: 0; text-align: center; }
@@ -645,7 +646,7 @@ try { $noteCount = (int)db_val("SELECT COUNT(*) FROM notes"); } catch (Exception
             .page-header { margin-bottom: 1.25rem; }
             .card { padding: 1rem; border-radius: var(--radius-md); }
             th, td { padding: 0.6rem 0.65rem; font-size: 0.72rem; }
-            .modal { padding: 1rem; }
+            .modal { padding: 1rem; max-height: 85vh; overflow-y: auto; }
             .modal-title { font-size: 0.8rem; }
             .btn { padding: 0.5rem 0.9rem; font-size: 0.75rem; }
             .btn-sm { padding: 0.35rem 0.7rem; font-size: 0.68rem; }
@@ -763,6 +764,16 @@ try { $noteCount = (int)db_val("SELECT COUNT(*) FROM notes"); } catch (Exception
                 </a>
             <?php endforeach; ?>
 
+            <?php
+            $qiCount = 0;
+            try { $qiCount = (int)db_val("SELECT COUNT(*) FROM quotations WHERE status='draft'"); } catch (Exception $e) {}
+            ?>
+            <a href="<?= ADMIN_URL ?>/modules/quote-invoice.php" class="v3-focus-item <?= $active === 'quote-invoice' ? 'active' : '' ?>">
+                <span class="fi-icon outreach"><i class="ti ti-receipt"></i></span>
+                <span class="fi-label">Quote & Invoice</span>
+                <span class="fi-badge <?= $qiCount > 0 ? 'has-items' : '' ?>"><?= $qiCount ?></span>
+            </a>
+
             <div class="nav-separator"></div>
 
             <!-- Messages (standalone) -->
@@ -784,7 +795,6 @@ try { $noteCount = (int)db_val("SELECT COUNT(*) FROM notes"); } catch (Exception
                 ['portfolio',    'Portfolio',     'ti ti-briefcase'],
                 ['brands',       'Brands',        'ti ti-building'],
                 ['media',        'Media Library', 'ti ti-photo'],
-                ['quote-invoice','Quote & Invoice','ti ti-receipt'],
             ];
             foreach ($contentItems as $n):
                 $isActive = $active === $n[0];

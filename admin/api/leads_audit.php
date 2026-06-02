@@ -65,7 +65,12 @@ if ($curlErr || $httpCode >= 400) {
     curl_close($ch);
     $audit['error'] = $curlErr ?: "HTTP $httpCode";
     $audit['lead_score'] = 60;
-    echo json_encode(['success' => true, 'data' => $audit]);
+// Save score & audit data back to lead
+if ($leadId) {
+    db_update('leads', ['lead_score' => $score, 'website_score' => round($score * 0.8), 'has_website' => 1, 'ai_audit' => json_encode($audit)], 'id = ?', [$leadId]);
+}
+
+echo json_encode(['success' => true, 'data' => $audit]);
     exit;
 }
 
@@ -127,6 +132,11 @@ if ($businessName) {
     } catch (Exception $e) {
         $audit['ai_summary'] = '';
     }
+}
+
+// Save score & audit data back to lead
+if ($leadId) {
+    db_update('leads', ['lead_score' => $score, 'website_score' => round($score * 0.8), 'has_website' => 1, 'ai_audit' => json_encode($audit)], 'id = ?', [$leadId]);
 }
 
 echo json_encode(['success' => true, 'data' => $audit]);

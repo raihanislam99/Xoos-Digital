@@ -42,6 +42,11 @@ function slugify($str) {
     return trim($str, '-');
 }
 
+function currency_symbol($code = 'USD') {
+    $map = ['USD' => '$', 'BDT' => '৳'];
+    return $map[$code] ?? '$';
+}
+
 function redirect($url) {
     header('Location: ' . $url);
     exit;
@@ -156,9 +161,10 @@ function db_insert($table, $data) {
 
 function db_update($table, $data, $where, $whereParams = []) {
     $safe = preg_replace('/[^a-z_]/', '', $table);
-    $sets = implode(', ', array_map(fn($c) => "{$c} = :{$c}", array_keys($data)));
+    $sets = implode(', ', array_map(fn($c) => "{$c} = ?", array_keys($data)));
+    $params = array_merge(array_values($data), $whereParams);
     $stmt = db()->prepare("UPDATE {$safe} SET {$sets} WHERE {$where}");
-    return $stmt->execute(array_merge($data, $whereParams));
+    return $stmt->execute($params);
 }
 
 function db_delete($table, $where, $params = []) {

@@ -34,18 +34,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $it['amount'] = $it['quantity'] * $it['rate'];
             $subtotal += $it['amount'];
         }
+        unset($it);
         $taxRate = (float)($_POST['tax_rate'] ?? 0);
         $taxAmount = $subtotal * ($taxRate / 100);
         $total = $subtotal + $taxAmount;
 
+        $currency = $_POST['currency'] ?? 'USD';
         if ($id) {
-            $stmt = $pdo->prepare("UPDATE quotations SET date=?, valid_until=?, client_name=?, client_email=?, client_phone=?, client_address=?, notes=?, terms=?, subtotal=?, tax_rate=?, tax_amount=?, total=? WHERE id=?");
-            $stmt->execute([$_POST['date'], $_POST['valid_until'], $_POST['client_name'], $_POST['client_email'], $_POST['client_phone'], $_POST['client_address'], $_POST['notes'], $_POST['terms'], $subtotal, $taxRate, $taxAmount, $total, $id]);
+            $stmt = $pdo->prepare("UPDATE quotations SET date=?, valid_until=?, client_name=?, client_email=?, client_phone=?, client_address=?, notes=?, terms=?, subtotal=?, tax_rate=?, tax_amount=?, total=?, currency=? WHERE id=?");
+            $stmt->execute([$_POST['date'], $_POST['valid_until'], $_POST['client_name'], $_POST['client_email'], $_POST['client_phone'], $_POST['client_address'], $_POST['notes'], $_POST['terms'], $subtotal, $taxRate, $taxAmount, $total, $currency, $id]);
             $pdo->prepare("DELETE FROM quotation_items WHERE quotation_id = ?")->execute([$id]);
         } else {
             $num = 'QTE-' . date('Y') . '-' . str_pad(((int)$pdo->query("SELECT COUNT(*) FROM quotations")->fetchColumn()) + 1, 4, '0', STR_PAD_LEFT);
-            $stmt = $pdo->prepare("INSERT INTO quotations (quote_number, date, valid_until, client_name, client_email, client_phone, client_address, notes, terms, subtotal, tax_rate, tax_amount, total) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
-            $stmt->execute([$num, $_POST['date'], $_POST['valid_until'], $_POST['client_name'], $_POST['client_email'], $_POST['client_phone'], $_POST['client_address'], $_POST['notes'], $_POST['terms'], $subtotal, $taxRate, $taxAmount, $total]);
+            $stmt = $pdo->prepare("INSERT INTO quotations (quote_number, date, valid_until, client_name, client_email, client_phone, client_address, notes, terms, subtotal, tax_rate, tax_amount, total, currency) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+            $stmt->execute([$num, $_POST['date'], $_POST['valid_until'], $_POST['client_name'], $_POST['client_email'], $_POST['client_phone'], $_POST['client_address'], $_POST['notes'], $_POST['terms'], $subtotal, $taxRate, $taxAmount, $total, $currency]);
             $id = $pdo->lastInsertId();
         }
 
@@ -82,18 +84,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $it['amount'] = $it['quantity'] * $it['rate'];
             $subtotal += $it['amount'];
         }
+        unset($it);
         $taxRate = (float)($_POST['tax_rate'] ?? 0);
         $taxAmount = $subtotal * ($taxRate / 100);
         $total = $subtotal + $taxAmount;
 
+        $currency = $_POST['currency'] ?? 'USD';
         if ($id) {
-            $stmt = $pdo->prepare("UPDATE invoices SET date=?, due_date=?, client_name=?, client_email=?, client_phone=?, client_address=?, notes=?, terms=?, subtotal=?, tax_rate=?, tax_amount=?, total=? WHERE id=?");
-            $stmt->execute([$_POST['date'], $_POST['due_date'], $_POST['client_name'], $_POST['client_email'], $_POST['client_phone'], $_POST['client_address'], $_POST['notes'], $_POST['terms'], $subtotal, $taxRate, $taxAmount, $total, $id]);
+            $stmt = $pdo->prepare("UPDATE invoices SET date=?, due_date=?, client_name=?, client_email=?, client_phone=?, client_address=?, notes=?, terms=?, subtotal=?, tax_rate=?, tax_amount=?, total=?, currency=? WHERE id=?");
+            $stmt->execute([$_POST['date'], $_POST['due_date'], $_POST['client_name'], $_POST['client_email'], $_POST['client_phone'], $_POST['client_address'], $_POST['notes'], $_POST['terms'], $subtotal, $taxRate, $taxAmount, $total, $currency, $id]);
             $pdo->prepare("DELETE FROM invoice_items WHERE invoice_id = ?")->execute([$id]);
         } else {
             $num = 'INV-' . date('Y') . '-' . str_pad(((int)$pdo->query("SELECT COUNT(*) FROM invoices")->fetchColumn()) + 1, 4, '0', STR_PAD_LEFT);
-            $stmt = $pdo->prepare("INSERT INTO invoices (invoice_number, date, due_date, client_name, client_email, client_phone, client_address, notes, terms, subtotal, tax_rate, tax_amount, total) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
-            $stmt->execute([$num, $_POST['date'], $_POST['due_date'], $_POST['client_name'], $_POST['client_email'], $_POST['client_phone'], $_POST['client_address'], $_POST['notes'], $_POST['terms'], $subtotal, $taxRate, $taxAmount, $total]);
+            $stmt = $pdo->prepare("INSERT INTO invoices (invoice_number, date, due_date, client_name, client_email, client_phone, client_address, notes, terms, subtotal, tax_rate, tax_amount, total, currency) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+            $stmt->execute([$num, $_POST['date'], $_POST['due_date'], $_POST['client_name'], $_POST['client_email'], $_POST['client_phone'], $_POST['client_address'], $_POST['notes'], $_POST['terms'], $subtotal, $taxRate, $taxAmount, $total, $currency]);
             $id = $pdo->lastInsertId();
         }
 
@@ -318,7 +322,7 @@ unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
                     <td><?= h($inv['client_name']) ?></td>
                     <td class="text-muted"><?= $inv['date'] ?></td>
                     <td style="<?= $overdue?'color:#ef4444;font-weight:700':'' ?>"><?= $inv['due_date'] ?: '-' ?></td>
-                    <td><strong>$<?= number_format($inv['total'],2) ?></strong></td>
+                    <td><strong><?= currency_symbol($inv['currency']??'USD') ?><?= number_format($inv['total'],2) ?></strong></td>
                     <td>
                         <select class="status-select-sm" onchange="updateInvoiceStatus(<?= $inv['id'] ?>,this.value)">
                             <option value="draft" <?= $inv['status']==='draft'?'selected':'' ?>>Draft</option>
@@ -370,7 +374,7 @@ unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
                     <td><?= h($q['client_name']) ?></td>
                     <td class="text-muted"><?= $q['date'] ?></td>
                     <td class="text-muted"><?= $q['valid_until'] ?: '-' ?></td>
-                    <td><strong>$<?= number_format($q['total'],2) ?></strong></td>
+                    <td><strong><?= currency_symbol($q['currency']??'USD') ?><?= number_format($q['total'],2) ?></strong></td>
                     <td>
                         <select class="status-select-sm" onchange="updateQuoteStatus(<?= $q['id'] ?>,this.value)">
                             <option value="draft" <?= $q['status']==='draft'?'selected':'' ?>>Draft</option>
@@ -433,6 +437,23 @@ unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
 
 <script>
 // ── Quote/Invoice helpers ──
+function qiSym() {
+    var f = document.querySelector('form[data-currency]');
+    if (!f) return '$';
+    var map = {USD:'$', BDT:'৳'};
+    return map[f.dataset.currency] || '$';
+}
+
+function updateCurrency(el) {
+    var f = el.closest('form');
+    f.dataset.currency = el.value;
+    calcTotal();
+    document.querySelectorAll('.items-table tbody tr .item-amt').forEach(function(c) {
+        var amt = parseFloat(c.textContent.replace(/[^0-9.-]/g,'')) || 0;
+        c.textContent = qiSym() + amt.toFixed(2);
+    });
+}
+
 function addItem(tableId) {
     var tbody = document.querySelector('#' + tableId + ' tbody');
     var tr = document.createElement('tr');
@@ -440,7 +461,7 @@ function addItem(tableId) {
         '<td><input class="form-control item-qty" name="item_qty[]" type="number" step="0.01" value="1" style="width:70px;padding:6px 8px;text-align:center" oninput="calcItem(this)"></td>' +
         '<td><input class="form-control" name="item_unit[]" placeholder="unit" style="width:50px;padding:6px 8px"></td>' +
         '<td><input class="form-control item-rate" name="item_rate[]" type="number" step="0.01" value="0" style="width:90px;padding:6px 8px;text-align:center" oninput="calcItem(this)"></td>' +
-        '<td class="item-amt">$0.00</td>' +
+        '<td class="item-amt">' + qiSym() + '0.00</td>' +
         '<td><span class="item-del" onclick="this.closest(\'tr\').remove();calcTotal()">&times;</span></td>';
     tbody.appendChild(tr);
 }
@@ -449,23 +470,24 @@ function calcItem(el) {
     var tr = el.closest('tr');
     var qty = parseFloat(tr.querySelector('.item-qty').value) || 0;
     var rate = parseFloat(tr.querySelector('.item-rate').value) || 0;
-    tr.querySelector('.item-amt').textContent = '$' + (qty * rate).toFixed(2);
+    tr.querySelector('.item-amt').textContent = qiSym() + (qty * rate).toFixed(2);
     calcTotal();
 }
 
 function calcTotal() {
+    var sym = qiSym();
     var rows = document.querySelectorAll('.items-table tbody tr');
     var sub = 0;
     rows.forEach(function(r) {
-        var txt = r.querySelector('.item-amt').textContent.replace('$','');
+        var txt = r.querySelector('.item-amt').textContent.replace(/[^0-9.-]/g,'');
         sub += parseFloat(txt) || 0;
     });
     var taxRate = parseFloat(document.querySelector('[name="tax_rate"]')?.value) || 0;
     var taxAmt = sub * (taxRate / 100);
     var total = sub + taxAmt;
-    document.getElementById('calc-subtotal').textContent = '$' + sub.toFixed(2);
-    document.getElementById('calc-tax').textContent = '$' + taxAmt.toFixed(2);
-    document.getElementById('calc-total').textContent = '$' + total.toFixed(2);
+    document.getElementById('calc-subtotal').textContent = sym + sub.toFixed(2);
+    document.getElementById('calc-tax').textContent = sym + taxAmt.toFixed(2);
+    document.getElementById('calc-total').textContent = sym + total.toFixed(2);
 }
 
 function collectItems(tableId) {
@@ -534,9 +556,7 @@ function escAttr(s) {
 
 // ── Save ──
 function saveQi(e, type) {
-    e.preventDefault();
-    var tableId = 'items-table';
-    document.getElementById('qi-items').value = JSON.stringify(collectItems(tableId));
+    document.getElementById('qi-items').value = JSON.stringify(collectItems('items-table'));
     return true;
 }
 
@@ -602,8 +622,9 @@ function uploadLogo(input) {
     .then(function(r) { return r.json(); })
     .then(function(j) {
         if (j.success) { document.querySelector('[name="logo"]').value = j.url; previewLogo(document.querySelector('[name="logo"]')); }
-        else alert('Upload failed');
-    });
+        else alert('Upload failed: ' + (j.error || 'unknown error'));
+    })
+    .catch(function(e) { alert('Upload error: ' + e.message); });
 }
 </script>
 <?php require_once __DIR__ . '/../inc/footer.php'; ?>

@@ -73,10 +73,19 @@ switch ($action) {
             $sent = smtp_send($host, $port, $user, $pass, $fromEmail, $fromName, $toEmail, $subject, $fullBody, $error);
         } else {
             // Fallback to mail()
+            $domain = substr(strrchr($fromEmail, '@'), 1);
+            $msgId = time() . '.' . uniqid() . '@' . $domain;
+            $date = date('r');
+            $unsubUrl = BASE_URL . '/unsubscribe?email=' . urlencode($toEmail);
+
             $headers = "From: $fromName <$fromEmail>\r\n";
             $headers .= "Reply-To: $fromEmail\r\n";
             $headers .= "MIME-Version: 1.0\r\n";
             $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+            $headers .= "Message-ID: <$msgId>\r\n";
+            $headers .= "Date: $date\r\n";
+            $headers .= "Precedence: bulk\r\n";
+            $headers .= "List-Unsubscribe: <$unsubUrl>\r\n";
             $sent = mail($toEmail, $subject, $fullBody, $headers);
             if (!$sent) $error = 'mail() function failed';
         }
@@ -196,10 +205,19 @@ function smtp_send($host, $port, $user, $pass, $fromEmail, $fromName, $toEmail, 
     fwrite($socket, "DATA\r\n");
     $log[] = fgets($socket, 512);
 
+    $domain = substr(strrchr($fromEmail, '@'), 1);
+    $msgId = time() . '.' . uniqid() . '@' . $domain;
+    $date = date('r');
+    $unsubUrl = BASE_URL . '/unsubscribe?email=' . urlencode($toEmail);
+
     $headers = "From: $fromName <$fromEmail>\r\n";
     $headers .= "Reply-To: $fromEmail\r\n";
     $headers .= "MIME-Version: 1.0\r\n";
     $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+    $headers .= "Message-ID: <$msgId>\r\n";
+    $headers .= "Date: $date\r\n";
+    $headers .= "Precedence: bulk\r\n";
+    $headers .= "List-Unsubscribe: <$unsubUrl>\r\n";
     $headers .= "Subject: $subject\r\n";
     $headers .= "X-Mailer: Xoos Digital Leads/1.0\r\n";
 

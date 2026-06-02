@@ -3,7 +3,7 @@
 $isEdit = isset($editQuote) && $editQuote !== null;
 $data = null;
 $items = [];
-$formAction = 'quote_invoice.php';
+$formAction = 'quote-invoice.php';
 $type = 'quote';
 
 if (isset($editInvoice) && $editInvoice !== null) {
@@ -11,7 +11,7 @@ if (isset($editInvoice) && $editInvoice !== null) {
     $data = $editInvoice;
     $items = $editInvoiceItems;
     $type = 'invoice';
-    $formAction = 'quote_invoice.php?view=invoices';
+    $formAction = 'quote-invoice.php?view=invoices';
 } elseif ($isEdit) {
     $data = $editQuote;
     $items = $editQuoteItems;
@@ -31,6 +31,8 @@ $taxRate = $data['tax_rate'] ?? 0;
 $subtotal = $data['subtotal'] ?? 0;
 $taxAmount = $data['tax_amount'] ?? 0;
 $total = $data['total'] ?? 0;
+$currency = $data['currency'] ?? 'USD';
+$currencySymbol = currency_symbol($currency);
 $docTitle = $type === 'invoice' ? 'Invoice' : 'Quotation';
 $docNumber = $data['invoice_number'] ?? $data['quote_number'] ?? ($type === 'invoice' ? 'INV-2025-0001' : 'QTE-2025-0001');
 $saveAction = $type === 'invoice' ? 'invoice_save' : 'quote_save';
@@ -59,7 +61,7 @@ $saveAction = $type === 'invoice' ? 'invoice_save' : 'quote_save';
     </div>
 </div>
 
-<form method="post" action="<?= $formAction ?>" onsubmit="return saveQi(event,'<?= $type ?>')">
+<form method="post" action="<?= $formAction ?>" onsubmit="return saveQi(event,'<?= $type ?>')" data-currency="<?= $currency ?>">
     <input type="hidden" name="action" value="<?= $saveAction ?>">
     <?php if ($isEdit): ?><input type="hidden" name="id" value="<?= $data['id'] ?>"><?php endif; ?>
     <input type="hidden" name="items" id="qi-items" value="">
@@ -95,6 +97,16 @@ $saveAction = $type === 'invoice' ? 'invoice_save' : 'quote_save';
         </div>
     </div>
 
+    <div class="form-row">
+        <div class="form-group">
+            <label>Currency</label>
+            <select class="form-control" name="currency" onchange="updateCurrency(this)" style="width:120px">
+                <option value="USD" <?= $currency==='USD'?'selected':'' ?>>$ USD</option>
+                <option value="BDT" <?= $currency==='BDT'?'selected':'' ?>>৳ BDT</option>
+            </select>
+        </div>
+    </div>
+
     <div class="form-group">
         <label>Line Items</label>
         <table class="items-table" id="items-table">
@@ -109,7 +121,7 @@ $saveAction = $type === 'invoice' ? 'invoice_save' : 'quote_save';
                         <td><input class="form-control item-qty" name="item_qty[]" type="number" step="0.01" value="<?= h($it['quantity']) ?>" style="width:70px;padding:6px 8px;text-align:center" oninput="calcItem(this)"></td>
                         <td><input class="form-control" name="item_unit[]" value="<?= h($it['unit']) ?>" style="width:50px;padding:6px 8px"></td>
                         <td><input class="form-control item-rate" name="item_rate[]" type="number" step="0.01" value="<?= h($it['rate']) ?>" style="width:90px;padding:6px 8px;text-align:center" oninput="calcItem(this)"></td>
-                        <td class="item-amt">$<?= number_format($it['amount'],2) ?></td>
+                        <td class="item-amt"><?= $currencySymbol ?><?= number_format($it['amount'],2) ?></td>
                         <td><span class="item-del" onclick="this.closest('tr').remove();calcTotal()">&times;</span></td>
                     </tr>
                     <?php endforeach; 
@@ -119,7 +131,7 @@ $saveAction = $type === 'invoice' ? 'invoice_save' : 'quote_save';
                     <td><input class="form-control item-qty" name="item_qty[]" type="number" step="0.01" value="1" style="width:70px;padding:6px 8px;text-align:center" oninput="calcItem(this)"></td>
                     <td><input class="form-control" name="item_unit[]" placeholder="hr" style="width:50px;padding:6px 8px"></td>
                     <td><input class="form-control item-rate" name="item_rate[]" type="number" step="0.01" value="0" style="width:90px;padding:6px 8px;text-align:center" oninput="calcItem(this)"></td>
-                    <td class="item-amt">$0.00</td>
+                    <td class="item-amt"><?= $currencySymbol ?>0.00</td>
                     <td><span class="item-del" onclick="this.closest('tr').remove();calcTotal()">&times;</span></td>
                 </tr>
                 <?php endif; ?>
@@ -136,9 +148,9 @@ $saveAction = $type === 'invoice' ? 'invoice_save' : 'quote_save';
     </div>
 
     <div style="text-align:right;margin:0.75rem 0;padding:0.75rem;background:var(--bg3);border-radius:var(--radius-sm)">
-        <div style="font-size:0.85rem;color:var(--text2)">Subtotal: <strong id="calc-subtotal">$<?= number_format($subtotal,2) ?></strong></div>
-        <div style="font-size:0.85rem;color:var(--text2)">Tax: <strong id="calc-tax">$<?= number_format($taxAmount,2) ?></strong></div>
-        <div style="font-size:1.1rem;color:var(--text);margin-top:4px;border-top:2px solid var(--accent);padding-top:4px">Total: <strong id="calc-total">$<?= number_format($total,2) ?></strong></div>
+        <div style="font-size:0.85rem;color:var(--text2)">Subtotal: <strong id="calc-subtotal"><?= $currencySymbol ?><?= number_format($subtotal,2) ?></strong></div>
+        <div style="font-size:0.85rem;color:var(--text2)">Tax: <strong id="calc-tax"><?= $currencySymbol ?><?= number_format($taxAmount,2) ?></strong></div>
+        <div style="font-size:1.1rem;color:var(--text);margin-top:4px;border-top:2px solid var(--accent);padding-top:4px">Total: <strong id="calc-total"><?= $currencySymbol ?><?= number_format($total,2) ?></strong></div>
     </div>
 
     <div class="form-row">

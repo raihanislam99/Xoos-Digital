@@ -30,7 +30,7 @@ switch ($action) {
             'city' => substr(strip_tags(trim($_POST['city'] ?? '')), 0, 100),
             'country' => substr(strip_tags(trim($_POST['country'] ?? 'Bangladesh')), 0, 100),
             'google_maps_url' => substr(strip_tags(trim($_POST['google_maps_url'] ?? '')), 0, 500),
-            'has_website' => (int)(!empty($_POST['has_website'])),
+            'has_website' => (int)(!empty($_POST['website'])),
             'website_score' => (int)($_POST['website_score'] ?? 0),
             'lead_score' => (int)($_POST['lead_score'] ?? 0),
             'ai_audit' => strip_tags(trim($_POST['ai_audit'] ?? '')),
@@ -38,6 +38,21 @@ switch ($action) {
             'tags' => substr(strip_tags(trim($_POST['tags'] ?? '')), 0, 500),
             'notes' => strip_tags(trim($_POST['notes'] ?? '')),
         ];
+
+        // Auto-calculate lead score if not explicitly provided
+        if (empty($_POST['lead_score']) && empty($_POST['id'])) {
+            $score = 30;
+            if ($data['website']) $score += 15;
+            if ($data['email']) $score += 10;
+            if ($data['phone']) $score += 10;
+            if ($data['whatsapp']) $score += 5;
+            if ($data['facebook']) $score += 5;
+            if ($data['instagram']) $score += 5;
+            if ($data['owner_name']) $score += 5;
+            if ($data['city']) $score += 5;
+            if ($data['niche']) $score += 10;
+            $data['lead_score'] = max(0, min(100, $score));
+        }
 
         try {
             if ($id) {
@@ -47,8 +62,9 @@ switch ($action) {
                 $id = db_insert('leads', $data);
                 echo json_encode(['success' => true, 'message' => 'Lead saved', 'id' => $id]);
             }
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(500);
+            error_log('leads_save[save_lead]: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
         break;
@@ -66,6 +82,17 @@ switch ($action) {
             echo json_encode(['success' => false, 'error' => 'Business name required']);
             exit;
         }
+        // Auto-calculate lead score for new leads if not provided
+        if (!isset($data['lead_score']) && !$id) {
+            $score = 30;
+            if (!empty($data['website'])) $score += 15;
+            if (!empty($data['email'])) $score += 10;
+            if (!empty($data['phone'])) $score += 10;
+            if (!empty($data['owner_name'])) $score += 5;
+            if (!empty($data['city'])) $score += 5;
+            if (!empty($data['niche'])) $score += 10;
+            $data['lead_score'] = max(0, min(100, $score));
+        }
         try {
             if ($id) {
                 db_update('leads', $data, 'id = ?', [$id]);
@@ -74,7 +101,7 @@ switch ($action) {
                 $newId = db_insert('leads', $data);
                 echo json_encode(['success' => true, 'message' => 'Saved', 'id' => $newId]);
             }
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
@@ -89,7 +116,7 @@ switch ($action) {
         try {
             db_delete('leads', 'id = ?', [$id]);
             echo json_encode(['success' => true, 'message' => 'Deleted']);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
@@ -111,7 +138,7 @@ switch ($action) {
                 'content' => 'Status changed to ' . $status,
             ]);
             echo json_encode(['success' => true, 'message' => 'Status updated']);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
@@ -123,7 +150,7 @@ switch ($action) {
         try {
             db_update('leads', ['tags' => $tags], 'id = ?', [$id]);
             echo json_encode(['success' => true, 'message' => 'Tags updated']);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
@@ -147,7 +174,7 @@ switch ($action) {
                 db_update('leads', ['notes' => $existing . "\n" . $note], 'id = ?', [$id]);
             }
             echo json_encode(['success' => true, 'message' => 'Note added']);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
@@ -198,7 +225,7 @@ switch ($action) {
                 default:
                     echo json_encode(['success' => false, 'error' => 'Unknown bulk action']);
             }
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
@@ -214,7 +241,7 @@ switch ($action) {
             $val = (int)(!empty($_POST['blacklist']));
             db_update('leads', ['is_blacklisted' => $val], 'id = ?', [$id]);
             echo json_encode(['success' => true, 'message' => $val ? 'Blacklisted' : 'Removed from blacklist']);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
@@ -231,7 +258,7 @@ switch ($action) {
                 'content' => $note,
             ]);
             echo json_encode(['success' => true, 'message' => 'Reminder set']);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
@@ -257,7 +284,7 @@ switch ($action) {
                 $newId = db_insert('outreach_templates', $tplData);
                 echo json_encode(['success' => true, 'message' => 'Template saved', 'id' => $newId]);
             }
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
@@ -273,7 +300,7 @@ switch ($action) {
         try {
             db_delete('outreach_templates', 'id = ?', [$tplId]);
             echo json_encode(['success' => true, 'message' => 'Template deleted']);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }

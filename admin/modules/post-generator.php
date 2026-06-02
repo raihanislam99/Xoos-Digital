@@ -36,37 +36,27 @@ try {
     $pdo->exec("ALTER TABLE generated_posts ADD COLUMN IF NOT EXISTS linkedin_content TEXT");
     $pdo->exec("ALTER TABLE generated_posts ADD COLUMN IF NOT EXISTS facebook_content TEXT");
     $pdo->exec("ALTER TABLE generated_posts ADD COLUMN IF NOT EXISTS hashtags_used TEXT");
+    $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500) DEFAULT ''");
 } catch (Exception $e) { /* columns may already exist */ }
 
-// ── Seed default profiles ──
-$existingProfiles = $pdo->query("SELECT COUNT(*) FROM post_profiles")->fetchColumn();
-if (!$existingProfiles) {
-    $defaults = [
-        ['Jahidul Islam', 'linkedin', 'english', 'semi-professional', 'Digital marketing, agency, freelancing, personal brand', '#c8f135', '', 200, 'personal'],
-        ['Xoos Digital', 'linkedin', 'english', 'professional', 'Digital agency, web design, branding, marketing services', '#0a66c2', '', 200, 'personal'],
-        ['Personal Facebook', 'facebook', 'mixed', 'casual', 'Cricket, rajniti, trending topics, humor, lifestyle Bangladesh', '#1877f2', '', 200, 'personal'],
-        ['Xoos Digital Page', 'facebook', 'mixed', 'semi-professional', 'Web design, graphics, digital marketing for Bangladeshi businesses', '#4267B2', '', 200, 'personal'],
-        ['Jahidul Islam', 'instagram', 'mixed', 'casual', 'Digital marketing, lifestyle, Bangladesh, travel, food', '#e4405f', '', 200, 'personal'],
-        ['Xoos Digital', 'x', 'english', 'professional', 'Digital marketing, web design, branding, tech trends Bangladesh', '#000000', '', 200, 'personal'],
-        ['Jahidul Vlogs', 'youtube', 'mixed', 'casual', 'Digital marketing tutorials, freelancing tips, web design, Bangladesh', '#ff0000', '', 200, 'personal'],
-    ];
-    $stmt = $pdo->prepare("INSERT INTO post_profiles (name, platform, language, tone, niche, color, profile_url, post_length, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    foreach ($defaults as $d) $stmt->execute($d);
-}
+function fetch_og_image(string $url): string {
+    if (empty($url)) return '';
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT        => 8,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (compatible; XoosBot/1.0)',
+    ]);
+    $html = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($httpCode !== 200 || empty($html)) return '';
 
-// ── Seed client profiles ──
-$clientCheck = $pdo->query("SELECT COUNT(*) FROM post_profiles WHERE type='client'")->fetchColumn();
-if (!$clientCheck) {
-    $clients = [
-        ['Holy Basket', 'facebook', 'mixed', 'casual', 200, 'organic food, healthy eating, local produce, chemical-free lifestyle', '#4caf50', '', 'health-conscious urban Bangladeshis, mothers, age 25-45', 'warm, friendly, trustworthy, natural, community-focused', 'politics, religion, competitors, unhealthy food comparisons'],
-        ['Skill Planet', 'facebook', 'mixed', 'semi-professional', 200, 'air ticketing, visa processing, GDS training, aviation career, EdTech', '#2196f3', '', 'job seekers, fresh graduates, career changers, age 18-35 Bangladesh', 'motivating, career-focused, aspirational, practical', 'politics, unverified success claims, competitor institutes'],
-        ['Holy Basket', 'instagram', 'mixed', 'casual', 200, 'organic food, healthy eating, local produce, chemical-free lifestyle', '#4caf50', '', 'health-conscious urban Bangladeshis, mothers, age 25-45', 'warm, friendly, trustworthy, natural, community-focused', 'politics, religion, competitors, unhealthy food comparisons'],
-        ['TechTune BD', 'x', 'english', 'professional', 200, 'tech news, gadget reviews, software updates, Bangladesh tech scene', '#1da1f2', '', 'tech enthusiasts, developers, students, age 18-40 Bangladesh', 'informative, timely, trustworthy, neutral', 'politics, religion, spam, fake news'],
-        ['Cricket Bangla', 'reddit', 'mixed', 'casual', 200, 'Bangladesh cricket, BPL, international cricket, analysis, memes', '#ff4500', '', 'cricket fans, Bangladesh sports enthusiasts, age 18-45', 'passionate, fan-first, humorous, analytical', 'politics, religion, player bashing, hate speech'],
-        ['Xoos Tech Reviews', 'youtube', 'english', 'semi-professional', 200, 'web design tutorials, digital marketing tips, tech reviews, freelancing', '#ff0000', '', 'aspiring freelancers, small business owners, students Bangladesh', 'helpful, practical, step-by-step, encouraging', 'politics, religion, unverified claims, plagiarism'],
-    ];
-    $cstmt = $pdo->prepare("INSERT INTO post_profiles (name, platform, language, tone, post_length, niche, color, profile_url, target_audience, brand_voice, avoid_topics, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'client')");
-    foreach ($clients as $c) $cstmt->execute($c);
+    if (preg_match('/<meta\s+property="og:image"\s+content="([^"]+)"/i', $html, $m)) return html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    if (preg_match('/<meta\s+content="([^"]+)"\s+property="og:image"/i', $html, $m)) return html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    return '';
 }
 
 // ── AJAX handlers ──
@@ -86,15 +76,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         json_response(['ok' => true]);
     }
 
+    if ($action === 'train_get') {
+        $stmt = $pdo->prepare("SELECT * FROM post_training_data WHERE id = ?");
+        $stmt->execute([(int)$_POST['id']]);
+        $td = $stmt->fetch();
+        if (!$td) json_response(['ok' => false, 'error' => 'Not found'], 404);
+        json_response(['ok' => true, 'data' => $td]);
+    }
+
+    if ($action === 'train_update') {
+        $stmt = $pdo->prepare("UPDATE post_training_data SET content = ?, type = ?, profile_id = ? WHERE id = ?");
+        $stmt->execute([trim($_POST['content']), $_POST['type'] ?? 'topic', $_POST['profile_id'] ? (int)$_POST['profile_id'] : null, (int)$_POST['id']]);
+        json_response(['ok' => true]);
+    }
+
     if ($action === 'profile_add') {
-        $stmt = $pdo->prepare("INSERT INTO post_profiles (platform, profile_url, name, notes, language, tone, niche, color, post_length, type, business_type, target_audience, brand_voice, avoid_topics) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$_POST['platform'], trim($_POST['profile_url'] ?? ''), trim($_POST['name']), trim($_POST['notes'] ?? ''), $_POST['language'] ?? 'english', $_POST['tone'] ?? 'semi-professional', trim($_POST['niche'] ?? ''), $_POST['color'] ?? '#c8f135', (int)($_POST['post_length'] ?? 200), $_POST['type'] ?? 'personal', trim($_POST['business_type'] ?? ''), trim($_POST['target_audience'] ?? ''), trim($_POST['brand_voice'] ?? ''), trim($_POST['avoid_topics'] ?? '')]);
-        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
-            json_response(['ok' => true]);
-        }
-        $_SESSION['flash_msg'] = 'Profile added.';
-        $_SESSION['flash_type'] = 'success';
-        redirect('post-generator.php?view=profiles');
+        $profileUrl = trim($_POST['profile_url'] ?? '');
+        $avatarUrl = $profileUrl ? fetch_og_image($profileUrl) : '';
+        $stmt = $pdo->prepare("INSERT INTO post_profiles (platform, profile_url, name, notes, language, tone, niche, color, post_length, type, business_type, target_audience, brand_voice, avoid_topics, avatar_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$_POST['platform'], $profileUrl, trim($_POST['name']), trim($_POST['notes'] ?? ''), $_POST['language'] ?? 'english', $_POST['tone'] ?? 'semi-professional', trim($_POST['niche'] ?? ''), $_POST['color'] ?? '#c8f135', (int)($_POST['post_length'] ?? 200), $_POST['type'] ?? 'personal', trim($_POST['business_type'] ?? ''), trim($_POST['target_audience'] ?? ''), trim($_POST['brand_voice'] ?? ''), trim($_POST['avoid_topics'] ?? ''), $avatarUrl]);
+        json_response(['ok' => true]);
     }
 
     if ($action === 'profile_delete') {
@@ -111,8 +112,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 
     if ($action === 'profile_update') {
-        $stmt = $pdo->prepare("UPDATE post_profiles SET name=?, platform=?, language=?, tone=?, niche=?, color=?, profile_url=?, notes=?, post_length=?, type=?, business_type=?, target_audience=?, brand_voice=?, avoid_topics=? WHERE id=?");
-        $stmt->execute([trim($_POST['name']), $_POST['platform'], $_POST['language'] ?? 'english', $_POST['tone'] ?? 'semi-professional', trim($_POST['niche'] ?? ''), $_POST['color'] ?? '#c8f135', trim($_POST['profile_url'] ?? ''), trim($_POST['notes'] ?? ''), (int)($_POST['post_length'] ?? 200), $_POST['type'] ?? 'personal', trim($_POST['business_type'] ?? ''), trim($_POST['target_audience'] ?? ''), trim($_POST['brand_voice'] ?? ''), trim($_POST['avoid_topics'] ?? ''), (int)$_POST['id']]);
+        $profileUrl = trim($_POST['profile_url'] ?? '');
+        $avatarUrl = trim($_POST['avatar_url'] ?? '');
+        if ($profileUrl && !$avatarUrl) {
+            $avatarUrl = fetch_og_image($profileUrl);
+        }
+        $stmt = $pdo->prepare("UPDATE post_profiles SET name=?, platform=?, language=?, tone=?, niche=?, color=?, profile_url=?, notes=?, post_length=?, type=?, business_type=?, target_audience=?, brand_voice=?, avoid_topics=?, avatar_url=? WHERE id=?");
+        $stmt->execute([trim($_POST['name']), $_POST['platform'], $_POST['language'] ?? 'english', $_POST['tone'] ?? 'semi-professional', trim($_POST['niche'] ?? ''), $_POST['color'] ?? '#c8f135', $profileUrl, trim($_POST['notes'] ?? ''), (int)($_POST['post_length'] ?? 200), $_POST['type'] ?? 'personal', trim($_POST['business_type'] ?? ''), trim($_POST['target_audience'] ?? ''), trim($_POST['brand_voice'] ?? ''), trim($_POST['avoid_topics'] ?? ''), $avatarUrl, (int)$_POST['id']]);
         json_response(['ok' => true]);
     }
 
@@ -151,7 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $selectedLength = (int)($_POST['selected_length'] ?? 0);
         $trainingIds = json_decode($_POST['training_ids'] ?? '[]', true);
 
-        if (!$topic || !$profileId) { json_response(['ok' => false, 'error' => 'Select a profile and enter a topic.'], 400); exit; }
+        if (!$profileId) { json_response(['ok' => false, 'error' => 'Select a profile.'], 400); exit; }
 
         $profile = $pdo->prepare("SELECT * FROM post_profiles WHERE id = ?");
         $profile->execute([$profileId]);
@@ -176,12 +182,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $settings = ai_feature_settings('posts');
         if (empty($settings['key'])) { json_response(['ok' => false, 'error' => 'AI not configured. Go to Settings.'], 400); exit; }
 
-        $trainingStr = $trainingTexts ? "TRAINING STYLE EXAMPLES (match this writing style, never copy directly):\n" . implode("\n\n---\n\n", array_slice($trainingTexts, -5)) . "\n" : '';
+        $trainingStr = $trainingTexts ? implode("\n\n---\n\n", array_slice($trainingTexts, -5)) : '';
 
         $activeTone = $selectedTone ?: $prof['tone'];
         $ideasTypeLabel = $prof['type'] === 'client' ? 'Business' : 'Personal';
-        $system = "You are a social media content strategist. Generate exactly 5 unique post IDEAS based on the inputs below. Return ONLY valid JSON, no markdown, no explanation.";
-        $user = "PROFILE: {$prof['name']}\nTYPE: {$ideasTypeLabel}\nPLATFORM: {$prof['platform']}\nTONE: {$activeTone}\nLANGUAGE: {$prof['language']}\nNICHE: {$prof['niche']}\nTOPIC: {$topic}\n\n{$trainingStr}\nRULES:\n- Each idea must have a strong hook: curiosity / pain_point / story / controversy / result\n- Ideas inspired by training style but 100% original\n- Relevant to profile niche and tone\n- One punchy sentence per idea\n- If language is \"mixed\" — ideas can be Bangla-English mix\n\nReturn ONLY this JSON:\n[{\"id\":1,\"idea\":\"idea text\",\"hook\":\"pain_point\"},{\"id\":2,\"idea\":\"idea text\",\"hook\":\"curiosity\"},{\"id\":3,\"idea\":\"idea text\",\"hook\":\"story\"},{\"id\":4,\"idea\":\"idea text\",\"hook\":\"controversy\"},{\"id\":5,\"idea\":\"idea text\",\"hook\":\"result\"}]";
+        $topicStr = $topic ?: 'not provided — generate ideas based on niche and training style';
+        $system = "You are a social media content strategist.";
+        $user = <<<IDEA_PROMPT
+PROFILE: {$prof['name']}
+TYPE: {$ideasTypeLabel}
+PLATFORM: {$prof['platform']}
+TONE: {$activeTone}
+LANGUAGE: {$prof['language']}
+NICHE: {$prof['niche']}
+TOPIC: {$topicStr}
+
+TRAINING STYLE (study carefully — these are posts this profile liked):
+{$trainingStr}
+
+RULES:
+- If TOPIC is provided → generate 5 ideas around that topic
+- If TOPIC is not provided → analyze the training style and niche,
+  then generate 5 fresh ideas that fit this profile's content pattern
+- Each idea must have a strong hook: curiosity / pain_point / story / controversy / result
+- Ideas must feel original, not copied from training
+- One punchy sentence per idea
+- Match the profile language and tone
+
+Return ONLY valid JSON, no markdown:
+[
+  {"id":1,"idea":"idea text","hook":"pain_point"},
+  {"id":2,"idea":"idea text","hook":"curiosity"},
+  {"id":3,"idea":"idea text","hook":"story"},
+  {"id":4,"idea":"idea text","hook":"controversy"},
+  {"id":5,"idea":"idea text","hook":"result"}
+]
+IDEA_PROMPT;
 
         try {
             $response = ai_call($settings, [
@@ -290,12 +326,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         // Build profile context block
         $typeLabel = $prof['type'] === 'client' ? 'Business' : 'Personal';
         $profileContext = "PROFILE: {$prof['name']}\nTYPE: {$typeLabel}\nPLATFORM: {$prof['platform']}\nLANGUAGE: {$prof['language']}\nTONE: {$activeTone}\nNICHE: {$prof['niche']}\nPOST LENGTH: minimum {$lc['minWords']} words";
+    $singlePlatform = $prof['platform'] !== 'linkedin' && $prof['platform'] !== 'facebook' ? $prof['platform'] : '';
+$singlePlatformHint = $singlePlatform ? "Platform is {$prof['platform']} — write only a {$prof['platform']} post." : '';
 
         if ($prof['type'] === 'client') {
             $profileContext .= "\nBUSINESS TYPE: " . h($prof['business_type'] ?? '') . "\nTARGET AUDIENCE: " . h($prof['target_audience'] ?? '') . "\nBRAND VOICE: " . h($prof['brand_voice'] ?? '') . "\nAVOID TOPICS: " . h($prof['avoid_topics'] ?? '') . "\nNOTE: Write AS the brand. Not as a person.";
         }
 
         $system = "You are an expert social media copywriter.";
+
+$returnFormat = $singlePlatform
+    ? '{"linkedin": "", "facebook": "", "' . $singlePlatform . '_post": "post\\ntext"}'
+    : '{"linkedin": "post\ntext", "facebook": "post\ntext"}';
 
         $user = <<<PROMPT
 {$profileContext}
@@ -305,12 +347,13 @@ HOOK TYPE: {$hookLabel}
 TRAINING STYLE (match voice, never copy):
 {$trainingStr}
 
-HASHTAGS — LinkedIn: {$liStr} | Facebook: {$fbStr}
+HASHTAGS: {$liStr}
 
-WRITE TWO POSTS — one LinkedIn, one Facebook.
-If platform is "linkedin" only → return facebook as "".
-If platform is "facebook" only → return linkedin as "".
-If platform is "both" → write both posts.
+WRITE ONE POST for {$prof['platform']} only.
+{$singlePlatformHint}
+If platform is "linkedin" → return facebook as "".
+If platform is "facebook" → return linkedin as "".
+Other platforms → return the post under the key "{$prof['platform']}_post" and the other two as "".
 
 LENGTH: Every post must be minimum {$lc['minWords']} words. Count before returning.
 
@@ -348,14 +391,13 @@ FACEBOOK RULES:
 - Hashtags at end only
 
 QUALITY CHECK before returning:
-☑ LinkedIn minimum {$lc['minWords']} words
-☑ Facebook minimum {$lc['minWords']} words
+☑ Minimum {$lc['minWords']} words
 ☑ No generic AI opening lines
 ☑ Language feels human, not translated
 ☑ Hashtags at end only
 
 RETURN valid JSON only, no markdown:
-{"linkedin": "post\ntext", "facebook": "post\ntext"}
+{$returnFormat}
 PROMPT;
 
         try {
@@ -370,13 +412,15 @@ PROMPT;
             // Save to DB
             $linkedinContent = $posts['linkedin'] ?? '';
             $facebookContent = $posts['facebook'] ?? '';
-            $mainContent = $linkedinContent ?: $facebookContent;
+            $customPlatformKey = $prof['platform'] . '_post';
+            $customContent = $posts[$customPlatformKey] ?? '';
+            $mainContent = $customContent ?: ($linkedinContent ?: $facebookContent);
             $platform = $prof['platform'];
             $stmt = $pdo->prepare("INSERT INTO generated_posts (platform, content, linkedin_content, facebook_content, language, status, topic, profile_id, hashtags_used, training_ids, profile_ids) VALUES (?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?)");
             $stmt->execute([$platform, $mainContent, $linkedinContent, $facebookContent, $prof['language'], $topic, $profileId, '', json_encode($trainingIds), json_encode([$profileId])]);
 
             $postId = $pdo->lastInsertId();
-            json_response(['ok' => true, 'data' => ['id' => $postId, 'linkedin' => $linkedinContent, 'facebook' => $facebookContent, 'platform' => $platform]]);
+            json_response(['ok' => true, 'data' => ['id' => $postId, 'linkedin' => $linkedinContent, 'facebook' => $facebookContent, 'content' => $mainContent, 'platform' => $platform]]);
         } catch (Exception $e) {
             json_response(['ok' => false, 'error' => 'AI error: ' . $e->getMessage()], 500);
         }
@@ -481,11 +525,11 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
 
 
 
-/* Filter pill for training */
-.pg-filter-bar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:1rem; align-items:center; }
-.pg-filter-chip { padding:4px 12px; border-radius:8px; font-size:0.72rem; cursor:pointer; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.03); color:var(--text3); transition:all 0.12s; }
-.pg-filter-chip:hover { border-color:rgba(255,255,255,0.2); }
-.pg-filter-chip.active { border-color:var(--accent); color:var(--accent); background:rgba(200,255,0,0.08); }
+/* Filter bar */
+.pg-filter-bar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:1rem; align-items:center; padding:0.6rem 0.8rem; background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius-md); }
+.pg-filter-bar select { background:var(--bg2); border:1px solid rgba(255,255,255,0.08); color:var(--text); border-radius:6px; }
+.pg-filter-bar select:focus { border-color:var(--accent); outline:none; }
+.pg-filter-bar select option { background:var(--bg2); color:var(--text); }
 
 /* History restore */
 .btn-restore { background:none; border:1px solid var(--accent); color:var(--accent); padding:4px 10px; border-radius:6px; font-size:0.72rem; cursor:pointer; transition:all 0.12s; }
@@ -521,6 +565,14 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
 /* Profile dropdown in dashboard */
 #profileSelect { max-width:100%; }
 
+/* Profile modal — scrollable + wider */
+#profileModal .modal { max-width:560px; max-height:90vh; overflow-y:auto; }
+
+/* History table row expand */
+.history-row { cursor:pointer; transition:background 0.12s; }
+.history-row:hover { background:rgba(255,255,255,0.03); }
+.history-row.expanded { background:rgba(200,255,0,0.04); }
+
 /* Profile card grid */
 .profile-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:1rem; margin-bottom:1.5rem; }
 .profile-card { display:flex; align-items:center; gap:12px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius-md); padding:1rem; cursor:pointer; transition:all 0.15s; position:relative; }
@@ -532,11 +584,17 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
 .profile-card-avatar { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1rem; font-weight:700; color:#000; flex-shrink:0; }
 .profile-card-info { flex:1; min-width:0; }
 .profile-card-name { font-size:0.88rem; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.profile-card-subtitle { font-size:0.68rem; color:var(--text3); margin-top:1px; }
 .profile-card-desc { font-size:0.75rem; color:var(--text3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
 .profile-card-actions { display:flex; gap:2px; opacity:0; transition:opacity 0.12s; flex-shrink:0; }
 .profile-card:hover .profile-card-actions { opacity:1; }
 .profile-card-actions button { background:none; border:none; color:var(--text3); cursor:pointer; padding:4px; border-radius:4px; font-size:0.9rem; transition:all 0.12s; }
 .profile-card-actions button:hover { color:var(--text); background:rgba(255,255,255,0.06); }
+
+.pg-two-col { display:flex; gap:1.5rem; align-items:flex-start; }
+.pg-left-panel { width:380px; flex-shrink:0; position:sticky; top:1rem; }
+.pg-right-panel { flex:1; min-width:0; }
+@media (max-width:900px) { .pg-two-col { flex-direction:column; } .pg-left-panel { width:100%; position:static; } }
 
 @media (max-width:480px) {
   .pg-mode-btn { padding:0.4rem 0.7rem; font-size:0.65rem; }
@@ -560,6 +618,9 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
 </div>
 
 <?php if ($view === 'dashboard'): ?>
+
+<div class="pg-two-col">
+<div class="pg-left-panel">
 
 <div class="v3-gen-area">
     <div class="ga-label"><i class="ti ti-sparkles"></i> Generate Posts</div>
@@ -596,25 +657,31 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
         <button class="tone-pill" data-tone="humorous" onclick="selectTone(this)">😄 Funny</button>
     </div>
 
-    <!-- Length pills -->
-    <label style="font-size:0.72rem;font-weight:600;color:var(--text3);margin-bottom:6px;display:block">Post Length</label>
-    <div class="tone-pills" id="lengthPills" style="margin-bottom:0.75rem">
-        <button class="tone-pill" data-length="100" onclick="selectLength(this)">100w</button>
-        <button class="tone-pill active" data-length="200" onclick="selectLength(this)">200w</button>
-        <button class="tone-pill" data-length="300" onclick="selectLength(this)">300w</button>
+    <!-- Length pills (hidden in ideas mode) -->
+    <div id="lengthSection" style="display:none">
+        <label style="font-size:0.72rem;font-weight:600;color:var(--text3);margin-bottom:6px;display:block">Post Length</label>
+        <div class="tone-pills" id="lengthPills" style="margin-bottom:0.75rem">
+            <button class="tone-pill" data-length="100" onclick="selectLength(this)">100w</button>
+            <button class="tone-pill active" data-length="200" onclick="selectLength(this)">200w</button>
+            <button class="tone-pill" data-length="300" onclick="selectLength(this)">300w</button>
+        </div>
     </div>
 
     <form id="genForm" onsubmit="return handleGenerate(event)">
         <div class="form-group">
             <label>What's the topic?</label>
-            <textarea class="form-control" name="topic" id="gen-topic" rows="3" placeholder="e.g. Digital branding for small businesses in Bangladesh..." required><?= h($restoreTopic) ?></textarea>
+            <textarea class="form-control" name="topic" id="gen-topic" rows="3" placeholder="What's the topic? (optional — leave blank to auto-generate from training)"><?= h($restoreTopic) ?></textarea>
+            <div id="topicHint" style="display:none;font-size:0.72rem;color:var(--text3);margin-top:4px"><i class="ti ti-info-circle"></i> No topic? AI will suggest ideas based on your profile and training data.</div>
         </div>
         <div class="form-actions">
-            <button type="submit" class="btn btn-primary btn-pulse" id="gen-btn"><i class="ti ti-sparkles"></i> <span id="genBtnLabel">Generate Posts</span></button>
+            <button type="submit" class="btn btn-primary btn-pulse" id="gen-btn"><i class="ti ti-sparkles"></i> <span id="genBtnLabel">Generate Ideas</span></button>
             <button type="button" class="btn btn-secondary" id="genToPostsBtn" style="display:none" onclick="generatePostsFromIdeas()"><i class="ti ti-send"></i> Generate Posts from Selected Idea</button>
         </div>
     </form>
 </div>
+</div><!-- /pg-left-panel -->
+
+<div class="pg-right-panel">
 
 <!-- Idea cards -->
 <div class="pg-ideas" id="pgIdeas">
@@ -644,6 +711,16 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
         </div>
         <div class="post-content"><textarea id="genResultContentFacebook" rows="5"></textarea></div>
     </div>
+    <div class="post-card" id="genResultCustom" style="display:none">
+        <div class="post-header">
+            <span class="post-platform" id="genResultCustomHeader"><i class="ti ti-brand-unknown"></i> Post</span>
+            <div class="post-actions">
+                <button class="btn btn-secondary btn-sm" onclick="copyPostText('custom')"><i class="ti ti-copy"></i></button>
+                <button class="btn btn-success btn-sm" onclick="publishGenPost()"><i class="ti ti-check"></i> Publish</button>
+            </div>
+        </div>
+        <div class="post-content"><textarea id="genResultContentCustom" rows="5"></textarea></div>
+    </div>
     <input type="hidden" id="gen-result-id" value="0">
 </div>
 
@@ -672,14 +749,10 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
     <?php endif; ?>
 </div>
 
-<?php elseif ($view === 'training'): ?>
+</div><!-- /pg-right-panel -->
+</div><!-- /pg-two-col -->
 
-<div class="pg-filter-bar">
-    <span class="pg-filter-chip active" data-id="0" onclick="filterTraining(this,0)">All</span>
-    <?php foreach ($profiles as $pr): ?>
-    <span class="pg-filter-chip" data-id="<?= $pr['id'] ?>" onclick="filterTraining(this,<?= $pr['id'] ?>)"><?= h($pr['name']) ?></span>
-    <?php endforeach; ?>
-</div>
+<?php elseif ($view === 'training'): ?>
 
 <div class="card" style="margin-bottom:1.5rem">
     <h3 style="font-family:'Orbitron',sans-serif;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-bottom:1rem"><i class="ti ti-plus"></i> Add Training Data</h3>
@@ -716,6 +789,17 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
 
 <div class="card">
     <div class="table-wrap">
+        <div class="pg-filter-bar" style="margin-bottom:0.75rem">
+            <i class="ti ti-adjustments-horizontal" style="font-size:0.9rem;color:var(--text3)"></i>
+            <span style="font-size:0.72rem;font-weight:600;color:var(--text3);margin-right:4px">Filter</span>
+            <select class="form-control" id="trainingProfileFilter" onchange="filterTrainingByProfile(this.value)" style="width:auto;max-width:280px;font-size:0.78rem;padding:6px 10px;">
+                <option value="0">All Profiles</option>
+                <?php foreach ($profiles as $pr): ?>
+                <option value="<?= $pr['id'] ?>"><?= h($pr['name']) ?> · <?= h($pr['platform']) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <span class="text-muted" style="font-size:0.7rem;margin-left:auto" id="trainingCount"></span>
+        </div>
         <table id="trainingTable">
             <thead><tr><th>Profile</th><th>Type</th><th>Content Preview</th><th>Date</th><th style="text-align:right">Action</th></tr></thead>
             <tbody>
@@ -725,7 +809,7 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
                     <td><span class="status-badge <?= $td['type']==='topic'?'status-draft':($td['type']==='style'?'status-published':'') ?>" style="font-size:0.6rem;text-transform:uppercase"><?= $td['type'] ?></span></td>
                     <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><?= h($td['content']) ?></td>
                     <td class="text-muted"><?= date('M j, Y', strtotime($td['created_at'])) ?></td>
-                    <td style="text-align:right"><button class="btn btn-danger btn-sm" onclick="deleteTraining(<?= $td['id'] ?>)"><i class="ti ti-trash"></i></button></td>
+                    <td style="text-align:right"><button class="btn btn-secondary btn-sm" onclick="editTraining(<?= $td['id'] ?>)" style="padding:3px 8px;margin-right:4px"><i class="ti ti-pencil"></i></button><button class="btn btn-danger btn-sm" onclick="deleteTraining(<?= $td['id'] ?>)"><i class="ti ti-trash"></i></button></td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -747,12 +831,21 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
         $avatarLetter = mb_strtoupper(mb_substr($pr['name'], 0, 1));
         $desc = $isClient ? ($pr['business_type'] ?? '') : ($pr['niche'] ?? '');
         $color = $pr['color'] ?: '#c8f135';
+        $pIcon = plat($pr['platform'], 'icon');
+        $pLabel = plat($pr['platform'], 'label');
     ?>
     <div class="profile-card" onclick="editProfile(<?= $pr['id'] ?>)">
+        <?php if (!empty($pr['avatar_url'])): ?>
+        <img class="profile-card-avatar" src="<?= h($pr['avatar_url']) ?>" alt="" style="object-fit:cover">
+        <?php else: ?>
         <div class="profile-card-avatar" style="background:<?= h($color) ?>"><?= h($avatarLetter) ?></div>
+        <?php endif; ?>
         <div class="profile-card-info">
-            <div class="profile-card-name"><?= h($pr['name']) ?></div>
-            <div class="profile-card-desc"><?= h(mb_strimwidth($desc, 0, 40, '...')) ?></div>
+            <div class="profile-card-name">
+                <?= h($pr['name']) ?>
+                <i class="ti <?= h($pIcon) ?>" style="font-size:0.7rem;color:var(--text3);margin-left:6px" title="<?= h($pLabel) ?>"></i>
+            </div>
+            <div class="profile-card-subtitle"><?= h(mb_strimwidth($desc, 0, 40, '...')) ?></div>
         </div>
         <div class="profile-card-actions">
             <button onclick="event.stopPropagation();editProfile(<?= $pr['id'] ?>)" title="Edit"><i class="ti ti-pencil"></i></button>
@@ -877,6 +970,17 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
                     <input class="form-control" id="edit-profile-color" type="color" style="height:38px;padding:4px">
                 </div>
             </div>
+            <div class="form-row">
+                <div class="form-group" style="display:flex;align-items:flex-end;gap:12px">
+                    <div style="flex:1">
+                        <label>Avatar URL <span class="text-muted">(auto-fetched if empty)</span></label>
+                        <input class="form-control" id="edit-avatar-url" placeholder="Auto-fetched from profile URL">
+                    </div>
+                    <div id="avatarPreview" style="width:44px;height:44px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);flex-shrink:0;overflow:hidden;display:none">
+                        <img id="avatarPreviewImg" src="" alt="" style="width:100%;height:100%;object-fit:cover">
+                    </div>
+                </div>
+            </div>
             <div class="form-group">
                 <label>Notes</label>
                 <textarea class="form-control" id="edit-profile-notes" rows="2" placeholder="e.g. Posts are conversational, uses storytelling..."></textarea>
@@ -892,36 +996,43 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
 <?php elseif ($view === 'history'): ?>
 
 <?php if (count($generatedPosts)): ?>
-<div style="margin-bottom:1rem">
-    <button class="btn btn-danger btn-sm" onclick="if(confirm('Clear all history?')){var fd=new FormData();fd.append('action','clear_history');fetch('post-generator.php',{method:'POST',body:fd}).then(function(r){return r.json()}).then(function(j){if(j.ok)location.reload()})}" style="float:right"><i class="ti ti-trash"></i> Clear All</button>
+<div style="margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
+    <span class="text-muted" style="font-size:0.75rem"><?= count($generatedPosts) ?> posts</span>
+    <button class="btn btn-danger btn-sm" onclick="if(confirm('Clear all history?')){var fd=new FormData();fd.append('action','clear_history');fetch('post-generator.php',{method:'POST',body:fd}).then(function(r){return r.json()}).then(function(j){if(j.ok)location.reload()})}"><i class="ti ti-trash"></i> Clear All</button>
 </div>
-<?php $grouped = []; foreach ($generatedPosts as $gp) { $k = substr($gp['created_at'], 0, 10); $grouped[$k][] = $gp; } ?>
-<?php foreach ($grouped as $date => $posts): ?>
-<div style="font-size:0.65rem;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem;margin-top:1rem"><?= h(date('M j, Y', strtotime($date))) ?></div>
-<?php foreach ($posts as $gp): ?>
-<?php $hpl = $gp['platform'] ?? 'linkedin'; $hic = plat($hpl, 'icon'); $hcol = plat($hpl, 'color') ?: '#0a66c2'; ?>
-<div class="post-card" id="history-<?= $gp['id'] ?>" style="border-left:3px solid <?= h($hcol) ?>">
-    <div class="post-header">
-        <span class="post-platform" style="color:<?= h($hcol) ?>">
-            <i class="ti <?= h($hic) ?>"></i>
-            <?= h($gp['topic']) ?>
-            <?php if ($gp['profile_name']): ?><span class="text-muted" style="font-weight:400;text-transform:none;letter-spacing:0;margin-left:8px">via <?= h($gp['profile_name']) ?></span><?php endif; ?>
-        </span>
-        <div class="post-actions">
-            <span class="status-badge <?= $gp['status']==='published'?'status-published':'status-draft' ?>" style="font-size:0.6rem;padding:2px 8px;margin-right:4px"><?= $gp['status'] ?></span>
-            <button class="btn-restore" onclick="restorePost(<?= $gp['id'] ?>)"><i class="ti ti-history"></i> Restore</button>
-            <button class="btn btn-secondary btn-sm" onclick="copyText(this,<?= $gp['id'] ?>)" style="padding:3px 8px"><i class="ti ti-copy"></i></button>
-            <button class="btn btn-secondary btn-sm" onclick="editPost(<?= $gp['id'] ?>)" style="padding:3px 8px"><i class="ti ti-pencil"></i></button>
-            <button class="btn btn-danger btn-sm" onclick="deletePost(<?= $gp['id'] ?>)" style="padding:3px 8px"><i class="ti ti-trash"></i></button>
-        </div>
-    </div>
-    <div class="post-content" id="post-content-<?= $gp['id'] ?>"><?= h($gp['content'] ?? $gp['linkedin_content'] ?: $gp['facebook_content'] ?? '') ?></div>
-    <div class="post-meta">
-        <span><?= date('h:i A', strtotime($gp['created_at'])) ?></span>
-        <span>🌐 <?= $gp['language'] ?? 'en' ?></span>
+<div class="card">
+    <div class="table-wrap">
+        <table id="historyTable">
+            <thead><tr><th>Platform</th><th>Topic</th><th>Content</th><th>Profile</th><th>Status</th><th>Date</th><th style="text-align:right">Action</th></tr></thead>
+            <tbody>
+                <?php foreach ($generatedPosts as $gp):
+                    $hpl = $gp['platform'] ?? 'linkedin';
+                    $hic = plat($hpl, 'icon');
+                    $hcol = plat($hpl, 'color') ?: '#0a66c2';
+                    $fullContent = $gp['content'] ?? $gp['linkedin_content'] ?: $gp['facebook_content'] ?? '';
+                ?>
+                <tr class="history-row" id="history-<?= $gp['id'] ?>" data-full-content="<?= h($fullContent) ?>" onclick="toggleHistoryRow(this)">
+                    <td><i class="ti <?= h($hic) ?>" style="color:<?= h($hcol) ?>"></i></td>
+                    <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><?= h($gp['topic'] ?? '') ?></td>
+                    <td class="history-preview" style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><?= h(mb_substr($fullContent, 0, 80)) ?></td>
+                    <td><span style="font-size:0.72rem;color:var(--text3)"><?= h($gp['profile_name'] ?? '—') ?></span></td>
+                    <td><span class="status-badge <?= $gp['status']==='published'?'status-published':'status-draft' ?>" style="font-size:0.6rem;padding:2px 8px"><?= $gp['status'] ?></span></td>
+                    <td class="text-muted" style="font-size:0.72rem;white-space:nowrap"><?= date('M j, h:i A', strtotime($gp['created_at'])) ?></td>
+                    <td style="text-align:right;white-space:nowrap" onclick="event.stopPropagation()">
+                        <button class="btn btn-secondary btn-sm" onclick="restorePost(<?= $gp['id'] ?>)" title="Restore" style="padding:3px 7px"><i class="ti ti-history"></i></button>
+                        <button class="btn btn-secondary btn-sm" onclick="copyText(this,<?= $gp['id'] ?>)" title="Copy" style="padding:3px 7px"><i class="ti ti-copy"></i></button>
+                        <button class="btn btn-secondary btn-sm" onclick="editPost(<?= $gp['id'] ?>)" title="Edit" style="padding:3px 7px"><i class="ti ti-pencil"></i></button>
+                        <button class="btn btn-danger btn-sm" onclick="deletePost(<?= $gp['id'] ?>)" title="Delete" style="padding:3px 7px"><i class="ti ti-trash"></i></button>
+                    </td>
+                </tr>
+                <tr class="history-expand" id="history-expand-<?= $gp['id'] ?>" style="display:none">
+                    <td colspan="7" style="padding:0.75rem 1rem;background:rgba(255,255,255,0.02);border-bottom:1px solid var(--border);font-size:0.82rem;line-height:1.6;color:var(--text2);white-space:pre-wrap"><?= nl2br(h($fullContent)) ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
     </div>
 </div>
-<?php endforeach; endforeach; ?>
 <?php else: ?>
 <div class="empty-illustration"><div class="empty-icon"><i class="ti ti-clock"></i></div><h4>No history yet</h4><p>Generated posts will appear here.</p></div>
 <?php endif; ?>
@@ -945,14 +1056,51 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
     </div>
 </div>
 
+<div class="modal-overlay" id="editTrainingModal">
+    <div class="modal modal-wide">
+        <h3 class="modal-title">Edit Training Data</h3>
+        <form onsubmit="return saveTrainingEdit(event)">
+            <input type="hidden" id="edit-training-id" value="0">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Profile</label>
+                    <select class="form-control" id="edit-training-profile">
+                        <option value="">General (all profiles)</option>
+                        <?php foreach ($profiles as $pr): ?>
+                        <option value="<?= $pr['id'] ?>"><?= h($pr['name']) ?> (<?= h($pr['platform']) ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Type</label>
+                    <select class="form-control" id="edit-training-type">
+                        <option value="topic">Topic / Idea</option>
+                        <option value="style">Writing Style</option>
+                        <option value="brand">Brand Info</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Content</label>
+                <textarea class="form-control" id="edit-training-content" rows="6" style="font-size:0.82rem;line-height:1.6"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary"><i class="ti ti-device-floppy"></i> Save</button>
+                <button type="button" class="btn btn-secondary" onclick="closeTrainingEditModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 var currentMode = 'ideas';
 var selectedProfileId = parseInt(document.getElementById('profileSelect').value || 0);
 var selectedIdea = null;
 var currentPostId = 0;
 
-// Sync tone/length pills to first profile default on load
+// Sync tone/length pills and mode on load
 document.addEventListener('DOMContentLoaded', function() {
+    setMode('ideas');
     var sel = document.getElementById('profileSelect');
     if (sel) {
         var first = sel.options[sel.selectedIndex];
@@ -962,6 +1110,15 @@ document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('#tonePills .tone-pill').forEach(function(b) { b.classList.toggle('active', b.dataset.tone === tone); });
             document.querySelectorAll('#lengthPills .tone-pill').forEach(function(b) { b.classList.toggle('active', parseInt(b.dataset.length) === len); });
         }
+    }
+    // Topic hint initial state + input handler
+    var hint = document.getElementById('topicHint');
+    var topicInput = document.getElementById('gen-topic');
+    if (hint) hint.style.display = currentMode === 'ideas' && topicInput && !topicInput.value.trim() ? '' : 'none';
+    if (topicInput) {
+        topicInput.addEventListener('input', function() {
+            if (hint) hint.style.display = currentMode === 'ideas' && !this.value.trim() ? '' : 'none';
+        });
     }
 });
 
@@ -975,10 +1132,14 @@ function setMode(mode) {
     document.getElementById('modeIdeas').classList.toggle('active', mode === 'ideas');
     document.getElementById('modeDirect').classList.toggle('active', mode === 'direct');
     document.getElementById('genBtnLabel').textContent = mode === 'ideas' ? 'Generate Ideas' : 'Generate Posts';
+    document.getElementById('lengthSection').style.display = mode === 'ideas' ? 'none' : 'block';
     document.getElementById('pgIdeas').classList.remove('show');
     document.getElementById('genToPostsBtn').style.display = 'none';
     selectedIdea = null;
     document.querySelectorAll('.pg-idea-card').forEach(function(c) { c.classList.remove('selected'); });
+    // Show hint when switching to ideas with empty topic
+    var hint = document.getElementById('topicHint');
+    if (hint) hint.style.display = mode === 'ideas' && !document.getElementById('gen-topic').value.trim() ? '' : 'none';
 }
 
 function selectProfile(el) {
@@ -1018,11 +1179,12 @@ function getActiveLength() {
 function handleGenerate(e) {
     e.preventDefault();
     var topic = document.getElementById('gen-topic').value.trim();
-    if (!topic) { showToast('Enter a topic', 'error'); return; }
+    if (!topic && currentMode === 'direct') { showToast('Direct Post requires a topic. Switch to Ideas First or enter a topic.', 'error'); return; }
     if (currentMode === 'ideas') return generateIdeas(topic);
     return generatePostsDirect(topic);
 }
 
+// Show/hide topic hint based on mode + content
 function generateIdeas(topic) {
     var btn = document.getElementById('gen-btn');
     btn.innerHTML = '<span class="ai-spinner"></span> Generating ideas...';
@@ -1128,6 +1290,7 @@ function showPostResults(data) {
 
     var liBox = document.getElementById('genResultLinkedin');
     var fbBox = document.getElementById('genResultFacebook');
+    var cusBox = document.getElementById('genResultCustom');
 
     if (data.linkedin) {
         liBox.style.display = 'block';
@@ -1138,6 +1301,16 @@ function showPostResults(data) {
         fbBox.style.display = 'block';
         document.getElementById('genResultContentFacebook').value = data.facebook;
     } else { fbBox.style.display = 'none'; }
+
+    if (data.content && !data.linkedin && !data.facebook) {
+        cusBox.style.display = 'block';
+        var platInfo = platformLabels[data.platform] || data.platform;
+        var platIcon = platformIcons[data.platform] || '<i class="ti ti-brand-unknown"></i>';
+        var platColor = platformColors[data.platform] || 'var(--accent)';
+        cusBox.style.borderLeft = '3px solid ' + platColor;
+        document.getElementById('genResultCustomHeader').innerHTML = platIcon + ' ' + platInfo + ' Post';
+        document.getElementById('genResultContentCustom').value = data.content;
+    } else { cusBox.style.display = 'none'; }
 }
 
 var platformColors = {
@@ -1159,13 +1332,14 @@ var platformLabels = {
 };
 
 function copyPostText(platform) {
-    var id = platform === 'facebook' ? 'genResultContentFacebook' : 'genResultContentLinkedin';
-    var textarea = document.getElementById(id);
+    var map = {facebook: 'genResultContentFacebook', linkedin: 'genResultContentLinkedin', custom: 'genResultContentCustom'};
+    var textarea = document.getElementById(map[platform] || 'genResultContentLinkedin');
     navigator.clipboard.writeText(textarea.value).then(function() { showToast('Copied!'); });
 }
 
 function copyText(btn, id) {
-    var content = document.getElementById('post-content-' + id).textContent;
+    var row = document.getElementById('history-' + id);
+    var content = row ? row.dataset.fullContent : '';
     navigator.clipboard.writeText(content).then(function() { showToast('Copied!'); });
 }
 
@@ -1197,6 +1371,39 @@ function deleteTraining(id) {
     .then(function(j) { if (j.ok) location.reload(); });
 }
 
+function editTraining(id) {
+    var fd = new FormData();
+    fd.append('action', 'train_get');
+    fd.append('id', id);
+    fetch('post-generator.php', { method: 'POST', body: fd })
+    .then(function(r) { return r.json(); })
+    .then(function(j) {
+        if (!j.ok) return;
+        var d = j.data;
+        document.getElementById('edit-training-id').value = d.id;
+        document.getElementById('edit-training-profile').value = d.profile_id || '';
+        document.getElementById('edit-training-type').value = d.type || 'topic';
+        document.getElementById('edit-training-content').value = d.content;
+        document.getElementById('editTrainingModal').classList.add('open');
+    });
+}
+
+function closeTrainingEditModal() { document.getElementById('editTrainingModal').classList.remove('open'); }
+
+function saveTrainingEdit(e) {
+    e.preventDefault();
+    var id = document.getElementById('edit-training-id').value;
+    var fd = new FormData();
+    fd.append('action', 'train_update');
+    fd.append('id', id);
+    fd.append('content', document.getElementById('edit-training-content').value);
+    fd.append('type', document.getElementById('edit-training-type').value);
+    fd.append('profile_id', document.getElementById('edit-training-profile').value);
+    fetch('post-generator.php', { method: 'POST', body: fd })
+    .then(function(r) { return r.json(); })
+    .then(function(j) { if (j.ok) { closeTrainingEditModal(); location.reload(); } });
+}
+
 function editProfile(id) {
     var fd = new FormData();
     fd.append('action', 'profile_get');
@@ -1219,6 +1426,16 @@ function editProfile(id) {
         document.getElementById('edit-target-audience').value = p.target_audience || '';
         document.getElementById('edit-brand-voice').value = p.brand_voice || '';
         document.getElementById('edit-avoid-topics').value = p.avoid_topics || '';
+        document.getElementById('edit-avatar-url').value = p.avatar_url || '';
+        var avatarPreview = document.getElementById('avatarPreview');
+        var avatarImg = document.getElementById('avatarPreviewImg');
+        if (p.avatar_url) {
+            avatarPreview.style.display = 'block';
+            avatarImg.src = p.avatar_url;
+        } else {
+            avatarPreview.style.display = 'none';
+            avatarImg.src = '';
+        }
         var len = p.post_length || 200;
         document.getElementById('editLen' + len).checked = true;
         var type = p.type || 'personal';
@@ -1254,6 +1471,9 @@ function openAddForm(type) {
     document.getElementById('edit-target-audience').value = '';
     document.getElementById('edit-brand-voice').value = '';
     document.getElementById('edit-avoid-topics').value = '';
+    document.getElementById('edit-avatar-url').value = '';
+    document.getElementById('avatarPreview').style.display = 'none';
+    document.getElementById('avatarPreviewImg').src = '';
     document.getElementById('editLen200').checked = true;
     document.getElementById('profileModal').classList.add('open');
 }
@@ -1281,9 +1501,11 @@ function saveProfile(e) {
     fd.append('target_audience', document.getElementById('edit-target-audience').value);
     fd.append('brand_voice', document.getElementById('edit-brand-voice').value);
     fd.append('avoid_topics', document.getElementById('edit-avoid-topics').value);
-    fetch('post-generator.php', { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    fd.append('avatar_url', document.getElementById('edit-avatar-url').value);
+    fetch('post-generator.php', { method: 'POST', body: fd })
     .then(function(r) { return r.json(); })
-    .then(function(j) { if (j.ok) { closeProfileModal(); location.reload(); } });
+    .then(function(j) { if (j.ok) { closeProfileModal(); location.reload(); } else { showToast(j.error || 'Failed', 'error'); } })
+    .catch(function() { showToast('Request failed', 'error'); });
 }
 
 function deleteProfile(id) {
@@ -1294,6 +1516,16 @@ function deleteProfile(id) {
     fetch('post-generator.php', { method: 'POST', body: fd })
     .then(function(r) { return r.json(); })
     .then(function(j) { if (j.ok) location.reload(); });
+}
+
+function toggleHistoryRow(el) {
+    var id = el.id.replace('history-', '');
+    var expand = document.getElementById('history-expand-' + id);
+    if (expand) {
+        var isHidden = expand.style.display === 'none';
+        expand.style.display = isHidden ? 'table-row' : 'none';
+        el.classList.toggle('expanded', isHidden);
+    }
 }
 
 function deletePost(id) {
@@ -1309,8 +1541,9 @@ function deletePost(id) {
 }
 
 function editPost(id) {
+    var row = document.getElementById('history-' + id);
     document.getElementById('edit-post-id').value = id;
-    document.getElementById('edit-post-content').value = document.getElementById('post-content-' + id).textContent;
+    document.getElementById('edit-post-content').value = row ? row.dataset.fullContent : '';
     document.getElementById('editModal').classList.add('open');
 }
 
@@ -1327,7 +1560,18 @@ function saveEditPost(e) {
     fetch('post-generator.php', { method: 'POST', body: fd })
     .then(function(r) { return r.json(); })
     .then(function(j) {
-        if (j.ok) { document.getElementById('post-content-' + id).textContent = content; closeEditModal(); showToast('Updated'); }
+        if (j.ok) {
+            var row = document.getElementById('history-' + id);
+            if (row) {
+                row.dataset.fullContent = content;
+                var preview = row.querySelector('.history-preview');
+                if (preview) preview.textContent = content.substring(0, 80);
+                var expand = document.getElementById('history-expand-' + id);
+                if (expand) expand.querySelector('td').innerHTML = content.replace(/\n/g, '<br>');
+            }
+            closeEditModal();
+            showToast('Updated');
+        }
     });
 }
 
@@ -1348,20 +1592,42 @@ document.addEventListener('DOMContentLoaded', function() {
 <?php endif; ?>
 
 // Training filter
-function filterTraining(el, id) {
-    document.querySelectorAll('.pg-filter-chip').forEach(function(c) { c.classList.remove('active'); });
-    el.classList.add('active');
+function filterTrainingByProfile(id) {
+    id = parseInt(id);
+    var visible = 0;
     document.querySelectorAll('#trainingTable tbody tr').forEach(function(r) {
-        r.style.display = (id === 0 || parseInt(r.dataset.profile) === id) ? '' : 'none';
+        var match = (id === 0 || parseInt(r.dataset.profile) === id);
+        r.style.display = match ? '' : 'none';
+        if (match) visible++;
     });
+    var count = document.getElementById('trainingCount');
+    if (count) count.textContent = visible + ' items';
 }
+
+// Init training count on load
+document.addEventListener('DOMContentLoaded', function() {
+    var count = document.getElementById('trainingCount');
+    if (count) {
+        var total = document.querySelectorAll('#trainingTable tbody tr').length;
+        count.textContent = total + ' items';
+    }
+});
 
 // Escaping helper
 function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 document.getElementById('editModal').addEventListener('click', function(e) { if (e.target === this) closeEditModal(); });
+document.getElementById('editTrainingModal').addEventListener('click', function(e) { if (e.target === this) closeTrainingEditModal(); });
 document.getElementById('addProfileModal').addEventListener('click', function(e) { if (e.target === this) closeAddProfileModal(); });
 document.getElementById('profileModal').addEventListener('click', function(e) { if (e.target === this) closeProfileModal(); });
+
+// Close profile modal on Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        if (document.getElementById('profileModal').classList.contains('open')) closeProfileModal();
+        if (document.getElementById('addProfileModal').classList.contains('open')) closeAddProfileModal();
+    }
+});
 
 </script>
 

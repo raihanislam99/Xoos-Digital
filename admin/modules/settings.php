@@ -281,10 +281,11 @@ require_once __DIR__ . '/../inc/header.php';
                     <input class="form-control" name="wa_delay_seconds" type="number" value="<?= h(get_setting('wa_delay_seconds', '15')) ?>">
                 </div>
                 <div class="form-group">
-                    <label>SerpAPI Key</label>
-                    <input class="form-control" name="serp_api_key" value="<?= h(get_setting('serp_api_key', '')) ?>" placeholder="Optional - for Google search">
+                    <label>Google Places API Key</label>
+                    <input class="form-control" name="google_places_api_key" value="<?= h(get_setting('google_places_api_key', '')) ?>" placeholder="AIza..." style="font-family:monospace;font-size:0.78rem">
                 </div>
             </div>
+            <div style="font-size:0.72rem;color:var(--text3);margin-top:8px">Required for the Lead Finder. Get a key at <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color:var(--accent)">Google Cloud Console</a>, <strong>enable Places API</strong>, and <strong>enable billing</strong> (the $200/mo free credit covers it).</div>
         </div>
 
         <div class="settings-card">

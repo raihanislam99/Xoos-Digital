@@ -56,6 +56,18 @@ if ($ext !== 'svg') {
     }
 
     if ($img) {
+        // Convert palette images to truecolor (WebP doesn't support palette)
+        if (!imageistruecolor($img)) {
+            $w = imagesx($img);
+            $h = imagesy($img);
+            $tc = imagecreatetruecolor($w, $h);
+            imagealphablending($tc, false);
+            imagesavealpha($tc, true);
+            imagecopy($tc, $img, 0, 0, 0, 0, $w, $h);
+            imagedestroy($img);
+            $img = $tc;
+        }
+
         $ow = imagesx($img);
         $oh = imagesy($img);
         $mw = 1080;
@@ -92,7 +104,7 @@ if ($converted) {
 }
 
 $filepath = 'admin/uploads/' . $finalFile;
-$url = $filepath;
+$url = BASE_URL . '/' . $filepath;
 
 // Save to media_files for media library
 try {

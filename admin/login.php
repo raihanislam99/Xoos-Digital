@@ -27,7 +27,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $password = $_POST['password'] ?? '';
         if ($username && $password) {
             try {
-                $stmt = db()->prepare("SELECT * FROM admin_users WHERE username = ?");
+                $pdo = db();
+                if ($pdo === null) {
+                    $error = 'Database not set up. <a href="setup.php" style="color:#CCFF00">Run setup first</a>.';
+                } else {
+                $stmt = $pdo->prepare("SELECT * FROM admin_users WHERE username = ?");
                 $stmt->execute([$username]);
                 $user = $stmt->fetch();
                 if ($user && password_verify($password, $user['password_hash'])) {
@@ -41,6 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     $_SESSION[$key] = ['count' => $attempts + 1, 'since' => $since];
                     $error = "Invalid email or password. " . (5 - $attempts - 1) . " attempts remaining.";
+                }
                 }
             } catch (PDOException $e) {
                 $error = 'Database not set up. <a href="setup.php" style="color:#CCFF00">Run setup first</a>.';

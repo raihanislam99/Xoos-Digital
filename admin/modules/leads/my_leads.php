@@ -437,7 +437,7 @@ function bulkChangeStatus() {
     let ids = getSelectedIds();
     let status = document.getElementById('bulkStatusSelect').value;
     if (!ids || !status) return;
-    fetch('api/leads_save.php', {
+    fetch('../api/leads_save.php', {
         method: 'POST',
         headers: {'Content-Type':'application/x-www-form-urlencoded'},
         body: '_csrf='+encodeURIComponent(_csrf)+'&action=bulk_action&ids='+ids+'&bulk_action=change_status&status='+status
@@ -451,7 +451,7 @@ function bulkAddTag() {
     let ids = getSelectedIds();
     let tag = document.getElementById('bulkTagInput').value.trim();
     if (!ids || !tag) return;
-    fetch('api/leads_save.php', {
+    fetch('../api/leads_save.php', {
         method: 'POST',
         headers: {'Content-Type':'application/x-www-form-urlencoded'},
         body: '_csrf='+encodeURIComponent(_csrf)+'&action=bulk_action&ids='+ids+'&bulk_action=add_tag&tag='+encodeURIComponent(tag)
@@ -464,7 +464,7 @@ function bulkAddTag() {
 function bulkDelete() {
     let ids = getSelectedIds();
     if (!ids || !confirm('Delete selected leads? This cannot be undone.')) return;
-    fetch('api/leads_save.php', {
+    fetch('../api/leads_save.php', {
         method: 'POST',
         headers: {'Content-Type':'application/x-www-form-urlencoded'},
         body: '_csrf='+encodeURIComponent(_csrf)+'&action=bulk_action&ids='+ids+'&bulk_action=delete'
@@ -476,7 +476,7 @@ function bulkDelete() {
 
 function confirmDeleteLead(id, name) {
     if (!confirm('Delete "' + name + '" permanently?')) return;
-    fetch('api/leads_save.php', {
+    fetch('../api/leads_save.php', {
         method: 'POST',
         headers: {'Content-Type':'application/x-www-form-urlencoded'},
         body: '_csrf='+encodeURIComponent(_csrf)+'&action=delete_lead&id='+id
@@ -494,7 +494,7 @@ function showAddLeadModal() {
 }
 
 function editLead(id) {
-    fetch('api/leads_save.php?action=get&id='+id).catch(()=>{});
+    fetch('../api/leads_save.php?action=get&id='+id).catch(()=>{});
     // Load from table via redirect to detail
     window.location.href = 'leads.php?view=detail&id=' + id;
 }
@@ -504,7 +504,7 @@ function saveLeadForm(e) {
     let btn = document.getElementById('leadFormBtn');
     btn.disabled = true; btn.innerHTML = '<span class="ai-spinner"></span> Saving...';
     let fd = new FormData(document.getElementById('leadForm'));
-    fetch('api/leads_save.php', {method:'POST', body: new URLSearchParams(fd)})
+    fetch('../api/leads_save.php', {method:'POST', body: new URLSearchParams(fd)})
     .then(r=>r.json()).then(j=>{
         if(j.success){ showToast(j.message); closeModal('leadFormModal'); location.reload() }
         else showToast(j.error, 'error');
@@ -539,7 +539,7 @@ function generateEmail() {
         }
     };
 
-    fetch('api/leads_ai.php', {
+    fetch('../api/leads_ai.php', {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
         body: JSON.stringify(ctx)
@@ -583,7 +583,7 @@ function sendEmailNow() {
     fd.append('to_email', document.getElementById('emailTo').value);
     fd.append('email_type', document.getElementById('emailType').value);
 
-    fetch('api/leads_email.php', {method:'POST', body: fd})
+    fetch('../api/leads_email.php', {method:'POST', body: fd})
     .then(r=>r.json()).then(j=>{
         btn.disabled = false; btn.innerHTML = '<i class="ti ti-send"></i> Send Email';
         if (j.success) { showToast(j.message); closeModal('emailModal'); }
@@ -609,7 +609,7 @@ function generateWhatsApp() {
     let btn = document.getElementById('genWaBtn');
     btn.disabled = true; btn.innerHTML = '<span class="ai-spinner"></span> Generating...';
 
-    fetch('api/leads_ai.php', {
+    fetch('../api/leads_ai.php', {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
         body: JSON.stringify({
@@ -688,7 +688,7 @@ function importCSV(input) {
                 fd.append('owner_name', row.owner_name||'');
                 fd.append('source', 'csv_import');
                 // Synchronous-ish: fire and forget for batch
-                fetch('api/leads_save.php', {method:'POST', body: fd});
+                fetch('../api/leads_save.php', {method:'POST', body: fd});
                 imported++;
             }
         }
@@ -707,7 +707,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (url.searchParams.get('export') === 'csv') {
         let params = new URLSearchParams(window.location.search);
         params.delete('view'); params.delete('export');
-        fetch('api/leads_save.php?action=export_csv&' + params.toString())
+        fetch('../api/leads_save.php?action=export_csv&' + params.toString())
         .then(r=>r.text()).then(csv=>{
             let blob = new Blob([csv], {type:'text/csv'});
             let a = document.createElement('a');
