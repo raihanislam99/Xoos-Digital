@@ -11,6 +11,15 @@ header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 
+// ── Load Composer autoloader ─────────────────────────
+$autoloadPaths = [
+    __DIR__ . '/../vendor/autoload.php',
+    __DIR__ . '/../../vendor/autoload.php',
+];
+foreach ($autoloadPaths as $p) {
+    if (is_file($p)) { require_once $p; break; }
+}
+
 // ── Load .env into $_ENV ─────────────────────────────
 // Walk up from admin/ to find .env (supports various server layouts)
 $envFile = '';
@@ -33,11 +42,21 @@ function env(string $key, mixed $default = null): mixed {
     return array_key_exists($key, $_ENV) && $_ENV[$key] !== '' ? $_ENV[$key] : $default;
 }
 
-// ── Database ─────────────────────────────────────────
+// ── Database (MySQL — kept for migration / fallback) ─
 define('DB_HOST', env('DB_HOST', 'localhost'));
 define('DB_NAME', env('DB_NAME', 'xoosdigital'));
 define('DB_USER', env('DB_USER', 'root'));
 define('DB_PASS', env('DB_PASS', ''));
+
+// ── Supabase ─────────────────────────────────────────
+define('SUPABASE_URL',             env('SUPABASE_URL', ''));
+define('SUPABASE_ANON_KEY',        env('SUPABASE_ANON_KEY', ''));
+define('SUPABASE_SERVICE_ROLE_KEY', env('SUPABASE_SERVICE_ROLE_KEY', ''));
+define('SUPABASE_DB_HOST',         env('SUPABASE_DB_HOST', ''));
+define('SUPABASE_DB_PORT',         env('SUPABASE_DB_PORT', '5432'));
+define('SUPABASE_DB_NAME',         env('SUPABASE_DB_NAME', 'postgres'));
+define('SUPABASE_DB_USER',         env('SUPABASE_DB_USER', 'postgres'));
+define('SUPABASE_DB_PASS',         env('SUPABASE_DB_PASS', ''));
 
 // ── AI Providers ─────────────────────────────────────
 define('GROQ_API_KEY', env('GROQ_API_KEY', ''));

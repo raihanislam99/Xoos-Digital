@@ -1,7 +1,92 @@
 <?php
 require_once __DIR__ . '/../config.php';
 
+// ── Composer autoload (already loaded by config.php, but ensure) ──
+$autoloadPaths = [
+    __DIR__ . '/../vendor/autoload.php',
+    __DIR__ . '/../../vendor/autoload.php',
+];
+foreach ($autoloadPaths as $p) {
+    if (is_file($p)) { require_once $p; break; }
+}
+
+// ── Supabase class ──
+require_once __DIR__ . '/supabase.php';
+
+// ── Session-based query cache (avoids redundant COUNT queries per page load) ──
+function db_count_cached(string $cacheKey, string $query, array $params = [], int $ttl = 30): int {
+    $cache = &$_SESSION['_db_cache']; $now = time();
+    if (!is_array($cache)) $cache = [];
+    if (isset($cache[$cacheKey]) && ($now - $cache[$cacheKey]['time']) < $ttl) return $cache[$cacheKey]['value'];
+    try {
+        if (empty($params)) {
+            $val = (int)db()->query($query)->fetchColumn();
+        } else {
+            $s = db()->prepare($query);
+            $s->execute($params);
+            $val = (int)$s->fetchColumn();
+        }
+    } catch (Exception $e) { $val = 0; }
+    $cache[$cacheKey] = ['value' => $val, 'time' => $now];
+    return $val;
+}
+
+// ── Supabase PostgreSQL (primary via PDO, fallback via REST) ──
+
 function db() {
+    static $pdo = null;
+    static $restDb = null;
+    static $useRest = null;
+
+    if ($useRest === null) {
+        // Decide once per request: can we use PDO or must we fall back to REST?
+        if (!extension_loaded('pdo_pgsql') || empty(SUPABASE_DB_HOST)) {
+            $useRest = true;
+        } else {
+            // Quick DNS check — avoids a multi-second PDO timeout when the host
+            // is not resolvable (e.g. IPv6-only Supabase on a Windows / XAMPP box).
+            // gethostbynamel checks IPv4; if that fails, try AAAA (IPv6) via dns_get_record.
+            $ipv4 = @gethostbynamel(SUPABASE_DB_HOST);
+            if ($ipv4 !== false) {
+                $useRest = false;
+            } else {
+                $aaaa = @dns_get_record(SUPABASE_DB_HOST, DNS_AAAA);
+                $useRest = empty($aaaa);
+            }
+        }
+    }
+
+    if ($useRest) {
+        if ($restDb === null) {
+            $restDb = Supabase::getInstance()->restDb();
+        }
+        return $restDb;
+    }
+
+    if ($pdo === null) {
+        try {
+            $pdo = new PDO(
+                'pgsql:host=' . SUPABASE_DB_HOST . ';port=' . SUPABASE_DB_PORT . ';dbname=' . SUPABASE_DB_NAME . ';sslmode=require;connect_timeout=3',
+                SUPABASE_DB_USER,
+                SUPABASE_DB_PASS,
+                [
+                    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_EMULATE_PREPARES   => false,
+                ]
+            );
+        } catch (PDOException $e) {
+            $useRest = true;
+            $restDb = Supabase::getInstance()->restDb();
+            return $restDb;
+        }
+    }
+    return $pdo;
+}
+
+// ── MySQL (for migration only) ───────────────────────
+
+function mysql_db() {
     static $pdo = null;
     if ($pdo === null) {
         try {
@@ -22,19 +107,83 @@ function db() {
     return $pdo;
 }
 
+// ── Auth (Supabase) ──────────────────────────────────
+
 function require_login() {
-    if (empty($_SESSION['admin_logged_in'])) {
-        header('Location: ' . ADMIN_URL . '/login.php');
-        exit;
+    $supabase = Supabase::getInstance();
+
+    if (empty($_SESSION['supabase_access_token'])) {
+        redirect(ADMIN_URL . '/login.php');
     }
+
+    // Check session timeout (30 minutes)
     $timeout = 1800;
     if (!empty($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $timeout) {
-        session_destroy();
-        header('Location: ' . ADMIN_URL . '/login.php');
-        exit;
+        supabase_logout();
+        redirect(ADMIN_URL . '/login.php');
     }
+
+    // Verify token is still valid with Supabase
+    $user = $supabase->authGetUser($_SESSION['supabase_access_token']);
+    if ($user === null) {
+        // Token expired — try refresh
+        if (!empty($_SESSION['supabase_refresh_token'])) {
+            try {
+                $refreshed = $supabase->authRefreshToken($_SESSION['supabase_refresh_token']);
+                $_SESSION['supabase_access_token']  = $refreshed['access_token'];
+                $_SESSION['supabase_refresh_token']  = $refreshed['refresh_token'];
+                $_SESSION['supabase_user']           = $refreshed['user'] ?? null;
+                $_SESSION['last_activity']           = time();
+                return;
+            } catch (\Exception $e) {
+                // Refresh failed
+            }
+        }
+        supabase_logout();
+        redirect(ADMIN_URL . '/login.php');
+    }
+
+    $_SESSION['supabase_user'] = $user;
     $_SESSION['last_activity'] = time();
 }
+
+function supabase_login(string $email, string $password): bool {
+    $supabase = Supabase::getInstance();
+    try {
+        $result = $supabase->authSignIn($email, $password);
+        if (!empty($result['access_token'])) {
+            session_regenerate_id(true);
+            $_SESSION['supabase_access_token'] = $result['access_token'];
+            $_SESSION['supabase_refresh_token'] = $result['refresh_token'];
+            $_SESSION['supabase_user']          = $result['user'] ?? null;
+            $_SESSION['last_activity']          = time();
+            return true;
+        }
+    } catch (\Exception $e) {}
+    return false;
+}
+
+function supabase_logout(): void {
+    $supabase = Supabase::getInstance();
+    if (!empty($_SESSION['supabase_access_token'])) {
+        $supabase->authSignOut($_SESSION['supabase_access_token']);
+    }
+    unset($_SESSION['supabase_access_token']);
+    unset($_SESSION['supabase_refresh_token']);
+    unset($_SESSION['supabase_user']);
+    unset($_SESSION['last_activity']);
+    session_destroy();
+}
+
+function supabase_user(): ?array {
+    return $_SESSION['supabase_user'] ?? null;
+}
+
+function supabase_user_email(): string {
+    return $_SESSION['supabase_user']['email'] ?? '';
+}
+
+// ── Generic helpers ──────────────────────────────────
 
 function slugify($str) {
     $str = strtolower(trim($str));
@@ -59,60 +208,6 @@ function json_response($data, $code = 200) {
     exit;
 }
 
-function get_all($table, $order = 'created_at DESC') {
-    $allowed = ['blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks'];
-    if (!in_array($table, $allowed)) return [];
-    $pdo = db();
-    if ($pdo === null) return [];
-    $safe = preg_replace('/[^a-z_]/', '', $table);
-    $order = preg_replace('/[^a-z0-9_ ,.\-]+/i', '', $order);
-    $order = trim(preg_replace('/\s+/', ' ', $order));
-    try {
-        return $pdo->query("SELECT * FROM {$safe} ORDER BY {$order}")->fetchAll();
-    } catch (PDOException $e) {
-        return $pdo->query("SELECT * FROM {$safe}")->fetchAll();
-    }
-}
-
-function get_row($table, $id) {
-    $allowed = ['blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks'];
-    if (!in_array($table, $allowed)) return null;
-    $pdo = db();
-    if ($pdo === null) return null;
-    $safe = preg_replace('/[^a-z_]/', '', $table);
-    $stmt = $pdo->prepare("SELECT * FROM {$safe} WHERE id = ?");
-    $stmt->execute([(int)$id]);
-    return $stmt->fetch();
-}
-
-function insert($table, $data) {
-    $allowed = ['blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks'];
-    if (!in_array($table, $allowed)) return false;
-    $safe = preg_replace('/[^a-z_]/', '', $table);
-    $cols = implode(', ', array_keys($data));
-    $vals = ':' . implode(', :', array_keys($data));
-    $stmt = db()->prepare("INSERT INTO {$safe} ({$cols}) VALUES ({$vals})");
-    return $stmt->execute($data);
-}
-
-function update($table, $id, $data) {
-    $allowed = ['blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks'];
-    if (!in_array($table, $allowed)) return false;
-    $safe = preg_replace('/[^a-z_]/', '', $table);
-    $sets = implode(', ', array_map(fn($c) => "{$c} = :{$c}", array_keys($data)));
-    $data['id'] = (int)$id;
-    $stmt = db()->prepare("UPDATE {$safe} SET {$sets} WHERE id = :id");
-    return $stmt->execute($data);
-}
-
-function delete($table, $id) {
-    $allowed = ['blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks'];
-    if (!in_array($table, $allowed)) return false;
-    $safe = preg_replace('/[^a-z_]/', '', $table);
-    $stmt = db()->prepare("DELETE FROM {$safe} WHERE id = ?");
-    return $stmt->execute([(int)$id]);
-}
-
 function h($str) {
     return htmlspecialchars($str, ENT_QUOTES, 'UTF-8');
 }
@@ -131,6 +226,60 @@ function image_url($path) {
 }
 
 // ── Generic DB shortcuts ──
+
+function get_all($table, $order = 'created_at DESC') {
+    $allowed = ['blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts'];
+    if (!in_array($table, $allowed)) return [];
+    $pdo = db();
+    if ($pdo === null) return [];
+    $safe = preg_replace('/[^a-z_]/', '', $table);
+    $order = preg_replace('/[^a-z0-9_ ,.\-]+/i', '', $order);
+    $order = trim(preg_replace('/\s+/', ' ', $order));
+    try {
+        return $pdo->query("SELECT * FROM {$safe} ORDER BY {$order}")->fetchAll();
+    } catch (PDOException $e) {
+        return $pdo->query("SELECT * FROM {$safe}")->fetchAll();
+    }
+}
+
+function get_row($table, $id) {
+    $allowed = ['blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts'];
+    if (!in_array($table, $allowed)) return null;
+    $pdo = db();
+    if ($pdo === null) return null;
+    $safe = preg_replace('/[^a-z_]/', '', $table);
+    $stmt = $pdo->prepare("SELECT * FROM {$safe} WHERE id = ?");
+    $stmt->execute([(int)$id]);
+    return $stmt->fetch();
+}
+
+function insert($table, $data) {
+    $allowed = ['blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts'];
+    if (!in_array($table, $allowed)) return false;
+    $safe = preg_replace('/[^a-z_]/', '', $table);
+    $cols = implode(', ', array_keys($data));
+    $vals = ':' . implode(', :', array_keys($data));
+    $stmt = db()->prepare("INSERT INTO {$safe} ({$cols}) VALUES ({$vals})");
+    return $stmt->execute($data);
+}
+
+function update($table, $id, $data) {
+    $allowed = ['blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts'];
+    if (!in_array($table, $allowed)) return false;
+    $safe = preg_replace('/[^a-z_]/', '', $table);
+    $sets = implode(', ', array_map(fn($c) => "{$c} = :{$c}", array_keys($data)));
+    $data['id'] = (int)$id;
+    $stmt = db()->prepare("UPDATE {$safe} SET {$sets} WHERE id = :id");
+    return $stmt->execute($data);
+}
+
+function delete($table, $id) {
+    $allowed = ['blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts'];
+    if (!in_array($table, $allowed)) return false;
+    $safe = preg_replace('/[^a-z_]/', '', $table);
+    $stmt = db()->prepare("DELETE FROM {$safe} WHERE id = ?");
+    return $stmt->execute([(int)$id]);
+}
 
 function db_val($query, $params = []) {
     $pdo = db();
@@ -185,7 +334,20 @@ function get_setting($key, $default = '') {
 }
 
 function set_setting($key, $value) {
-    $stmt = db()->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
+    $pdo = db();
+    if ($pdo instanceof SupabaseRestDB) {
+        try {
+            $pdo->restCall('PATCH', 'settings?setting_key=eq.' . urlencode($key), ['setting_value' => $value]);
+            $check = $pdo->restCall('GET', 'settings?setting_key=eq.' . urlencode($key) . '&select=id');
+            if (empty($check)) {
+                $pdo->restCall('POST', 'settings?select=id', ['setting_key' => $key, 'setting_value' => $value], ['Prefer: return=representation']);
+            }
+        } catch (\Exception $e) {
+            return false;
+        }
+        return true;
+    }
+    $stmt = $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value");
     return $stmt->execute([$key, $value]);
 }
 
@@ -204,42 +366,6 @@ function csrf_verify(): void {
         http_response_code(403);
         die('Invalid CSRF token. Please go back and try again.');
     }
-}
-
-// ── Recovery Code ──
-
-function ensure_recovery_column(): void {
-    try {
-        $stmt = db()->query("SHOW COLUMNS FROM admin_users LIKE 'recovery_hash'");
-        if (!$stmt->fetch()) {
-            db()->exec("ALTER TABLE admin_users ADD COLUMN recovery_hash VARCHAR(64) DEFAULT NULL AFTER password_hash");
-        }
-    } catch (Exception $e) {}
-}
-
-function generate_recovery_code(): string {
-    $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-    $code = '';
-    for ($i = 0; $i < 12; $i++) {
-        if ($i === 4 || $i === 8) $code .= '-';
-        $code .= $chars[random_int(0, strlen($chars) - 1)];
-    }
-    return $code;
-}
-
-function set_recovery_hash(string $code): void {
-    ensure_recovery_column();
-    $hash = hash('sha256', $code);
-    $stmt = db()->prepare("UPDATE admin_users SET recovery_hash = ? WHERE id = 1");
-    $stmt->execute([$hash]);
-}
-
-function verify_recovery_code(string $code): bool {
-    ensure_recovery_column();
-    $stmt = db()->prepare("SELECT recovery_hash FROM admin_users WHERE id = 1");
-    $stmt->execute();
-    $hash = $stmt->fetchColumn();
-    return $hash !== false && hash_equals($hash, hash('sha256', $code));
 }
 
 // ── AI Provider ──

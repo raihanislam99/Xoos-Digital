@@ -2,11 +2,6 @@
 require_once __DIR__ . '/../inc/functions.php';
 require_login();
 
-// Redirect old ?view=notes to standalone notes module
-if (isset($_GET['view']) && $_GET['view'] === 'notes') {
-    header('Location: notes.php');
-    exit;
-}
 
 $pdo = db();
 
@@ -33,8 +28,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmt = $pdo->prepare($sql);
             $stmt->execute($data);
         } else {
-            $maxSort = (int)$pdo->query("SELECT COALESCE(MAX(sort_order),0)+1 FROM admin_tasks")->fetchColumn();
-            $sql = "INSERT INTO admin_tasks (title, description, status, priority, due_date, category, lead_id, assignee_type, assignee_name, sort_order) VALUES (:title, :description, :status, :priority, :due_date, :category, :lead_id, :assignee_type, :assignee_name, $maxSort)";
+            // Compute max sort_order in PHP (COALESCE/MAX not supported by REST wrapper)
+            $maxSort = 0;
+            try {
+                $allTasks = $pdo->query("SELECT sort_order FROM admin_tasks ORDER BY sort_order DESC")->fetchAll();
+                foreach ($allTasks as $t) {
+                    if (isset($t['sort_order']) && $t['sort_order'] > $maxSort) {
+                        $maxSort = (int)$t['sort_order'];
+                    }
+                }
+            } catch (Exception $e) {}
+            $maxSort++;
+            $data['sort_order'] = $maxSort;
+            $sql = "INSERT INTO admin_tasks (title, description, status, priority, due_date, category, lead_id, assignee_type, assignee_name, sort_order) VALUES (:title, :description, :status, :priority, :due_date, :category, :lead_id, :assignee_type, :assignee_name, :sort_order)";
             $stmt = $pdo->prepare($sql);
             $stmt->execute($data);
             $id = $pdo->lastInsertId();
@@ -82,17 +88,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     json_response(['ok' => false, 'error' => 'Unknown action'], 400);
 }
 
-// Build filter query
-$where = ['1=1'];
+// Build filter query (only simple col=? patterns that REST wrapper can handle)
+$where = [];
 $params = [];
 if (!empty($_GET['priority'])) { $where[] = 'priority = ?'; $params[] = $_GET['priority']; }
 if (!empty($_GET['category'])) { $where[] = 'category = ?'; $params[] = $_GET['category']; }
-if (!empty($_GET['assignee'])) { $where[] = 'CONCAT(assignee_type,":",assignee_name) = ?'; $params[] = $_GET['assignee']; }
-if (!empty($_GET['search'])) { $where[] = '(title LIKE ? OR description LIKE ?)'; $params[] = '%' . $_GET['search'] . '%'; $params[] = '%' . $_GET['search'] . '%'; }
-$whereClause = implode(' AND ', $where);
-$sortMap = ['due-asc'=>'due_date ASC, sort_order ASC', 'due-desc'=>'due_date DESC, sort_order ASC', 'name'=>'title ASC, sort_order ASC', 'priority'=>"FIELD(priority,'urgent','high','medium','low'), sort_order ASC"];
-$sortOrder = $sortMap[$_GET['sort'] ?? ''] ?? 'created_at DESC';
-$tasks = $pdo->query("SELECT * FROM admin_tasks WHERE $whereClause ORDER BY $sortOrder")->fetchAll();
+$whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+$sortOrder = 'created_at DESC';
+$ts = $pdo->prepare("SELECT * FROM admin_tasks $whereClause ORDER BY $sortOrder");
+$ts->execute($params);
+$tasks = $ts->fetchAll();
+
+// PHP-side filtering for patterns the REST wrapper can't handle (||, LIKE, etc.)
+if (!empty($_GET['assignee'])) {
+    $assigneeFilter = $_GET['assignee'];
+    $tasks = array_values(array_filter($tasks, function($t) use ($assigneeFilter) {
+        $combined = ($t['assignee_type'] ?? '') . ':' . ($t['assignee_name'] ?? '');
+        return $combined === $assigneeFilter || stripos($combined, $assigneeFilter) !== false;
+    }));
+}
+if (!empty($_GET['search'])) {
+    $search = $_GET['search'];
+    $tasks = array_values(array_filter($tasks, function($t) use ($search) {
+        return stripos($t['title'] ?? '', $search) !== false || stripos($t['description'] ?? '', $search) !== false;
+    }));
+}
+// PHP-side sorting for complex sort orders
+$sortKey = $_GET['sort'] ?? '';
+if ($sortKey === 'due-asc') {
+    usort($tasks, function($a, $b) {
+        $da = $a['due_date'] ?? '9999-12-31';
+        $db = $b['due_date'] ?? '9999-12-31';
+        return strcmp($da, $db) ?: (($a['sort_order'] ?? 0) - ($b['sort_order'] ?? 0));
+    });
+} elseif ($sortKey === 'due-desc') {
+    usort($tasks, function($a, $b) {
+        $da = $a['due_date'] ?? '';
+        $db = $b['due_date'] ?? '';
+        return strcmp($db, $da) ?: (($a['sort_order'] ?? 0) - ($b['sort_order'] ?? 0));
+    });
+} elseif ($sortKey === 'name') {
+    usort($tasks, function($a, $b) {
+        return strcmp($a['title'] ?? '', $b['title'] ?? '') ?: (($a['sort_order'] ?? 0) - ($b['sort_order'] ?? 0));
+    });
+} elseif ($sortKey === 'priority') {
+    $prioMap = ['urgent' => 0, 'high' => 1, 'medium' => 2, 'low' => 3];
+    usort($tasks, function($a, $b) use ($prioMap) {
+        $pa = $prioMap[$a['priority'] ?? 'medium'] ?? 4;
+        $pb = $prioMap[$b['priority'] ?? 'medium'] ?? 4;
+        return $pa - $pb ?: (($a['sort_order'] ?? 0) - ($b['sort_order'] ?? 0));
+    });
+}
 
 $categories = $pdo->query("SELECT DISTINCT category FROM admin_tasks WHERE category != '' ORDER BY category")->fetchAll(PDO::FETCH_COLUMN);
 $leads = $pdo->query("SELECT id, business_name FROM leads ORDER BY business_name")->fetchAll();

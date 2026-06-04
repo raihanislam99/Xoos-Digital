@@ -102,6 +102,36 @@ foreach ($iterator as $item) {
     }
 }
 
+// ── Install Composer dependencies ──
+echo "Installing Composer dependencies...\n";
+$composerBin = null;
+$possiblePaths = [
+    $targetDir . '/composer.phar',
+    $targetDir . '/../composer.phar',
+    'composer',
+    'composer.phar',
+];
+foreach ($possiblePaths as $p) {
+    if (file_exists($p) && !is_dir($p)) {
+        $composerBin = realpath($p);
+        break;
+    }
+    if (trim(shell_exec('which ' . escapeshellarg($p) . ' 2>/dev/null') ?? '')) {
+        $composerBin = $p;
+        break;
+    }
+}
+if ($composerBin) {
+    $oldDir = getcwd();
+    chdir($targetDir);
+    passthru(escapeshellarg($composerBin) . ' install --no-dev --no-interaction 2>&1');
+    chdir($oldDir);
+    echo "Composer install complete\n";
+} else {
+    echo "WARNING: Composer not found. Install manually via SSH:\n";
+    echo "  cd " . $targetDir . " && composer install --no-dev\n";
+}
+
 // Cleanup temp
 array_map('unlink', glob("$extractTo/*.*"));
 $iterator2 = new RecursiveIteratorIterator(

@@ -1,15 +1,15 @@
 <?php
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/inc/functions.php';
+require_once __DIR__ . '/inc/supabase.php';
 
-if (!empty($_SESSION['admin_logged_in'])) {
+if (!empty($_SESSION['supabase_access_token'])) {
     header('Location: ' . ADMIN_URL . '/index.php');
     exit;
 }
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    require_once __DIR__ . '/inc/functions.php';
-
     // Rate limiting
     $ip       = $_SERVER['REMOTE_ADDR'];
     $key      = 'login_attempts_' . md5($ip);
@@ -26,29 +26,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $username = trim($_POST['username'] ?? '');
         $password = $_POST['password'] ?? '';
         if ($username && $password) {
-            try {
-                $pdo = db();
-                if ($pdo === null) {
-                    $error = 'Database not set up. <a href="setup.php" style="color:#CCFF00">Run setup first</a>.';
-                } else {
-                $stmt = $pdo->prepare("SELECT * FROM admin_users WHERE username = ?");
-                $stmt->execute([$username]);
-                $user = $stmt->fetch();
-                if ($user && password_verify($password, $user['password_hash'])) {
-                    unset($_SESSION[$key]);
-                    session_regenerate_id(true);
-                    $_SESSION['admin_logged_in'] = true;
-                    $_SESSION['admin_username'] = $user['username'];
-                    $_SESSION['last_activity'] = time();
-                    header('Location: ' . ADMIN_URL . '/index.php');
-                    exit;
-                } else {
-                    $_SESSION[$key] = ['count' => $attempts + 1, 'since' => $since];
-                    $error = "Invalid email or password. " . (5 - $attempts - 1) . " attempts remaining.";
-                }
-                }
-            } catch (PDOException $e) {
-                $error = 'Database not set up. <a href="setup.php" style="color:#CCFF00">Run setup first</a>.';
+            $success = supabase_login($username, $password);
+            if ($success) {
+                unset($_SESSION[$key]);
+                header('Location: ' . ADMIN_URL . '/index.php');
+                exit;
+            } else {
+                $_SESSION[$key] = ['count' => $attempts + 1, 'since' => $since];
+                $error = "Invalid email or password. " . (5 - $attempts - 1) . " attempts remaining.";
             }
         }
         if (!$error) $error = 'Invalid credentials';
@@ -131,12 +116,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="logo">Xoos <span>Digital</span></div>
         <div class="subtitle">Admin Panel</div>
         <?php if ($error): ?>
-            <div class="error"><?= (stripos($error, '<a') !== false) ? $error : htmlspecialchars($error) ?></div>
+            <div class="error"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
         <form method="post">
             <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" required autocomplete="username" placeholder="admin">
+                <label for="username">Email</label>
+                <input type="email" id="username" name="username" required autocomplete="email" placeholder="admin@example.com">
             </div>
             <div class="form-group">
                 <label for="password">Password</label>

@@ -31,12 +31,13 @@ try {
     $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS brand_voice TEXT DEFAULT ''");
     $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS avoid_topics TEXT DEFAULT ''");
     $pdo->exec("ALTER TABLE post_training_data ADD COLUMN IF NOT EXISTS profile_id INT DEFAULT NULL");
-    $pdo->exec("CREATE TABLE IF NOT EXISTS post_hashtags (id INT AUTO_INCREMENT PRIMARY KEY, platform VARCHAR(50) NOT NULL, tag VARCHAR(100) NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS post_hashtags (id SERIAL PRIMARY KEY, platform VARCHAR(50) NOT NULL, tag VARCHAR(100) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
     $pdo->exec("ALTER TABLE generated_posts ADD COLUMN IF NOT EXISTS profile_id INT DEFAULT NULL");
     $pdo->exec("ALTER TABLE generated_posts ADD COLUMN IF NOT EXISTS linkedin_content TEXT");
     $pdo->exec("ALTER TABLE generated_posts ADD COLUMN IF NOT EXISTS facebook_content TEXT");
     $pdo->exec("ALTER TABLE generated_posts ADD COLUMN IF NOT EXISTS hashtags_used TEXT");
     $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500) DEFAULT ''");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS post_versions (id SERIAL PRIMARY KEY, post_id INT NOT NULL, content TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
 } catch (Exception $e) { /* columns may already exist */ }
 
 function fetch_og_image(string $url): string {
@@ -130,14 +131,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 
     if ($action === 'delete_post') {
-        $pdo->prepare("DELETE FROM generated_posts WHERE id = ?")->execute([(int)$_POST['id']]);
+        $id = (int)$_POST['id'];
+        $pdo->prepare("DELETE FROM post_versions WHERE post_id = ?")->execute([$id]);
+        $pdo->prepare("DELETE FROM generated_posts WHERE id = ?")->execute([$id]);
         json_response(['ok' => true]);
     }
 
     if ($action === 'update_post') {
         $id = (int)$_POST['id'];
-        $pdo->prepare("UPDATE generated_posts SET content = ? WHERE id = ?")->execute([trim($_POST['content']), $id]);
+        $newContent = trim($_POST['content']);
+        // Save version before updating
+        $old = $pdo->prepare("SELECT content FROM generated_posts WHERE id = ?");
+        $old->execute([$id]);
+        $oldRow = $old->fetch();
+        if ($oldRow && trim($oldRow['content'] ?? '') !== $newContent) {
+            try { $pdo->prepare("INSERT INTO post_versions (post_id, content) VALUES (?,?)")->execute([$id, $oldRow['content']]); } catch (Exception $e) {}
+        }
+        $pdo->prepare("UPDATE generated_posts SET content = ? WHERE id = ?")->execute([$newContent, $id]);
         json_response(['ok' => true]);
+    }
+
+    if ($action === 'get_versions') {
+        $id = (int)$_POST['id'];
+        $v = $pdo->prepare("SELECT id, created_at FROM post_versions WHERE post_id = ? ORDER BY created_at DESC LIMIT 50");
+        $v->execute([$id]);
+        json_response(['ok' => true, 'data' => $v->fetchAll()]);
+    }
+
+    if ($action === 'restore_version') {
+        $vid = (int)$_POST['version_id'];
+        $pid = (int)$_POST['post_id'];
+        $v = $pdo->prepare("SELECT * FROM post_versions WHERE id = ? AND post_id = ?");
+        $v->execute([$vid, $pid]);
+        $ver = $v->fetch();
+        if (!$ver) { json_response(['ok' => false, 'error' => 'Version not found'], 404); exit; }
+        // Save current as version before restoring
+        $cur = $pdo->prepare("SELECT content FROM generated_posts WHERE id = ?");
+        $cur->execute([$pid]);
+        $curRow = $cur->fetch();
+        if ($curRow && trim($curRow['content'] ?? '') !== trim($ver['content'] ?? '')) {
+            try { $pdo->prepare("INSERT INTO post_versions (post_id, content) VALUES (?,?)")->execute([$pid, $curRow['content']]); } catch (Exception $e) {}
+        }
+        $pdo->prepare("UPDATE generated_posts SET content = ? WHERE id = ?")->execute([$ver['content'], $pid]);
+        json_response(['ok' => true, 'content' => $ver['content']]);
     }
 
     // ── Save generated posts ──
@@ -428,6 +464,7 @@ PROMPT;
     }
 
     if ($action === 'clear_history') {
+        $pdo->exec("DELETE FROM post_versions");
         $pdo->exec("DELETE FROM generated_posts");
         json_response(['ok' => true]);
         exit;
@@ -443,8 +480,15 @@ foreach ($profiles as $p) {
     if (($p['type'] ?? 'personal') === 'client') $clientProfiles[] = $p;
     else $personalProfiles[] = $p;
 }
-$trainingData = $pdo->query("SELECT t.*, p.name as profile_name FROM post_training_data t LEFT JOIN post_profiles p ON t.profile_id = p.id ORDER BY t.created_at DESC")->fetchAll();
-$generatedPosts = $pdo->query("SELECT g.*, p.name as profile_name FROM generated_posts g LEFT JOIN post_profiles p ON g.profile_id = p.id ORDER BY g.created_at DESC LIMIT 50")->fetchAll();
+// Build profile name map (JOINs not supported in REST mode)
+$profileNameMap = [];
+foreach ($profiles as $p) $profileNameMap[$p['id']] = $p['name'];
+
+$trainingData = $pdo->query("SELECT * FROM post_training_data ORDER BY created_at DESC")->fetchAll();
+foreach ($trainingData as &$td) { $td['profile_name'] = $profileNameMap[$td['profile_id']] ?? null; } unset($td);
+
+$generatedPosts = $pdo->query("SELECT * FROM generated_posts ORDER BY created_at DESC LIMIT 50")->fetchAll();
+foreach ($generatedPosts as &$gp) { $gp['profile_name'] = $profileNameMap[$gp['profile_id']] ?? null; } unset($gp);
 
 $flash_msg = $_SESSION['flash_msg'] ?? '';
 $flash_type = $_SESSION['flash_type'] ?? '';
@@ -599,6 +643,19 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
 @media (max-width:480px) {
   .pg-mode-btn { padding:0.4rem 0.7rem; font-size:0.65rem; }
   .pg-profile-chip { padding:6px 10px; font-size:0.76rem; }
+  .tone-pills { gap:4px; }
+  .tone-pill { padding:4px 10px; font-size:0.7rem; }
+  #profileSelect { font-size:0.75rem; padding:6px 8px; }
+  .pg-mode-toggle { gap:2px; }
+  .pg-mode-btn { font-size:0.6rem; padding:0.35rem 0.5rem; letter-spacing:0.04em; }
+  #lengthSection .tone-pill { padding:4px 8px; font-size:0.65rem; }
+  .post-card { padding:0.85rem; }
+  .history-row td { font-size:0.72rem; }
+  .pg-filter-bar select { font-size:0.7rem !important; padding:4px 6px !important; max-width:100px !important; }
+  #historyTable th { font-size:0.6rem; }
+  #historyTable td { padding:6px 4px !important; }
+  .history-row td:nth-child(2) { max-width:80px !important; }
+  .history-row td:nth-child(3) { max-width:100px !important; }
 }
 </style>
 
@@ -730,18 +787,20 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
     </div>
     <?php if (count($generatedPosts)): $latest = $generatedPosts[0]; ?>
     <?php $lp = $latest['platform'] ?? 'linkedin'; $lic = plat($lp, 'icon'); $lc = plat($lp, 'color') ?: '#0a66c2'; ?>
-    <div class="post-card" style="border-left:3px solid <?= h($lc) ?>">
+    <?php $latestContent = $latest['content'] ?? $latest['linkedin_content'] ?: $latest['facebook_content'] ?? ''; ?>
+    <div class="post-card latest-card" id="latest-card" style="border-left:3px solid <?= h($lc) ?>;cursor:pointer" onclick="toggleLatestContent()">
         <div class="post-header">
             <span class="post-platform" style="color:<?= h($lc) ?>">
                 <i class="ti <?= h($lic) ?>"></i> <?= h($latest['topic'] ?? '') ?>
                 <span class="text-muted" style="font-weight:400;text-transform:none;letter-spacing:0;margin-left:8px">via <?= h($latest['profile_name'] ?? '') ?></span>
             </span>
-            <div class="post-actions">
+            <div class="post-actions" onclick="event.stopPropagation()">
                 <span class="status-badge <?= $latest['status']==='published'?'status-published':'status-draft' ?>" style="font-size:0.6rem;padding:2px 8px"><?= $latest['status'] ?></span>
                 <button class="btn btn-secondary btn-sm" onclick="restorePost(<?= $latest['id'] ?>)" style="padding:3px 8px"><i class="ti ti-history"></i></button>
             </div>
         </div>
-        <div class="post-content"><?= h(mb_substr($latest['content'] ?? ($latest['linkedin_content'] ?: $latest['facebook_content'] ?? ''), 0, 200)) ?>...</div>
+        <div class="post-content" id="latestContentPreview" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><?= h(mb_substr($latestContent, 0, 200)) ?></div>
+        <div class="post-content" id="latestContentFull" style="display:none;white-space:pre-wrap;word-break:break-word"><?= h($latestContent) ?></div>
         <div class="post-meta"><span><?= date('M j, Y h:i A', strtotime($latest['created_at'])) ?></span></div>
     </div>
     <?php else: ?>
@@ -995,10 +1054,40 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
 
 <?php elseif ($view === 'history'): ?>
 
+<?php
+// Build unique filter values
+$hPlatforms = []; $hProfiles = []; $hStatuses = [];
+foreach ($generatedPosts as $gp) {
+    $hPlatforms[$gp['platform'] ?? 'linkedin'] = true;
+    if ($gp['profile_name']) $hProfiles[$gp['profile_name']] = true;
+    $hStatuses[$gp['status']] = true;
+}
+ksort($hPlatforms); ksort($hProfiles); ksort($hStatuses);
+?>
+
 <?php if (count($generatedPosts)): ?>
-<div style="margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
-    <span class="text-muted" style="font-size:0.75rem"><?= count($generatedPosts) ?> posts</span>
-    <button class="btn btn-danger btn-sm" onclick="if(confirm('Clear all history?')){var fd=new FormData();fd.append('action','clear_history');fetch('post-generator.php',{method:'POST',body:fd}).then(function(r){return r.json()}).then(function(j){if(j.ok)location.reload()})}"><i class="ti ti-trash"></i> Clear All</button>
+<div class="pg-filter-bar" style="margin-bottom:0.75rem">
+    <i class="ti ti-adjustments-horizontal" style="font-size:0.9rem;color:var(--text3)"></i>
+    <span style="font-size:0.72rem;font-weight:600;color:var(--text3);margin-right:4px">Filter</span>
+    <select class="form-control" id="hFilterPlatform" onchange="filterHistory()" style="width:auto;max-width:140px;font-size:0.78rem;padding:6px 10px;">
+        <option value="">All Platforms</option>
+        <?php foreach (array_keys($hPlatforms) as $p): ?>
+        <option value="<?= h($p) ?>"><?= h(ucfirst($p)) ?></option>
+        <?php endforeach; ?>
+    </select>
+    <select class="form-control" id="hFilterStatus" onchange="filterHistory()" style="width:auto;max-width:120px;font-size:0.78rem;padding:6px 10px;">
+        <option value="">All Status</option>
+        <?php foreach (array_keys($hStatuses) as $s): ?>
+        <option value="<?= h($s) ?>"><?= h(ucfirst($s)) ?></option>
+        <?php endforeach; ?>
+    </select>
+    <select class="form-control" id="hFilterProfile" onchange="filterHistory()" style="width:auto;max-width:160px;font-size:0.78rem;padding:6px 10px;">
+        <option value="">All Profiles</option>
+        <?php foreach (array_keys($hProfiles) as $pr): ?>
+        <option value="<?= h($pr) ?>"><?= h($pr) ?></option>
+        <?php endforeach; ?>
+    </select>
+    <span class="text-muted" style="font-size:0.7rem;margin-left:auto" id="hFilterCount"><?= count($generatedPosts) ?> posts</span>
 </div>
 <div class="card">
     <div class="table-wrap">
@@ -1011,7 +1100,7 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
                     $hcol = plat($hpl, 'color') ?: '#0a66c2';
                     $fullContent = $gp['content'] ?? $gp['linkedin_content'] ?: $gp['facebook_content'] ?? '';
                 ?>
-                <tr class="history-row" id="history-<?= $gp['id'] ?>" data-full-content="<?= h($fullContent) ?>" onclick="toggleHistoryRow(this)">
+                <tr class="history-row" id="history-<?= $gp['id'] ?>" data-full-content="<?= h($fullContent) ?>" data-post-id="<?= $gp['id'] ?>" data-platform="<?= h($gp['platform'] ?? 'linkedin') ?>" data-status="<?= h($gp['status'] ?? 'draft') ?>" data-profile="<?= h($gp['profile_name'] ?? '') ?>" onclick="toggleHistoryRow(this)">
                     <td><i class="ti <?= h($hic) ?>" style="color:<?= h($hcol) ?>"></i></td>
                     <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><?= h($gp['topic'] ?? '') ?></td>
                     <td class="history-preview" style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><?= h(mb_substr($fullContent, 0, 80)) ?></td>
@@ -1022,11 +1111,12 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
                         <button class="btn btn-secondary btn-sm" onclick="restorePost(<?= $gp['id'] ?>)" title="Restore" style="padding:3px 7px"><i class="ti ti-history"></i></button>
                         <button class="btn btn-secondary btn-sm" onclick="copyText(this,<?= $gp['id'] ?>)" title="Copy" style="padding:3px 7px"><i class="ti ti-copy"></i></button>
                         <button class="btn btn-secondary btn-sm" onclick="editPost(<?= $gp['id'] ?>)" title="Edit" style="padding:3px 7px"><i class="ti ti-pencil"></i></button>
+                        <button class="btn btn-secondary btn-sm" onclick="showVersions(<?= $gp['id'] ?>)" title="Versions" style="padding:3px 7px"><i class="ti ti-versions"></i></button>
                         <button class="btn btn-danger btn-sm" onclick="deletePost(<?= $gp['id'] ?>)" title="Delete" style="padding:3px 7px"><i class="ti ti-trash"></i></button>
                     </td>
                 </tr>
                 <tr class="history-expand" id="history-expand-<?= $gp['id'] ?>" style="display:none">
-                    <td colspan="7" style="padding:0.75rem 1rem;background:rgba(255,255,255,0.02);border-bottom:1px solid var(--border);font-size:0.82rem;line-height:1.6;color:var(--text2);white-space:pre-wrap"><?= nl2br(h($fullContent)) ?></td>
+                    <td colspan="7" style="padding:0.75rem 1rem;background:rgba(255,255,255,0.02);border-bottom:1px solid var(--border);font-size:0.82rem;line-height:1.6;color:var(--text2);white-space:pre-wrap;word-break:break-word"><?= h($fullContent) ?></td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -1053,6 +1143,14 @@ $pageTitle = $pageTitles[$view] ?? 'Post Generator';
                 <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
             </div>
         </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="versionsModal">
+    <div class="modal" style="max-width:480px">
+        <h3 class="modal-title"><i class="ti ti-versions"></i> Version History</h3>
+        <div id="versionsList" style="max-height:50vh;overflow-y:auto;margin-bottom:1rem"></div>
+        <div class="form-actions"><button type="button" class="btn btn-secondary" onclick="closeVersionsModal()">Close</button></div>
     </div>
 </div>
 
@@ -1518,14 +1616,43 @@ function deleteProfile(id) {
     .then(function(j) { if (j.ok) location.reload(); });
 }
 
+function filterHistory() {
+    var plat = document.getElementById('hFilterPlatform').value.toLowerCase();
+    var status = document.getElementById('hFilterStatus').value.toLowerCase();
+    var prof = document.getElementById('hFilterProfile').value.toLowerCase();
+    var rows = document.querySelectorAll('#historyTable tbody .history-row');
+    var visible = 0;
+    rows.forEach(function(r) {
+        var match = (!plat || r.dataset.platform.toLowerCase() === plat) &&
+                    (!status || r.dataset.status.toLowerCase() === status) &&
+                    (!prof || r.dataset.profile.toLowerCase() === prof);
+        r.style.display = match ? '' : 'none';
+        // Hide expand row too
+        var expand = document.getElementById('history-expand-' + r.id.replace('history-', ''));
+        if (expand && !match) expand.style.display = 'none';
+        if (match) visible++;
+    });
+    var count = document.getElementById('hFilterCount');
+    if (count) count.textContent = visible + ' posts';
+}
+
 function toggleHistoryRow(el) {
     var id = el.id.replace('history-', '');
     var expand = document.getElementById('history-expand-' + id);
-    if (expand) {
+    if (expand && el.style.display !== 'none') {
         var isHidden = expand.style.display === 'none';
         expand.style.display = isHidden ? 'table-row' : 'none';
         el.classList.toggle('expanded', isHidden);
     }
+}
+
+function toggleLatestContent() {
+    var preview = document.getElementById('latestContentPreview');
+    var full = document.getElementById('latestContentFull');
+    if (!preview || !full) return;
+    var isHidden = preview.style.display !== 'none';
+    preview.style.display = isHidden ? 'none' : '';
+    full.style.display = isHidden ? '' : 'none';
 }
 
 function deletePost(id) {
@@ -1567,12 +1694,79 @@ function saveEditPost(e) {
                 var preview = row.querySelector('.history-preview');
                 if (preview) preview.textContent = content.substring(0, 80);
                 var expand = document.getElementById('history-expand-' + id);
-                if (expand) expand.querySelector('td').innerHTML = content.replace(/\n/g, '<br>');
+                if (expand) expand.querySelector('td').textContent = content;
             }
             closeEditModal();
             showToast('Updated');
         }
     });
+}
+
+function showVersions(postId) {
+    var list = document.getElementById('versionsList');
+    list.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text3)"><span class="ai-spinner"></span> Loading versions...</div>';
+    document.getElementById('versionsModal').classList.add('open');
+    var fd = new FormData();
+    fd.append('action', 'get_versions');
+    fd.append('id', postId);
+    fetch('post-generator.php', { method: 'POST', body: fd })
+    .then(function(r) { return r.json(); })
+    .then(function(j) {
+        if (!j.ok || !j.data || !j.data.length) {
+            list.innerHTML = '<div style="text-align:center;padding:2rem 1rem;color:var(--text3)"><i class="ti ti-history-off" style="font-size:2rem;display:block;margin-bottom:0.5rem"></i>No previous versions</div>';
+            return;
+        }
+        var html = '';
+        var row = document.getElementById('history-' + postId);
+        var currentContent = row ? row.dataset.fullContent : '';
+        j.data.forEach(function(v) {
+            html += '<div class="history-row" style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:0.82rem;display:flex;align-items:center;gap:12px">';
+            html += '<span style="flex:1;color:var(--text2)"><i class="ti ti-clock"></i> ' + timeAgo(v.created_at) + '</span>';
+            html += '<button class="btn btn-secondary btn-sm" onclick="restoreVersion(' + v.id + ',' + postId + ')" style="padding:3px 10px"><i class="ti ti-history"></i> Restore</button>';
+            html += '</div>';
+        });
+        list.innerHTML = html;
+    })
+    .catch(function() {
+        list.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--error)">Failed to load versions</div>';
+    });
+}
+
+function closeVersionsModal() { document.getElementById('versionsModal').classList.remove('open'); }
+
+function restoreVersion(vid, pid) {
+    var fd = new FormData();
+    fd.append('action', 'restore_version');
+    fd.append('version_id', vid);
+    fd.append('post_id', pid);
+    fetch('post-generator.php', { method: 'POST', body: fd })
+    .then(function(r) { return r.json(); })
+    .then(function(j) {
+        if (!j.ok) { showToast(j.error || 'Restore failed', 'error'); return; }
+        // Update history row
+        var row = document.getElementById('history-' + pid);
+        if (row) {
+            row.dataset.fullContent = j.content;
+            var preview = row.querySelector('.history-preview');
+            if (preview) preview.textContent = j.content.substring(0, 80);
+            var expand = document.getElementById('history-expand-' + pid);
+            if (expand) expand.querySelector('td').textContent = j.content;
+        }
+        closeVersionsModal();
+        showToast('Version restored');
+    })
+    .catch(function() { showToast('Error restoring version', 'error'); });
+}
+
+function timeAgo(dateStr) {
+    var d = new Date(dateStr.replace(' ', 'T') + 'Z');
+    if (isNaN(d.getTime())) return dateStr;
+    var s = Math.floor((Date.now() - d.getTime()) / 1000);
+    if (s < 60) return 'just now';
+    if (s < 3600) return Math.floor(s / 60) + 'm ago';
+    if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+    if (s < 2592000) return Math.floor(s / 86400) + 'd ago';
+    return dateStr;
 }
 
 function restorePost(id) {
@@ -1620,12 +1814,14 @@ document.getElementById('editModal').addEventListener('click', function(e) { if 
 document.getElementById('editTrainingModal').addEventListener('click', function(e) { if (e.target === this) closeTrainingEditModal(); });
 document.getElementById('addProfileModal').addEventListener('click', function(e) { if (e.target === this) closeAddProfileModal(); });
 document.getElementById('profileModal').addEventListener('click', function(e) { if (e.target === this) closeProfileModal(); });
+document.getElementById('versionsModal').addEventListener('click', function(e) { if (e.target === this) closeVersionsModal(); });
 
-// Close profile modal on Escape
+// Close modals on Escape
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         if (document.getElementById('profileModal').classList.contains('open')) closeProfileModal();
         if (document.getElementById('addProfileModal').classList.contains('open')) closeAddProfileModal();
+        if (document.getElementById('versionsModal').classList.contains('open')) closeVersionsModal();
     }
 });
 

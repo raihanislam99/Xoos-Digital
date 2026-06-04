@@ -1,0 +1,15 @@
+{
+    "name": "xoosdigital/admin",
+    "require": {
+        "php": ">=8.0",
+        "firebase/php-jwt": "^6.10"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "policy": {
+            "advisories": {
+                "block": false
+            }
+        }
+    }
+}

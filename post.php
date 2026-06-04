@@ -11,7 +11,9 @@ if ($slug) {
         $stmt = db()->prepare("SELECT blog_posts.*, blog_categories.name AS category_name FROM blog_posts LEFT JOIN blog_categories ON blog_posts.category_id = blog_categories.id WHERE blog_posts.slug = ? AND blog_posts.status = 'published' LIMIT 1");
         $stmt->execute([$slug]);
         $post = $stmt->fetch();
-    } catch (Exception $e) {}
+    } catch (Exception $e) {
+        error_log('Blog post fetch error: ' . $e->getMessage());
+    }
 }
 
 if ($post) {
@@ -19,7 +21,9 @@ if ($post) {
         $stmt = db()->prepare("SELECT id, slug, title, featured_image, created_at FROM blog_posts WHERE status = 'published' AND slug != ? ORDER BY created_at DESC LIMIT 5");
         $stmt->execute([$slug]);
         $recent = $stmt->fetchAll();
-    } catch (Exception $e) {}
+    } catch (Exception $e) {
+        error_log('Blog recent posts fetch error: ' . $e->getMessage());
+    }
 }
 
 if (!$post) {

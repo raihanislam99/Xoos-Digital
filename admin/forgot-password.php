@@ -1,7 +1,13 @@
 <?php
+/**
+ * Forgot Password — uses Supabase Auth password reset
+ * Sends a password reset email via Supabase Auth
+ */
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/inc/functions.php';
+require_once __DIR__ . '/inc/supabase.php';
 
-if (!empty($_SESSION['admin_logged_in'])) {
+if (!empty($_SESSION['supabase_access_token'])) {
     header('Location: ' . ADMIN_URL . '/index.php');
     exit;
 }
@@ -10,10 +16,8 @@ $success = false;
 $error   = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    require_once __DIR__ . '/inc/functions.php';
-
     $ip       = $_SERVER['REMOTE_ADDR'];
-    $key      = 'recovery_attempts_' . md5($ip);
+    $key      = 'reset_attempts_' . md5($ip);
     $attempts = $_SESSION[$key]['count'] ?? 0;
     $since    = $_SESSION[$key]['since'] ?? time();
     if (time() - $since > 900) {
@@ -24,37 +28,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $wait = 900 - (time() - $since);
         $error = "Too many attempts. Try again in " . ceil($wait/60) . " minutes.";
     } else {
-        $code    = trim($_POST['recovery_code'] ?? '');
-        $new_pass = $_POST['new_password'] ?? '';
-        $confirm = $_POST['confirm_password'] ?? '';
-
-        if ($code === '' || $new_pass === '' || $confirm === '') {
-            $error = 'All fields are required.';
-        } elseif ($new_pass !== $confirm) {
-            $error = 'Passwords do not match.';
-        } elseif (strlen($new_pass) < 8) {
-            $error = 'Password must be at least 8 characters.';
-        } elseif (!preg_match('/[A-Z]/', $new_pass)) {
-            $error = 'Password must contain at least one uppercase letter.';
-        } elseif (!preg_match('/[a-z]/', $new_pass)) {
-            $error = 'Password must contain at least one lowercase letter.';
-        } elseif (!preg_match('/[0-9]/', $new_pass)) {
-            $error = 'Password must contain at least one digit.';
-        } elseif (!preg_match('/[^A-Za-z0-9]/', $new_pass)) {
-            $error = 'Password must contain at least one special character.';
-        } elseif (!verify_recovery_code($code)) {
-            $_SESSION[$key] = ['count' => $attempts + 1, 'since' => $since];
-            $error = 'Invalid recovery code. ' . (3 - $attempts - 1) . ' attempts remaining.';
+        $email = trim($_POST['email'] ?? '');
+        if (!$email) {
+            $error = 'Email is required.';
         } else {
-            $hash = password_hash($new_pass, PASSWORD_DEFAULT);
-            $stmt = db()->prepare("UPDATE admin_users SET password_hash = ? WHERE id = 1");
-            $stmt->execute([$hash]);
-
-            $new_code = generate_recovery_code();
-            set_recovery_hash($new_code);
-
-            unset($_SESSION[$key]);
-            $success = true;
+            try {
+                $supabase = Supabase::getInstance();
+                // Supabase Auth: send password reset email
+                $redirectTo = ADMIN_URL . '/login.php';
+                $supabase->apiCall('POST', '/auth/v1/recover', [
+                    'email' => $email,
+                    'redirect_to' => $redirectTo,
+                ], false, false);
+                $_SESSION[$key] = ['count' => $attempts + 1, 'since' => $since];
+                $success = true;
+            } catch (Exception $e) {
+                $_SESSION[$key] = ['count' => $attempts + 1, 'since' => $since];
+                $error = 'Could not send reset email. Please contact support or use Supabase dashboard.';
+            }
         }
     }
 }
@@ -64,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reset Password — Xoos Digital Admin</title>
+    <title>Forgot Password — Xoos Digital Admin</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
@@ -87,38 +78,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .back-link{text-align:center;margin-top:1.25rem}
         .back-link a{color:#555;font-size:0.75rem;text-decoration:none;transition:color 0.15s}
         .back-link a:hover{color:#CCFF00}
-        small{color:#555;font-size:0.65rem;display:block;margin-top:4px}
     </style>
 </head>
 <body>
     <div class="card">
         <div class="logo">Xoos <span>Digital</span></div>
-        <div class="subtitle">Reset Password</div>
+        <div class="subtitle">Forgot Password</div>
 
         <?php if ($success): ?>
-            <div class="msg msg-ok">Password reset successfully. A new recovery code has been generated and stored. <a href="login.php" style="color:#CCFF00;text-decoration:underline">Go to Login</a></div>
+            <div class="msg msg-ok">If an account exists with that email, a password reset link has been sent. Check your inbox (and spam). <a href="login.php" style="color:#CCFF00;text-decoration:underline">Back to Login</a></div>
         <?php else: ?>
             <?php if ($error): ?>
                 <div class="msg msg-err"><?= htmlspecialchars($error) ?></div>
             <?php endif; ?>
 
-            <p class="text-muted">Enter your recovery code and a new password. If you don't have a recovery code, run <strong>setup.php</strong> from your server and use <strong>"Reset Admin User"</strong> (non-destructive, preserves all data).</p>
+            <p class="text-muted">Enter your admin email address and we'll send a password reset link via Supabase Auth.</p>
 
             <form method="post">
                 <div class="form-group">
-                    <label>Recovery Code</label>
-                    <input type="text" name="recovery_code" required autocomplete="off" placeholder="e.g. X7k9-mQ2p-4Rw8" style="font-family:monospace;letter-spacing:0.1em;text-transform:uppercase">
+                    <label>Email</label>
+                    <input type="email" name="email" required autocomplete="email" placeholder="admin@example.com">
                 </div>
-                <div class="form-group">
-                    <label>New Password</label>
-                    <input type="password" name="new_password" required autocomplete="new-password" placeholder="Min 8 characters">
-                    <small>Min 8 chars · 1 uppercase · 1 lowercase · 1 digit · 1 special char</small>
-                </div>
-                <div class="form-group">
-                    <label>Confirm Password</label>
-                    <input type="password" name="confirm_password" required autocomplete="new-password" placeholder="Re-enter new password">
-                </div>
-                <button type="submit" class="btn">Reset Password</button>
+                <button type="submit" class="btn">Send Reset Link</button>
             </form>
         <?php endif; ?>
 

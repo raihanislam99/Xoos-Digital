@@ -8,23 +8,13 @@ $active = $module ? str_replace('.php', '', $module) : '';
 
 // Nav groups rendered inline in the sidebar template below
 
-$unread_msgs = 0;
-try { $unread_msgs = db_val("SELECT COUNT(*) FROM contact_messages WHERE is_read = 0"); } catch (Exception $e) {}
-$pendingTasks = 0;
-try { $pendingTasks = (int)db_val("SELECT COUNT(*) FROM admin_tasks WHERE status IN ('pending','in_progress')"); } catch (Exception $e) {}
-// v3 focus counts
-$tasksDueToday = 0;
-try { $tasksDueToday = (int)db_val("SELECT COUNT(*) FROM admin_tasks WHERE status IN ('pending','in_progress') AND DATE(due_date) = CURDATE()"); } catch (Exception $e) {}
-$blogDrafts = 0;
-try { $blogDrafts = (int)db_val("SELECT COUNT(*) FROM blog_posts WHERE status = 'draft'"); } catch (Exception $e) {}
-$blogCount = 0;
-try { $blogCount = (int)db_val("SELECT COUNT(*) FROM blog_posts"); } catch (Exception $e) {}
-$unpubPosts = 0;
-try { $unpubPosts = (int)db_val("SELECT COUNT(*) FROM generated_posts WHERE status = 'draft'"); } catch (Exception $e) {}
-$newLeadsWeek = 0;
-try { $newLeadsWeek = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklisted = 0 AND created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)"); } catch (Exception $e) {}
-$noteCount = 0;
-try { $noteCount = (int)db_val("SELECT COUNT(*) FROM notes"); } catch (Exception $e) {}
+$unread_msgs = db_count_cached('unread_msgs', "SELECT COUNT(*) FROM contact_messages WHERE is_read = 0");
+$pendingTasks = db_count_cached('pending_tasks', "SELECT COUNT(*) FROM admin_tasks WHERE status IN ('pending','in_progress')");
+$tasksDueToday = db_count_cached('tasks_due_today', "SELECT COUNT(*) FROM admin_tasks WHERE status IN ('pending','in_progress') AND due_date::date = CURRENT_DATE");
+$blogDrafts = db_count_cached('blog_drafts', "SELECT COUNT(*) FROM blog_posts WHERE status = 'draft'");
+$blogCount = db_count_cached('blog_count', "SELECT COUNT(*) FROM blog_posts");
+$unpubPosts = db_count_cached('unpub_posts', "SELECT COUNT(*) FROM generated_posts WHERE status = 'draft'");
+$newLeadsWeek = db_count_cached('new_leads_week', "SELECT COUNT(*) FROM leads WHERE is_blacklisted = 0 AND created_at >= CURRENT_DATE - INTERVAL '7 days'");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -34,7 +24,7 @@ try { $noteCount = (int)db_val("SELECT COUNT(*) FROM notes"); } catch (Exception
     <title>Admin — Xoos Digital</title>
     <link rel="icon" href="<?= BASE_URL ?>/images/Icons/favicon.png">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous">
     <link rel="stylesheet" href="<?= ADMIN_URL ?>/assets/css/admin-ui.css?v=<?= filemtime(__DIR__ . '/../assets/css/admin-ui.css') ?>">
     <link rel="stylesheet" href="<?= ADMIN_URL ?>/assets/css/admin-v3.css?v=<?= filemtime(__DIR__ . '/../assets/css/admin-v3.css') ?>">
     <style>
@@ -667,7 +657,7 @@ try { $noteCount = (int)db_val("SELECT COUNT(*) FROM notes"); } catch (Exception
     <script src="<?= ADMIN_URL ?>/js/admin.js?v=<?= filemtime(__DIR__ . '/../js/admin.js') ?>"></script>
     <script src="<?= ADMIN_URL ?>/assets/js/admin-ui.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin-ui.js') ?>"></script>
     <script src="<?= ADMIN_URL ?>/assets/js/admin-v3.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin-v3.js') ?>"></script>
-    <script>window.blogAIProvider='<?= get_setting('ai_provider_blog','groq') ?>';</script>
+    <script>window.ADMIN_URL='<?= ADMIN_URL ?>';window.BASE_URL='<?= BASE_URL ?>';window.blogAIProvider='<?= get_setting('ai_provider_blog','groq') ?>';</script>
 </head>
 <body>
     <button class="mobile-menu-btn" id="mobileMenuBtn" title="Menu">
@@ -675,9 +665,9 @@ try { $noteCount = (int)db_val("SELECT COUNT(*) FROM notes"); } catch (Exception
     </button>
     <aside class="sidebar v3-sidebar" id="sidebar">
         <div class="sidebar-user">
-            <div class="sidebar-avatar" data-name="<?= htmlspecialchars($_SESSION['admin_username'] ?? 'A') ?>"></div>
+            <div class="sidebar-avatar" data-name="<?= htmlspecialchars(supabase_user_email() ?: 'A') ?>"></div>
             <div class="sidebar-user-info">
-                <div class="sidebar-user-name"><?= htmlspecialchars($_SESSION['admin_username'] ?? 'Admin') ?></div>
+                <div class="sidebar-user-name"><?= htmlspecialchars(supabase_user_email() ?: 'Admin') ?></div>
                 <div class="sidebar-user-role">Administrator</div>
             </div>
             <button class="v3-bell sidebar-bell" id="v3BellBtn" title="Notifications">
@@ -731,17 +721,6 @@ try { $noteCount = (int)db_val("SELECT COUNT(*) FROM notes"); } catch (Exception
                 <?php endif; ?>
             </a>
 
-            <!-- Notes -->
-            <?php $isNotesPage = strpos($_SERVER['SCRIPT_NAME'] ?? '', 'notes.php') !== false; ?>
-            <a href="<?= ADMIN_URL ?>/modules/notes.php" class="v3-focus-item <?= $isNotesPage ? 'active' : '' ?>">
-                <span class="fi-icon" style="background:rgba(200,255,0,0.1);color:#c8ff00"><i class="ti ti-notes"></i></span>
-                <span class="fi-label">Notes</span>
-                <?php if ($noteCount > 0): ?>
-                    <span class="fi-badge has-items"><?= $noteCount ?></span>
-                <?php else: ?>
-                    <span class="fi-badge">0</span>
-                <?php endif; ?>
-            </a>
 
             <?php
             $focusItems = [
@@ -765,8 +744,7 @@ try { $noteCount = (int)db_val("SELECT COUNT(*) FROM notes"); } catch (Exception
             <?php endforeach; ?>
 
             <?php
-            $qiCount = 0;
-            try { $qiCount = (int)db_val("SELECT COUNT(*) FROM quotations WHERE status='draft'"); } catch (Exception $e) {}
+            $qiCount = db_count_cached('qi_draft', "SELECT COUNT(*) FROM quotations WHERE status='draft'");
             ?>
             <a href="<?= ADMIN_URL ?>/modules/quote-invoice.php" class="v3-focus-item <?= $active === 'quote-invoice' ? 'active' : '' ?>">
                 <span class="fi-icon outreach"><i class="ti ti-receipt"></i></span>

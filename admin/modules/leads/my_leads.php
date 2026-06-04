@@ -33,11 +33,11 @@ if ($filters['niche']) {
     $params[] = $filters['niche'];
 }
 if ($filters['city']) {
-    $where[] = 'city LIKE ?';
+    $where[] = 'city ILIKE ?';
     $params[] = '%' . $filters['city'] . '%';
 }
 if ($filters['search']) {
-    $where[] = '(business_name LIKE ? OR email LIKE ? OR phone LIKE ? OR owner_name LIKE ?)';
+    $where[] = '(business_name ILIKE ? OR email ILIKE ? OR phone ILIKE ? OR owner_name ILIKE ?)';
     $s = '%' . $filters['search'] . '%';
     $params[] = $s; $params[] = $s; $params[] = $s; $params[] = $s;
 }

@@ -3,23 +3,89 @@ $totalLeads = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklisted = 0")
 $contacted = (int)db_val("SELECT COUNT(*) FROM leads WHERE status IN ('contacted','replied','interested','meeting_booked')");
 $replied = (int)db_val("SELECT COUNT(*) FROM leads WHERE status = 'replied'");
 $closedWon = (int)db_val("SELECT COUNT(*) FROM leads WHERE status = 'closed_won'");
-$emailsToday = (int)db_val("SELECT COUNT(*) FROM lead_emails WHERE DATE(sent_at) = CURDATE() AND status = 'sent'");
+$emailsToday = (int)db_val("SELECT COUNT(*) FROM lead_emails WHERE sent_at::date = CURRENT_DATE AND status = 'sent'");
 $opened = (int)db_val("SELECT COUNT(*) FROM lead_emails WHERE status = 'opened'");
 $repliedEmails = (int)db_val("SELECT COUNT(*) FROM lead_emails WHERE status = 'replied'");
 $totalSent = (int)db_val("SELECT COUNT(*) FROM lead_emails WHERE status = 'sent'");
 $totalWithEmail = (int)db_val("SELECT COUNT(*) FROM leads WHERE email IS NOT NULL AND email != ''");
 
+// ── Compute aggregations in PHP (REST wrapper doesn't support GROUP BY) ──
+
 // Status distribution
-$statusDist = db_rows("SELECT status, COUNT(*) as cnt FROM leads WHERE is_blacklisted = 0 GROUP BY status ORDER BY cnt DESC");
+$statusDist = [];
+try {
+    $allLeads = db_rows("SELECT status FROM leads WHERE is_blacklisted = 0");
+    $counts = [];
+    foreach ($allLeads as $l) {
+        $s = $l['status'] ?? 'unknown';
+        $counts[$s] = ($counts[$s] ?? 0) + 1;
+    }
+    arsort($counts);
+    foreach ($counts as $status => $cnt) {
+        $statusDist[] = ['status' => $status, 'cnt' => $cnt];
+    }
+} catch (Exception $e) {}
 
 // Leads over time (last 30 days)
-$leadsOverTime = db_rows("SELECT DATE(created_at) as d, COUNT(*) as cnt FROM leads WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) GROUP BY d ORDER BY d");
+$leadsOverTime = [];
+try {
+    $thirtyDaysAgo = date('Y-m-d\TH:i:s\Z', strtotime('-30 days'));
+    $leadRows = db_rows("SELECT created_at FROM leads WHERE created_at >= ?", [$thirtyDaysAgo]);
+    $dayCounts = [];
+    foreach ($leadRows as $l) {
+        if (!empty($l['created_at'])) {
+            $d = date('Y-m-d', strtotime($l['created_at']));
+            $dayCounts[$d] = ($dayCounts[$d] ?? 0) + 1;
+        }
+    }
+    ksort($dayCounts);
+    foreach ($dayCounts as $d => $cnt) {
+        $leadsOverTime[] = ['d' => $d, 'cnt' => $cnt];
+    }
+} catch (Exception $e) {}
 
 // Top niches
-$topNiches = db_rows("SELECT niche, COUNT(*) as cnt FROM leads WHERE niche != '' AND is_blacklisted = 0 GROUP BY niche ORDER BY cnt DESC LIMIT 10");
+$topNiches = [];
+try {
+    $nicheRows = db_rows("SELECT niche FROM leads WHERE niche IS NOT NULL AND niche != '' AND is_blacklisted = 0");
+    $nicheCounts = [];
+    foreach ($nicheRows as $l) {
+        $n = $l['niche'] ?? '';
+        if ($n !== '') {
+            $nicheCounts[$n] = ($nicheCounts[$n] ?? 0) + 1;
+        }
+    }
+    arsort($nicheCounts);
+    $i = 0;
+    foreach ($nicheCounts as $niche => $cnt) {
+        if ($i >= 10) break;
+        $topNiches[] = ['niche' => $niche, 'cnt' => $cnt];
+        $i++;
+    }
+} catch (Exception $e) {}
 
-// Email performance by week
-$emailPerf = db_rows("SELECT DATE(sent_at) as d, COUNT(*) as sent, SUM(CASE WHEN status='opened' THEN 1 ELSE 0 END) as opened, SUM(CASE WHEN status='replied' THEN 1 ELSE 0 END) as replied FROM lead_emails WHERE sent_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) GROUP BY d ORDER BY d");
+// Email performance by day (last 30 days)
+$emailPerf = [];
+try {
+    $thirtyDaysAgo = date('Y-m-d\TH:i:s\Z', strtotime('-30 days'));
+    $emailRows = db_rows("SELECT sent_at, status FROM lead_emails WHERE sent_at >= ?", [$thirtyDaysAgo]);
+    $dayStats = [];
+    foreach ($emailRows as $e) {
+        if (!empty($e['sent_at'])) {
+            $d = date('Y-m-d', strtotime($e['sent_at']));
+            if (!isset($dayStats[$d])) {
+                $dayStats[$d] = ['sent' => 0, 'opened' => 0, 'replied' => 0];
+            }
+            $dayStats[$d]['sent']++;
+            if (($e['status'] ?? '') === 'opened') $dayStats[$d]['opened']++;
+            if (($e['status'] ?? '') === 'replied') $dayStats[$d]['replied']++;
+        }
+    }
+    ksort($dayStats);
+    foreach ($dayStats as $d => $stats) {
+        $emailPerf[] = ['d' => $d, 'sent' => $stats['sent'], 'opened' => $stats['opened'], 'replied' => $stats['replied']];
+    }
+} catch (Exception $e) {}
 
 $openRate = $totalSent > 0 ? round(($opened / $totalSent) * 100, 1) : 0;
 $replyRate = $totalSent > 0 ? round(($repliedEmails / $totalSent) * 100, 1) : 0;

@@ -14,7 +14,9 @@ try {
     $brands      = get_all('brands', 'sort_order ASC');
     $blogStmt = db()->query("SELECT * FROM blog_posts WHERE status = 'published' ORDER BY created_at DESC");
     $blogs = $blogStmt->fetchAll();
-} catch (Exception $e) {}
+} catch (Exception $e) {
+    error_log('Blog fetch error on index: ' . $e->getMessage());
+}
 ?>
 <?php
 $pageTitle = 'Xoos Digital — Creative Agency';

@@ -2,63 +2,59 @@
 require_once __DIR__ . '/inc/functions.php';
 require_login();
 
-// ── Dashboard data ──
+// ── Dashboard data (session-cached COUNTs to avoid 27+ queries per load) ──
 $stats = [];
 try {
     $tables = ['blog_posts', 'services', 'packages', 'testimonials', 'faq', 'portfolio'];
     foreach ($tables as $t) {
-        $stats[$t] = db()->query("SELECT COUNT(*) FROM {$t}")->fetchColumn();
-        $stats[$t . '_new'] = db()->query("SELECT COUNT(*) FROM {$t} WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)")->fetchColumn();
+        $stats[$t] = db_count_cached("dash_{$t}", "SELECT COUNT(*) FROM {$t}", [], 60);
+        $stats[$t . '_new'] = db_count_cached("dash_{$t}_new", "SELECT COUNT(*) FROM {$t} WHERE created_at >= NOW() - INTERVAL '7 days'", [], 60);
     }
-    $stats['messages'] = db_val("SELECT COUNT(*) FROM contact_messages");
-    $stats['messages_new'] = db_val("SELECT COUNT(*) FROM contact_messages WHERE is_read = 0");
+    $stats['messages'] = db_count_cached('dash_messages', "SELECT COUNT(*) FROM contact_messages", [], 60);
+    $stats['messages_new'] = db_count_cached('dash_messages_new', "SELECT COUNT(*) FROM contact_messages WHERE is_read = 0", [], 60);
     $stats['messages_unread'] = $stats['messages_new'];
 } catch (Exception $e) { $stats = []; }
 
 // Tasks stats
-$taskWidgetPending = 0; $taskWidgetProgress = 0; $taskWidgetDone = 0; $tasksDueToday = 0;
-try { $taskWidgetPending = (int)db_val("SELECT COUNT(*) FROM admin_tasks WHERE status='pending'"); } catch (Exception $e) {}
-try { $taskWidgetProgress = (int)db_val("SELECT COUNT(*) FROM admin_tasks WHERE status='in_progress'"); } catch (Exception $e) {}
-try { $taskWidgetDone = (int)db_val("SELECT COUNT(*) FROM admin_tasks WHERE status='done'"); } catch (Exception $e) {}
-try { $tasksDueToday = (int)db_val("SELECT COUNT(*) FROM admin_tasks WHERE status IN ('pending','in_progress') AND DATE(due_date) = CURDATE()"); } catch (Exception $e) {}
+$taskWidgetPending = db_count_cached('dash_task_pending', "SELECT COUNT(*) FROM admin_tasks WHERE status='pending'", [], 60);
+$taskWidgetProgress = db_count_cached('dash_task_progress', "SELECT COUNT(*) FROM admin_tasks WHERE status='in_progress'", [], 60);
+$taskWidgetDone = db_count_cached('dash_task_done', "SELECT COUNT(*) FROM admin_tasks WHERE status='done'", [], 60);
+$tasksDueToday = db_count_cached('dash_tasks_due', "SELECT COUNT(*) FROM admin_tasks WHERE status IN ('pending','in_progress') AND due_date::date = CURRENT_DATE", [], 60);
 $taskWidgetTotal = max($taskWidgetPending + $taskWidgetProgress + $taskWidgetDone, 1);
 $taskPct = round($taskWidgetDone / $taskWidgetTotal * 100);
 
 // Lead stats
-$leadTotal = 0; $leadContacted = 0; $leadReplied = 0; $leadWon = 0; $newLeadsWeek = 0;
-try { $leadTotal = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklisted = 0"); } catch (Exception $e) {}
-try { $leadContacted = (int)db_val("SELECT COUNT(*) FROM leads WHERE status IN ('contacted','replied','interested','meeting_booked')"); } catch (Exception $e) {}
-try { $leadReplied = (int)db_val("SELECT COUNT(*) FROM leads WHERE status='replied'"); } catch (Exception $e) {}
-try { $leadWon = (int)db_val("SELECT COUNT(*) FROM leads WHERE status='closed_won'"); } catch (Exception $e) {}
-try { $newLeadsWeek = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklisted = 0 AND created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)"); } catch (Exception $e) {}
+$leadTotal = db_count_cached('dash_lead_total', "SELECT COUNT(*) FROM leads WHERE is_blacklisted = 0", [], 60);
+$leadContacted = db_count_cached('dash_lead_contacted', "SELECT COUNT(*) FROM leads WHERE status IN ('contacted','replied','interested','meeting_booked')", [], 60);
+$leadReplied = db_count_cached('dash_lead_replied', "SELECT COUNT(*) FROM leads WHERE status='replied'", [], 60);
+$leadWon = db_count_cached('dash_lead_won', "SELECT COUNT(*) FROM leads WHERE status='closed_won'", [], 60);
+$newLeadsWeek = db_count_cached('dash_new_leads_week', "SELECT COUNT(*) FROM leads WHERE is_blacklisted = 0 AND created_at >= CURRENT_DATE - INTERVAL '7 days'", [], 60);
 
 // Blog stats
-$blogDrafts = 0; $blogPublished = 0;
-try { $blogDrafts = (int)db_val("SELECT COUNT(*) FROM blog_posts WHERE status='draft'"); } catch (Exception $e) {}
-try { $blogPublished = (int)db_val("SELECT COUNT(*) FROM blog_posts WHERE status='published'"); } catch (Exception $e) {}
+$blogDrafts = db_count_cached('dash_blog_drafts', "SELECT COUNT(*) FROM blog_posts WHERE status='draft'", [], 60);
+$blogPublished = db_count_cached('dash_blog_published', "SELECT COUNT(*) FROM blog_posts WHERE status='published'", [], 60);
 
 // Post gen stats
-$unpubPosts = 0; $pubPosts = 0;
-try { $unpubPosts = (int)db_val("SELECT COUNT(*) FROM generated_posts WHERE status='draft'"); } catch (Exception $e) {}
-try { $pubPosts = (int)db_val("SELECT COUNT(*) FROM generated_posts WHERE status='published'"); } catch (Exception $e) {}
+$unpubPosts = db_count_cached('dash_unpub_posts', "SELECT COUNT(*) FROM generated_posts WHERE status='draft'", [], 60);
+$pubPosts = db_count_cached('dash_pub_posts', "SELECT COUNT(*) FROM generated_posts WHERE status='published'", [], 60);
 
 // Activity feed (last 24h across modules)
 $activity = [];
 try {
-    $actTasks = db_rows("SELECT 'task' as type, title as text, created_at FROM admin_tasks WHERE created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR) ORDER BY created_at DESC LIMIT 5");
-    foreach ($actTasks as $a) $activity[] = ['type' => 'tasks', 'text' => 'Created task <strong>' . h($a['text']) . '</strong>', 'time' => $a['created_at']];
+    $actTasks = db_rows("SELECT title, created_at FROM admin_tasks WHERE created_at >= NOW() - INTERVAL '24 hours' ORDER BY created_at DESC LIMIT 5");
+    foreach ($actTasks as $a) $activity[] = ['type' => 'tasks', 'text' => 'Created task <strong>' . h($a['title'] ?? '') . '</strong>', 'time' => $a['created_at'] ?? ''];
 } catch (Exception $e) {}
 try {
-    $actBlog = db_rows("SELECT 'blog' as type, CONCAT('Published \"', title, '\"') as text, created_at FROM blog_posts WHERE status='published' AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR) ORDER BY created_at DESC LIMIT 3");
-    foreach ($actBlog as $a) $activity[] = ['type' => 'blog', 'text' => $a['text'], 'time' => $a['created_at']];
+    $actBlog = db_rows("SELECT title, created_at FROM blog_posts WHERE status='published' AND created_at >= NOW() - INTERVAL '24 hours' ORDER BY created_at DESC LIMIT 3");
+    foreach ($actBlog as $a) $activity[] = ['type' => 'blog', 'text' => 'Published &ldquo;' . h($a['title'] ?? '') . '&rdquo;', 'time' => $a['created_at'] ?? ''];
 } catch (Exception $e) {}
 try {
-    $actPosts = db_rows("SELECT 'post' as type, CONCAT('Generated ', platform, ' post about ', topic) as text, created_at FROM generated_posts WHERE created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR) ORDER BY created_at DESC LIMIT 3");
-    foreach ($actPosts as $a) $activity[] = ['type' => 'posts', 'text' => $a['text'], 'time' => $a['created_at']];
+    $actPosts = db_rows("SELECT platform, topic, created_at FROM generated_posts WHERE created_at >= NOW() - INTERVAL '24 hours' ORDER BY created_at DESC LIMIT 3");
+    foreach ($actPosts as $a) $activity[] = ['type' => 'posts', 'text' => 'Generated ' . h($a['platform'] ?? '') . ' post about ' . h($a['topic'] ?? ''), 'time' => $a['created_at'] ?? ''];
 } catch (Exception $e) {}
 try {
-    $actLeads = db_rows("SELECT 'lead' as type, CONCAT('Added lead: ', COALESCE(business_name, owner_name, 'Unknown')) as text, created_at FROM leads WHERE created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR) ORDER BY created_at DESC LIMIT 3");
-    foreach ($actLeads as $a) $activity[] = ['type' => 'outreach', 'text' => $a['text'], 'time' => $a['created_at']];
+    $actLeads = db_rows("SELECT business_name, owner_name, created_at FROM leads WHERE created_at >= NOW() - INTERVAL '24 hours' ORDER BY created_at DESC LIMIT 3");
+    foreach ($actLeads as $a) $activity[] = ['type' => 'outreach', 'text' => 'Added lead: ' . h($a['business_name'] ?? $a['owner_name'] ?? 'Unknown'), 'time' => $a['created_at'] ?? ''];
 } catch (Exception $e) {}
 usort($activity, function($a, $b) { return strtotime($b['time']) - strtotime($a['time']); });
 $activity = array_slice($activity, 0, 8);
@@ -179,97 +175,7 @@ $dayName = $dayNames[(int)date('w')];
     <?php endif; ?>
 </div>
 
-<!-- Notes Widget -->
-<?php
-$notesWidgetTotal = 0;
-$notesWidgetPinned = 0;
-$notesWidgetRecent = [];
-try {
-    $notesWidgetTotal = (int)db_val("SELECT COUNT(*) FROM notes");
-    $notesWidgetPinned = (int)db_val("SELECT COUNT(*) FROM notes WHERE is_pinned = 1");
-    $notesWidgetRecent = db_rows("SELECT n.id, n.title, n.content, n.is_pinned, n.updated_at, c.name AS category_name, c.color AS category_color FROM notes n LEFT JOIN note_categories c ON c.id = n.category_id ORDER BY n.updated_at DESC LIMIT 3");
-} catch (Exception $e) {}
-?>
-<div class="v3-activity-card" style="margin-top:1.5rem">
-    <div class="ac-header">
-        <div class="ac-title">📝 NOTES</div>
-        <a href="modules/tasks.php?tab=notes" class="ac-show-more">Open →</a>
-    </div>
-    <div style="display:flex;align-items:center;gap:16px;padding:0.75rem 1.25rem;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.82rem">
-        <span style="color:rgba(255,255,255,0.4)"><?= $notesWidgetTotal ?> total</span>
-        <span style="color:rgba(255,255,255,0.2)">•</span>
-        <span style="color:rgba(255,255,255,0.4)">📌 <?= $notesWidgetPinned ?> pinned</span>
-    </div>
-    <?php if (count($notesWidgetRecent)): ?>
-        <?php foreach ($notesWidgetRecent as $nw): ?>
-            <div class="v3-activity-item">
-                <div class="ai-dot" style="background:<?= h($nw['category_color'] ?: 'rgba(255,255,255,0.15)') ?>"></div>
-                <div class="ai-text"><strong><?= h($nw['title']) ?></strong></div>
-                <div style="font-size:0.68rem;padding:2px 8px;border-radius:4px;background:<?= h($nw['category_color'] ?: 'rgba(255,255,255,0.05)') ?>20;color:<?= h($nw['category_color'] ?: 'rgba(255,255,255,0.3)') ?>;flex-shrink:0"><?= h($nw['category_name'] ?? 'General') ?></div>
-            </div>
-        <?php endforeach; ?>
-    <?php else: ?>
-        <div class="v3-activity-item">
-            <div class="ai-text" style="text-align:center;color:var(--text-muted);padding:0.5rem 0">No notes yet</div>
-        </div>
-    <?php endif; ?>
-    <button class="btn-quickaction" onclick="openQuickNoteModal()" style="border-top:1px solid rgba(255,255,255,0.04);border-radius:0 0 16px 16px;border-left:none;border-right:none;border-bottom:none;margin:0">
-        <i class="ti ti-plus"></i> Quick Note
-    </button>
-</div>
 
-<div class="modal-overlay" id="quickNoteModal">
-    <div class="modal" style="max-width:420px">
-        <h3 class="modal-title">📝 Quick Note</h3>
-        <div class="modal-body">
-            <div class="form-group">
-                <label>Title</label>
-                <input class="form-control" id="qnTitle" placeholder="Note title..." maxlength="255">
-            </div>
-            <div class="form-group">
-                <label>Category</label>
-                <select class="form-control" id="qnCategory">
-                    <option value="">No category</option>
-                    <?php
-                    $noteCats = [];
-                    try { $noteCats = db_rows("SELECT id, name, color FROM note_categories ORDER BY sort_order"); } catch (Exception $e) {}
-                    foreach ($noteCats as $nc): ?>
-                    <option value="<?= $nc['id'] ?>"><?= h($nc['name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="form-actions" style="border:none;padding:0;margin-top:0">
-                <button class="btn btn-primary" onclick="saveQuickNote()"><i class="ti ti-device-floppy"></i> Save</button>
-                <button class="btn btn-secondary" onclick="closeQuickNoteModal()">Cancel</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-function openQuickNoteModal() { document.getElementById('quickNoteModal').classList.add('open'); document.getElementById('qnTitle').focus(); }
-function closeQuickNoteModal() { document.getElementById('quickNoteModal').classList.remove('open'); document.getElementById('qnTitle').value = ''; }
-function saveQuickNote() {
-    var title = document.getElementById('qnTitle').value.trim();
-    if (!title) { alert('Please enter a title'); return; }
-    var cat = document.getElementById('qnCategory').value;
-    var fd = new FormData();
-    fd.append('action', 'create_note');
-    fd.append('title', title);
-    fd.append('content', '');
-    fd.append('category_id', cat);
-    fd.append('color', '');
-    fetch('modules/notes_api.php', { method: 'POST', body: fd })
-    .then(function(r) { return r.json(); })
-    .then(function(j) {
-        if (j.ok) {
-            closeQuickNoteModal();
-            location.reload();
-        } else {
-            alert('Error: ' + (j.error || 'Could not save'));
-        }
-    })
-    .catch(function() { alert('Network error'); });
 }
 document.getElementById('quickNoteModal').addEventListener('click', function(e) { if (e.target === this) closeQuickNoteModal(); });
 document.getElementById('qnTitle').addEventListener('keydown', function(e) { if (e.key === 'Enter') saveQuickNote(); });

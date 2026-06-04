@@ -39,7 +39,7 @@ switch ($action) {
         }
 
         // Check daily limit
-        $sentToday = (int)db_val("SELECT COUNT(*) FROM lead_emails WHERE DATE(sent_at) = CURDATE() AND status != 'draft'");
+        $sentToday = (int)db_val("SELECT COUNT(*) FROM lead_emails WHERE sent_at::date = CURRENT_DATE AND status != 'draft'");
         $dailyLimit = (int)get_setting('daily_email_limit', '50');
         if ($sentToday >= $dailyLimit) {
             echo json_encode(['success' => false, 'error' => "Daily email limit reached ($dailyLimit)"]);

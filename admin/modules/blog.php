@@ -69,7 +69,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cat_action'])) {
         } elseif ($cat_action === 'delete_cat' && !empty($_POST['cat_id'])) {
             $catId = (int)$_POST['cat_id'];
             // Unlink posts from this category
-            $db->exec("UPDATE blog_posts SET category_id = 0 WHERE category_id = $catId");
+            $stmt = db()->prepare("UPDATE blog_posts SET category_id = 0 WHERE category_id = ?");
+            $stmt->execute([$catId]);
             delete('blog_categories', $catId);
             $_SESSION['flash_msg'] = 'Category deleted.';
             $_SESSION['flash_type'] = 'success';
@@ -153,7 +154,7 @@ $showForm = $isEdit || isset($_GET['new']);
         <button type="button" id="blogCatAddCancel" style="background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0">&#x2715;</button>
       </form>
     </div>
-    <?php $catCounts = []; foreach (db()->query("SELECT category_id, COUNT(*) as c FROM blog_posts WHERE category_id > 0 GROUP BY category_id") as $row) { $catCounts[$row['category_id']] = $row['c']; } ?>
+    <?php $catCounts = []; foreach ($posts as $p) { if (!empty($p['category_id'])) { $catCounts[$p['category_id']] = ($catCounts[$p['category_id']] ?? 0) + 1; } } ?>
     <?php $palette = ['#ff4757','#ff8c42','#f59e0b','#2ecc71','#4f8ef7','#9b6dff','#c8ff00','#ff6b9d','#00d2d3','#54a0ff']; ?>
     <?php $blogPublished = count(array_filter($posts, function($p) { return ($p['status'] ?? 'draft') === 'published'; })); $blogDrafts = count($posts) - $blogPublished; ?>
     <ul class="blog-cat-list" id="blog-cat-list">

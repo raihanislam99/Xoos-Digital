@@ -6,7 +6,9 @@ $blogs = [];
 try {
     $blogStmt = db()->query("SELECT * FROM blog_posts WHERE status = 'published' ORDER BY created_at DESC");
     $blogs = $blogStmt->fetchAll();
-} catch (Exception $e) {}
+} catch (Exception $e) {
+    error_log('Blog fetch error: ' . $e->getMessage());
+}
 
 $pageTitle = 'Blog | Xoos Digital';
 $pageDesc = 'Read the latest articles from Xoos Digital on branding, web development, digital marketing, SEO, and business growth.';

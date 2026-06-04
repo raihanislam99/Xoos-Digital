@@ -39,7 +39,7 @@ if ($task === 'blog_ideas') {
     $systemPrompts = [
         'fix_grammar' => "You are a professional proofreader. Fix grammar, spelling, and punctuation. Return only the corrected text, no explanations, no quotes, no labels.",
 
-        'improve' => "You are a professional copywriter. Improve the given text to be clearer, more professional, and better structured. Keep it concise. Do NOT add new information or expand — only polish what is already there. Return only the improved text, no explanations.",
+        'improve' => "You are a professional copywriter. Improve the given text to be clearer, more professional, and better structured. Keep it concise. Do NOT add new information or expand — only polish what is already there. Preserve any existing formatting (**bold**, *italic*). Return only the improved text, no explanations.",
 
         'shorten' => "You are an editor. Shorten the given text to be concise and punchy while preserving all key meaning. Return only the shortened text, no explanations.",
 
@@ -93,6 +93,34 @@ if ($task === 'blog_ideas') {
 
     if ($task === 'blog_tone') {
         $userMessage = "Tone: " . $extra . "\n\nText:\n" . $context;
+    }
+
+    // Note AI tasks — handled inline
+    $noteTasks = ['note_improve','note_summarize','note_expand','note_grammar','note_translate_bangla','note_continue','note_generate','note_action_items','note_tags_suggest','note_title_suggest'];
+    $isNoteTask = in_array($task, $noteTasks);
+    if ($isNoteTask) {
+        $systemPrompt = "You are Raihan Islam's personal assistant at Xoos Digital in Dhaka, Bangladesh. You help manage notes about clients, projects, ideas, and business operations. Be concise, practical, and focused on actionable insights. Always respond in the same language as the note content.";
+
+        $prompts = [
+            'note_improve' => "Improve the following note text — make it clearer, better structured, more professional. Preserve the original meaning and formatting. Return only the improved text.\n\n",
+            'note_summarize' => "Summarize the following note into 3-5 concise bullet points. Return as HTML bullet list using <ul><li> tags.\n\n",
+            'note_expand' => "Expand the following text with more detail and context. Make it more comprehensive while preserving the original meaning. Return only the expanded text.\n\n",
+            'note_grammar' => "Fix all grammar and spelling errors in the following text. Preserve the original tone, style, and formatting. Return only the corrected text.\n\n",
+            'note_translate_bangla' => "Translate the following text to Bangla (Bengali). Preserve the structure and any formatting. Return only the translated text.\n\n",
+            'note_continue' => "Given the existing note content below, write the next logical paragraph. Match the tone, style, and subject matter. Return only the continuation text.\n\n",
+            'note_generate' => "Write a complete, well-structured note based on this topic. Include a brief outline, main content with sections, and key takeaways. Return as formatted text with markdown.\n\n",
+            'note_action_items' => "Extract all action items, tasks, and to-dos from the following note. Return as a JSON array of strings like [\"Task 1\", \"Task 2\"].\n\n",
+            'note_tags_suggest' => "Based on the following note content, suggest 3-5 relevant tags. Return as a JSON array of strings like [\"tag1\", \"tag2\"].\n\n",
+            'note_title_suggest' => "Based on the following note content, suggest 3 alternative titles. Return as a JSON array of strings.\n\n",
+        ];
+
+        $userMessage = ($prompts[$task] ?? '') . $context;
+
+        // JSON output tasks
+        $noteJsonTasks = ['note_action_items', 'note_tags_suggest', 'note_title_suggest'];
+        if (in_array($task, $noteJsonTasks)) {
+            $json_tasks[] = $task;
+        }
     }
 }
 

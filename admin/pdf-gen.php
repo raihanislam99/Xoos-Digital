@@ -14,9 +14,13 @@ if (!$type || !$id) {
 $company = $pdo->query("SELECT * FROM company_info WHERE id = 1")->fetch();
 
 if ($type === 'quote') {
-    $doc = $pdo->query("SELECT * FROM quotations WHERE id = $id")->fetch();
+    $ds = $pdo->prepare("SELECT * FROM quotations WHERE id = ?");
+    $ds->execute([$id]);
+    $doc = $ds->fetch();
     if (!$doc) { header('HTTP/1.0 404 Not Found'); exit('Quote not found'); }
-    $items = $pdo->query("SELECT * FROM quotation_items WHERE quotation_id = $id")->fetchAll();
+    $is2 = $pdo->prepare("SELECT * FROM quotation_items WHERE quotation_id = ?");
+    $is2->execute([$id]);
+    $items = $is2->fetchAll();
     $docTypeLabel   = 'QUOTATION';
     $dateLabel      = 'Issue Date';
     $dueLabel       = 'Valid Until';
@@ -24,9 +28,13 @@ if ($type === 'quote') {
     $docNumberField = $doc['quote_number'];
     $status         = $doc['status'] ?? 'draft';
 } elseif ($type === 'invoice') {
-    $doc = $pdo->query("SELECT * FROM invoices WHERE id = $id")->fetch();
+    $ds = $pdo->prepare("SELECT * FROM invoices WHERE id = ?");
+    $ds->execute([$id]);
+    $doc = $ds->fetch();
     if (!$doc) { header('HTTP/1.0 404 Not Found'); exit('Invoice not found'); }
-    $items = $pdo->query("SELECT * FROM invoice_items WHERE invoice_id = $id")->fetchAll();
+    $is2 = $pdo->prepare("SELECT * FROM invoice_items WHERE invoice_id = ?");
+    $is2->execute([$id]);
+    $items = $is2->fetchAll();
     $docTypeLabel   = 'INVOICE';
     $dateLabel      = 'Issue Date';
     $dueLabel       = 'Due Date';

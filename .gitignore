@@ -2,4 +2,7 @@
 .DS_Store
 Thumbs.db
 node_modules/
+vendor/
+composer.phar
+composer-setup.php
 *.log
