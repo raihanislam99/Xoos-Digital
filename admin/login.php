@@ -4,7 +4,21 @@ require_once __DIR__ . '/inc/functions.php';
 require_once __DIR__ . '/inc/supabase.php';
 
 if (!empty($_SESSION['supabase_access_token'])) {
-    header('Location: ' . ADMIN_URL . '/index.php');
+    $email = supabase_user_email();
+    $needOnboard = false;
+    if ($email) {
+        try {
+            $rows = db_rows("SELECT onboarding_complete FROM team_members WHERE email = ? AND onboarding_complete = 0", [$email]);
+            $needOnboard = !empty($rows);
+        } catch (Exception $e) {
+            try {
+                reload_pgrst_schema();
+                $rows = db_rows("SELECT onboarding_complete FROM team_members WHERE email = ? AND onboarding_complete = 0", [$email]);
+                $needOnboard = !empty($rows);
+            } catch (Exception $e2) {}
+        }
+    }
+    header('Location: ' . ADMIN_URL . ($needOnboard ? '/onboarding.php' : '/index.php'));
     exit;
 }
 
@@ -29,7 +43,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $success = supabase_login($username, $password);
             if ($success) {
                 unset($_SESSION[$key]);
-                header('Location: ' . ADMIN_URL . '/index.php');
+                // Check if team member needs onboarding
+                $needOnboarding = false;
+                try {
+                    $rows = db_rows("SELECT onboarding_complete FROM team_members WHERE email = ?", [$username]);
+                    if (!empty($rows) && (int)($rows[0]['onboarding_complete'] ?? 1) === 0) {
+                        $needOnboarding = true;
+                    }
+                } catch (Exception $e) {
+                    // Retry once with schema reload
+                    try {
+                        reload_pgrst_schema();
+                        $rows = db_rows("SELECT onboarding_complete FROM team_members WHERE email = ?", [$username]);
+                        if (!empty($rows) && (int)($rows[0]['onboarding_complete'] ?? 1) === 0) {
+                            $needOnboarding = true;
+                        }
+                    } catch (Exception $e2) {}
+                }
+                if ($needOnboarding) {
+                    header('Location: ' . ADMIN_URL . '/onboarding.php');
+                } else {
+                    header('Location: ' . ADMIN_URL . '/index.php');
+                }
                 exit;
             } else {
                 $_SESSION[$key] = ['count' => $attempts + 1, 'since' => $since];

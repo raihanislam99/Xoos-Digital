@@ -80,7 +80,10 @@ require __DIR__ . '/inc/navbar.php';
               <?php endif; ?>
               <div class="svc-action-row">
                 <?php if (!empty($s['price'])): ?>
-                <div class="svc-price"><span class="svc-price-from">Starting from</span><span class="svc-price-amount"><?= h($s['price']) ?></span></div>
+                <div class="svc-price">
+                  <span class="svc-price-from">Starting from</span>
+                  <span class="svc-price-amount"><?= h($s['price']) ?></span>
+                </div>
                 <?php endif; ?>
                 <a href="#" onclick="event.preventDefault();openProjectForm()" class="svc-cta-btn">START THIS PROJECT →</a>
               </div>

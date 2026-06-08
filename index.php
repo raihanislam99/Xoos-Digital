@@ -508,12 +508,12 @@ $allCats = array_unique($allCats);
         if (!is_array($pkgFeatures)) $pkgFeatures = array_filter(array_map('trim', explode("\n", $pkg['features'] ?? '')));
         $isPopular = ($pkg['tier'] ?? '') === 'popular';
       ?>
-      <div class="pricing-card<?= $isPopular ? ' pricing-popular' : '' ?>">
+      <div class="pricing-card<?= $isPopular ? ' pricing-popular' : '' ?>" data-billing-cycle="<?= h($pkg['billing_cycle'] ?? 'one-time') ?>">
         <?php if ($isPopular): ?><div class="pricing-popular-badge">MOST POPULAR</div><?php endif; ?>
         <div class="pricing-card-top">
           <div class="pricing-name"><?= h($pkg['name']) ?></div>
           <div class="pricing-price-row">
-            <span class="pricing-amount<?= $pkg['price'] === 'CUSTOM' ? ' pricing-amount-sm' : '' ?>"><?= h($pkg['price']) ?></span>
+            <span class="pricing-amount<?= $pkg['price'] === 'CUSTOM' ? ' pricing-amount-sm' : '' ?>"><?= h($pkg['price']) ?><?= ($pkg['billing_cycle'] ?? '') === 'monthly' ? '<span class="pricing-period" style="font-size:1rem;font-weight:400;color:var(--text3)">/mo</span>' : '' ?></span>
             <span class="pricing-from"><?= $pkg['price'] === 'CUSTOM' ? 'tailored to you' : 'starting from' ?></span>
           </div>
           <p class="pricing-tagline"><?= h($pkg['tagline'] ?? '') ?></p>

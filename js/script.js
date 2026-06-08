@@ -674,44 +674,72 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // ── PRICING CAROUSEL ──
   (function() {
+    var toggleBtns = document.querySelectorAll('.pricing-toggle-btn');
     var track = document.getElementById('pricingTrack');
     var prev  = document.getElementById('pricingPrev');
     var next  = document.getElementById('pricingNext');
     var dotsWrap = document.getElementById('pricingDots');
     if (!track || !dotsWrap) return;
 
-    var cards = track.children;
-    var total = cards.length;
     var gap = 24;
-    var slideCount = window.matchMedia('(max-width: 640px)').matches ? total : Math.max(total - 2, 1);
-    if (slideCount <= 1) {
-      if (prev) prev.style.display = 'none';
-      if (next) next.style.display = 'none';
-      return;
-    }
-
-    var current = isMobileDevice ? 1 : 0;
+    var current = 0;
     var isAnimating = false;
     var autoTimer = null;
+    var currentCycle = 'one-time';
 
     function getStep() {
-      return cards[0].offsetWidth + gap;
+      var visibleCards = Array.from(track.children).filter(function(c) { return c.style.display !== 'none'; });
+      return (visibleCards[0] ? visibleCards[0].offsetWidth : 0) + gap;
     }
 
     function applyPosition() {
       track.style.transform = 'translateX(-' + (current * getStep()) + 'px)';
     }
 
-    for (var i = 0; i < slideCount; i++) {
-      var dot = document.createElement('div');
-      dot.className = 'pricing-dot' + (i === (isMobileDevice ? 1 : 0) ? ' active' : '');
-      dot.addEventListener('click', function(idx) {
-        return function() { goTo(idx); };
-      }(i));
-      dotsWrap.appendChild(dot);
+    function updateCarousel() {
+      // Clear existing dots
+      dotsWrap.innerHTML = '';
+      clearInterval(autoTimer);
+
+      var cards = Array.from(track.children);
+      var visibleCards = cards.filter(function(card) {
+        var cycle = card.getAttribute('data-billing-cycle') || 'one-time';
+        var show = (cycle === currentCycle);
+        card.style.display = show ? 'block' : 'none';
+        return show;
+      });
+
+      var totalVisible = visibleCards.length;
+      var slideCount = window.matchMedia('(max-width: 640px)').matches ? totalVisible : Math.max(totalVisible - 2, 1);
+
+      // Reset positions
+      current = 0;
+      track.style.transform = 'translateX(0)';
+
+      if (slideCount <= 1) {
+        if (prev) prev.style.display = 'none';
+        if (next) next.style.display = 'none';
+        return;
+      } else {
+        if (prev) prev.style.display = 'flex';
+        if (next) next.style.display = 'flex';
+      }
+
+      for (var i = 0; i < slideCount; i++) {
+        var dot = document.createElement('div');
+        dot.className = 'pricing-dot' + (i === 0 ? ' active' : '');
+        dot.addEventListener('click', function(idx) {
+          return function() { goTo(idx, slideCount); };
+        }(i));
+        dotsWrap.appendChild(dot);
+      }
+
+      if (!isMobileDevice) {
+        startAuto(slideCount);
+      }
     }
 
-    function goTo(index) {
+    function goTo(index, slideCount) {
       if (isAnimating) return;
       isAnimating = true;
       current = (index + slideCount) % slideCount;
@@ -721,18 +749,60 @@ document.addEventListener('DOMContentLoaded', function() {
         dots[i].classList.toggle('active', i === current);
       }
       setTimeout(function() { isAnimating = false; }, 900);
-      resetAuto();
+      resetAuto(slideCount);
     }
 
-    function slideNext() { goTo(current + 1); }
-    function slidePrev() { goTo(current - 1); }
+    function slideNext(slideCount) { goTo(current + 1, slideCount); }
+    function slidePrev(slideCount) { goTo(current - 1, slideCount); }
 
-    if (prev) prev.addEventListener('click', slidePrev);
-    if (next) next.addEventListener('click', slideNext);
+    function startAuto(slideCount) {
+      autoTimer = setInterval(function() { slideNext(slideCount); }, 5000);
+    }
+    function resetAuto(slideCount) {
+      clearInterval(autoTimer);
+      startAuto(slideCount);
+    }
+
+    // Set up toggle buttons
+    toggleBtns.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        if (btn.classList.contains('active')) return;
+        toggleBtns.forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+
+        // Determine cycle based on button text
+        var text = btn.textContent.trim().toUpperCase();
+        if (text.includes('MONTHLY') || text.includes('RETAINER')) {
+          currentCycle = 'monthly';
+        } else {
+          currentCycle = 'one-time';
+        }
+
+        updateCarousel();
+      });
+    });
+
+    // Set up arrow listeners (using closures to get correct slide count dynamically)
+    if (prev) {
+      prev.addEventListener('click', function() {
+        var visibleCards = Array.from(track.children).filter(function(c) { return c.style.display !== 'none'; });
+        var slideCount = window.matchMedia('(max-width: 640px)').matches ? visibleCards.length : Math.max(visibleCards.length - 2, 1);
+        goTo(current - 1, slideCount);
+      });
+    }
+    if (next) {
+      next.addEventListener('click', function() {
+        var visibleCards = Array.from(track.children).filter(function(c) { return c.style.display !== 'none'; });
+        var slideCount = window.matchMedia('(max-width: 640px)').matches ? visibleCards.length : Math.max(visibleCards.length - 2, 1);
+        goTo(current + 1, slideCount);
+      });
+    }
 
     document.addEventListener('keydown', function(e) {
-      if (e.key === 'ArrowLeft') slidePrev();
-      if (e.key === 'ArrowRight') slideNext();
+      var visibleCards = Array.from(track.children).filter(function(c) { return c.style.display !== 'none'; });
+      var slideCount = window.matchMedia('(max-width: 640px)').matches ? visibleCards.length : Math.max(visibleCards.length - 2, 1);
+      if (e.key === 'ArrowLeft') goTo(current - 1, slideCount);
+      if (e.key === 'ArrowRight') goTo(current + 1, slideCount);
     });
 
     var touchStartX = 0;
@@ -742,27 +812,35 @@ document.addEventListener('DOMContentLoaded', function() {
     track.addEventListener('touchend', function(e) {
       var diff = touchStartX - e.changedTouches[0].clientX;
       if (Math.abs(diff) > 50) {
-        diff > 0 ? slideNext() : slidePrev();
+        var visibleCards = Array.from(track.children).filter(function(c) { return c.style.display !== 'none'; });
+        var slideCount = window.matchMedia('(max-width: 640px)').matches ? visibleCards.length : Math.max(visibleCards.length - 2, 1);
+        diff > 0 ? goTo(current + 1, slideCount) : goTo(current - 1, slideCount);
       }
     }, { passive: true });
 
     window.addEventListener('resize', applyPosition);
 
     if (!isMobileDevice) {
-      function startAuto() { autoTimer = setInterval(slideNext, 5000); }
-      function resetAuto() { clearInterval(autoTimer); startAuto(); }
-
       track.addEventListener('mouseenter', function() { clearInterval(autoTimer); });
-      track.addEventListener('mouseleave', startAuto);
-      document.addEventListener('visibilitychange', function() {
-        if (document.hidden) clearInterval(autoTimer); else startAuto();
+      track.addEventListener('mouseleave', function() {
+        var visibleCards = Array.from(track.children).filter(function(c) { return c.style.display !== 'none'; });
+        var slideCount = window.matchMedia('(max-width: 640px)').matches ? visibleCards.length : Math.max(visibleCards.length - 2, 1);
+        startAuto(slideCount);
       });
-
-      applyPosition();
-      startAuto();
-    } else {
-      applyPosition();
+      document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+          clearInterval(autoTimer);
+        } else {
+          var visibleCards = Array.from(track.children).filter(function(c) { return c.style.display !== 'none'; });
+          var slideCount = window.matchMedia('(max-width: 640px)').matches ? visibleCards.length : Math.max(visibleCards.length - 2, 1);
+          startAuto(slideCount);
+        }
+      });
     }
+
+    // Initialize first cycle
+    updateCarousel();
+
   })();
 
   // ── BLOG CAROUSEL ──

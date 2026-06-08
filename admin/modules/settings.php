@@ -7,12 +7,112 @@ $saved = isset($_GET['saved']);
 // Handle save
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save') {
     csrf_verify();
+    $uploadError = null;
+    
     foreach ($_POST as $key => $value) {
         if (in_array($key, ['action', '_csrf', 'active_tab'])) continue;
         set_setting($key, trim($value));
     }
+    
+    // Handle profile photo upload
+    if (!empty($_FILES['profile_photo'])) {
+        $uploadResult = upload_profile_photo($_FILES['profile_photo']);
+        if ($uploadResult['success']) {
+            set_setting('profile_photo', $uploadResult['path']);
+        } else {
+            $uploadError = $uploadResult['error'];
+        }
+    }
+    
     $tab = preg_replace('/[^a-z0-9]/', '', $_POST['active_tab'] ?? 'tab1');
+    
+    // Check if it's an AJAX request
+    if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+        $response = ['ok' => true, 'tab' => $tab];
+        if ($uploadError) {
+            $response['ok'] = false;
+            $response['error'] = $uploadError;
+        }
+        json_response($response);
+    }
+    
+    if ($uploadError) {
+        $_SESSION['flash_msg'] = $uploadError;
+        $_SESSION['flash_type'] = 'error';
+    }
     redirect('settings.php?saved=1&tab=' . $tab);
+}
+
+function upload_profile_photo($file) {
+    // Check for upload errors first
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        $errors = [
+            UPLOAD_ERR_INI_SIZE => 'File exceeds upload_max_filesize directive',
+            UPLOAD_ERR_FORM_SIZE => 'File exceeds MAX_FILE_SIZE directive',
+            UPLOAD_ERR_PARTIAL => 'File was only partially uploaded',
+            UPLOAD_ERR_NO_FILE => 'No file was uploaded',
+            UPLOAD_ERR_NO_TMP_DIR => 'Missing a temporary folder',
+            UPLOAD_ERR_CANT_WRITE => 'Failed to write file to disk',
+            UPLOAD_ERR_EXTENSION => 'A PHP extension stopped the file upload'
+        ];
+        $errorMsg = $errors[$file['error']] ?? 'Unknown upload error';
+        return ['success' => false, 'error' => $errorMsg];
+    }
+
+    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    $allowed = ['jpg','jpeg','png','gif','webp','avif'];
+    if (!in_array($ext, $allowed)) {
+        return ['success' => false, 'error' => 'Invalid file type. Allowed: JPG, PNG, GIF, WEBP, AVIF.'];
+    }
+
+    $dir = __DIR__ . '/../uploads';
+    if (!is_dir($dir)) {
+        if (!mkdir($dir, 0755, true)) {
+            return ['success' => false, 'error' => 'Failed to create uploads directory.'];
+        }
+    }
+
+    // Make sure the directory is writable
+    if (!is_writable($dir)) {
+        return ['success' => false, 'error' => 'Uploads directory is not writable.'];
+    }
+
+    $name = 'profile_' . uniqid('', true);
+    $finalFile = $name . '.' . $ext;
+    $dest = $dir . '/' . $finalFile;
+    if (!move_uploaded_file($file['tmp_name'], $dest)) {
+        return ['success' => false, 'error' => 'Failed to save uploaded file.'];
+    }
+
+    $filepath = 'admin/uploads/' . $finalFile;
+    return ['success' => true, 'path' => $filepath, 'url' => BASE_URL . '/' . $filepath];
+}
+
+// Handle personal API key save for team members
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_own_key') {
+    csrf_verify();
+    $email = supabase_user_email();
+    $ownKey = trim($_POST['own_api_key'] ?? '');
+    $ownProvider = preg_replace('/[^a-z0-9_]/', '', $_POST['own_api_provider'] ?? 'groq');
+    $success = false;
+    try {
+        db_update('team_members', [
+            'own_api_key' => $ownKey,
+            'own_api_provider' => $ownProvider,
+        ], 'email = ?', [$email]);
+        $_SESSION['flash_msg'] = 'Your API key has been updated.';
+        $_SESSION['flash_type'] = 'success';
+        $success = true;
+    } catch (Exception $e) {
+        $_SESSION['flash_msg'] = 'Error: ' . $e->getMessage();
+        $_SESSION['flash_type'] = 'error';
+    }
+    
+    if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+        json_response(['ok' => $success]);
+    }
+    
+    redirect('settings.php?saved=1&tab=tab1');
 }
 
 // Handle AJAX single-key save
@@ -44,9 +144,76 @@ require_once __DIR__ . '/../inc/header.php';
 <style>
 .setting-pane { display:none }
 .setting-pane.active { display:block }
+.ai-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--accent);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    margin-right: 6px;
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+.profile-photo-wrap {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    overflow: hidden;
+    border: 2px solid var(--border);
+    cursor: pointer;
+}
+.profile-photo-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+}
+.profile-photo-placeholder {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), rgba(204,255,0,0.3));
+    color: #080b12;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 1.5rem;
+    font-family: 'Orbitron', sans-serif;
+}
+.profile-photo-overlay {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    cursor: pointer;
+    color: #fff;
+    font-size: 0.55rem;
+    font-weight: 600;
+    text-align: center;
+}
+.profile-photo-overlay i {
+    font-size: 1.1rem;
+}
+.profile-photo-wrap:hover .profile-photo-overlay {
+    opacity: 1;
+}
 </style>
 
-<form method="post" action="settings.php">
+<form method="post" action="settings.php" enctype="multipart/form-data">
     <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
     <input type="hidden" name="action" value="save">
     <input type="hidden" name="active_tab" id="activeTab" value="<?= h($_GET['tab'] ?? 'tab1') ?>">
@@ -63,11 +230,23 @@ require_once __DIR__ . '/../inc/header.php';
         <div class="settings-card">
             <div class="settings-card-title">User Profile</div>
             <div style="display:flex;align-items:center;gap:1.25rem;margin-bottom:1.5rem">
-                <div class="avatar-upload" title="Upload avatar (placeholder)"><i class="ti ti-camera"></i></div>
+                <div class="profile-photo-wrap" id="profilePhotoWrap">
+                    <?php $currPhoto = get_setting('profile_photo', ''); ?>
+                    <?php if ($currPhoto): ?>
+                        <img src="<?= h(image_url($currPhoto)) ?>" alt="" id="profilePhotoPreview">
+                    <?php else: ?>
+                        <div class="profile-photo-placeholder" id="profilePhotoPreview"><?= strtoupper(substr(get_setting('founder_name', 'A'), 0, 1)) ?></div>
+                    <?php endif; ?>
+                    <label class="profile-photo-overlay" for="profilePhotoInput">
+                        <i class="ti ti-camera"></i>
+                        <span>Change Photo</span>
+                    </label>
+                    <input type="file" id="profilePhotoInput" name="profile_photo" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" style="display:none" onchange="previewProfilePhoto(this)">
+                </div>
                 <div>
                     <div style="font-size:1rem;font-weight:700;color:var(--text)"><?= h(get_setting('founder_name', 'Raihan Islam')) ?></div>
-                    <div style="font-size:0.75rem;color:var(--neon-green);margin-top:2px"><?= h(get_setting('founder_title', 'Founder & Creative Director')) ?></div>
-                    <div style="font-size:0.7rem;color:var(--text3);margin-top:2px"><?= h(get_setting('contact_email', 'xoosdigital@gmail.com')) ?></div>
+                    <div style="font-size:0.75rem;color:var(--accent);margin-top:2px"><?= h(get_setting('founder_title', 'Founder & Creative Director')) ?></div>
+                    <div style="font-size:0.7rem;color:var(--text3);margin-top:2px"><?= h(supabase_user_email()) ?></div>
                 </div>
             </div>
             <div class="form-row">
@@ -88,6 +267,50 @@ require_once __DIR__ . '/../inc/header.php';
                 </div>
             </div>
         </div>
+
+        <?php
+        // Personal API key section for team members
+        $currentEmail = supabase_user_email();
+        $ownKeyRow = null;
+        try {
+            $rows = db_rows("SELECT own_api_key, own_api_provider, onboarding_complete FROM team_members WHERE email = ?", [$currentEmail]);
+            $ownKeyRow = $rows[0] ?? null;
+        } catch (Exception $e) {
+            try {
+                reload_pgrst_schema();
+                $rows = db_rows("SELECT own_api_key, own_api_provider, onboarding_complete FROM team_members WHERE email = ?", [$currentEmail]);
+                $ownKeyRow = $rows[0] ?? null;
+            } catch (Exception $e2) {}
+        }
+        if ($ownKeyRow):
+            $presets = ai_provider_presets();
+        ?>
+        <div class="settings-card">
+            <div class="settings-card-title">Your Personal AI Key</div>
+            <p style="font-size:0.78rem;color:var(--text3);margin-bottom:1rem">This key is used for AI features you access. Leave empty to use the team default.</p>
+            <form method="post" action="settings.php" onsubmit="return saveOwnApiKey(event)">
+                <input type="hidden" name="_csrf" value="<?= csrf_token() ?>">
+                <input type="hidden" name="action" value="save_own_key">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>AI Provider</label>
+                        <select class="form-control" name="own_api_provider">
+                            <?php foreach ($presets as $pk => $pv): if ($pk === 'custom') continue; ?>
+                                <option value="<?= $pk ?>" <?= ($ownKeyRow['own_api_provider'] ?: 'groq') === $pk ? 'selected' : '' ?>><?= $pv['label'] ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Your API Key</label>
+                        <input class="form-control" name="own_api_key" type="text" value="<?= h($ownKeyRow['own_api_key'] ?? '') ?>" placeholder="sk-... or gsk_...">
+                    </div>
+                </div>
+                <div class="form-actions" style="margin-top:0;padding-top:0.75rem;border-top:none">
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="ti ti-device-floppy"></i> Save My Key</button>
+                </div>
+            </form>
+        </div>
+        <?php endif; ?>
 
         <div class="settings-card">
             <div class="settings-card-title">Contact Information</div>
@@ -341,6 +564,55 @@ require_once __DIR__ . '/../inc/header.php';
 </form>
 
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form[action="settings.php"]');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            // Only handle the main save action, not the own key save
+            const actionInput = form.querySelector('input[name="action"]');
+            if (actionInput && actionInput.value === 'save_own_key') {
+                return; // Let the saveOwnApiKey handle it
+            }
+            e.preventDefault();
+            
+            const formData = new FormData(form);
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="ai-spinner"></span> Saving...';
+
+            fetch('settings.php', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(function(response) {
+                return response.json();
+            })
+            .then(function(data) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+                if (data.ok) {
+                    showToast('Settings saved successfully!');
+                    // Update the page without full reload? For now, just a light refresh
+                    setTimeout(function() {
+                        window.location.href = 'settings.php?saved=1&tab=' + data.tab;
+                    }, 600);
+                } else {
+                    showToast(data.error || 'Error saving settings!', 'error');
+                }
+            })
+            .catch(function() {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+                showToast('Error saving settings!', 'error');
+            });
+        });
+    }
+});
+
 function testSmtp() {
     var btn = event.target;
     var result = document.getElementById('smtpTestResult');
@@ -359,6 +631,44 @@ function testSmtp() {
         btn.disabled = false;
         result.textContent = '✗ Connection failed';
         result.style.color = 'var(--red)';
+    });
+}
+
+function saveOwnApiKey(e) {
+    e.preventDefault();
+    var form = e.target;
+    var fd = new FormData(form);
+    var submitBtn = form.querySelector('button[type="submit"]');
+    var originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="ai-spinner"></span> Saving...';
+    
+    fetch('settings.php', {
+        method: 'POST',
+        body: fd,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+        if (data.ok) {
+            showToast('Your API key has been saved!');
+            setTimeout(function() {
+                window.location.href = 'settings.php?saved=1&tab=tab1';
+            }, 600);
+        } else {
+            showToast('Error saving your API key!', 'error');
+        }
+    })
+    .catch(function() {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+        showToast('Error saving your API key!', 'error');
     });
 }
 function clearAllLeads() {
@@ -404,6 +714,27 @@ function saveApiKey(provider) {
         alert('Failed to save key');
     });
     return false;
+}
+function previewProfilePhoto(input) {
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var wrap = document.getElementById('profilePhotoWrap');
+            var preview = document.getElementById('profilePhotoPreview');
+            if (preview.tagName === 'IMG') {
+                preview.src = e.target.result;
+            } else {
+                // Replace just the preview element, keep the input and overlay!
+                var newImg = document.createElement('img');
+                newImg.src = e.target.result;
+                newImg.id = 'profilePhotoPreview';
+                newImg.alt = '';
+                // Replace the placeholder with the image
+                preview.replaceWith(newImg);
+            }
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
 }
 function switchTab(btn, tabId) {
     document.querySelectorAll('.settings-tab').forEach(function(t) { t.classList.remove('active'); });

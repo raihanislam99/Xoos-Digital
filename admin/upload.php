@@ -12,7 +12,7 @@ if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
 }
 
 $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-$allowed = ['jpg','jpeg','png','gif','webp','svg','avif'];
+$allowed = ['jpg','jpeg','png','gif','webp','avif'];
 if (!in_array($ext, $allowed)) {
     json_response(['error' => 'Invalid file type. Allowed: ' . implode(', ', $allowed)], 400);
 }

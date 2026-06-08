@@ -176,9 +176,6 @@ $dayName = $dayNames[(int)date('w')];
 </div>
 
 
-}
-document.getElementById('quickNoteModal').addEventListener('click', function(e) { if (e.target === this) closeQuickNoteModal(); });
-document.getElementById('qnTitle').addEventListener('keydown', function(e) { if (e.key === 'Enter') saveQuickNote(); });
 </script>
 
 <!-- Mini Charts Row -->

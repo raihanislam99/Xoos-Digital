@@ -58,11 +58,11 @@ class Supabase {
         ]);
     }
 
-    public function authAdminCreateUser(string $email, string $password, array $metadata = []): array {
+    public function authAdminCreateUser(string $email, string $password, array $metadata = [], bool $confirmEmail = true): array {
         $payload = [
-            'email'      => $email,
-            'password'   => $password,
-            'email_confirm' => true,
+            'email'           => $email,
+            'password'        => $password,
+            'email_confirm'   => $confirmEmail,
         ];
         if (!empty($metadata)) {
             $payload['user_metadata'] = $metadata;
@@ -86,6 +86,34 @@ class Supabase {
     public function authAdminGetUserByEmail(string $email): ?array {
         $users = $this->apiCall('GET', '/auth/v1/admin/users?filter%5Bemail%5D=eq.' . urlencode($email), [], true);
         return $users['users'][0] ?? null;
+    }
+
+    public function authInviteUserByEmail(string $email, string $redirectTo = null): ?array {
+        try {
+            // Use admin API to send invite (uses service role key)
+            $payload = ['email' => $email];
+            if ($redirectTo) {
+                $payload['redirect_to'] = $redirectTo;
+            }
+            $result = $this->apiCall('POST', '/auth/v1/admin/invite', $payload, true);
+            return $result;
+        } catch (\Exception $e) {
+            // Fallback 1: try public invite endpoint
+            try {
+                $result = $this->apiCall('POST', '/auth/v1/invite', ['email' => $email], false, $this->serviceRoleKey);
+                return $result;
+            } catch (\Exception $e2) {
+                // Fallback 2: try magic link endpoint
+                try {
+                    $result = $this->apiCall('POST', '/auth/v1/magiclink', ['email' => $email], false, $this->serviceRoleKey);
+                    return $result;
+                } catch (\Exception $e3) {
+                    // Email sending failed — just return null, user can use forgot password
+                    error_log('Failed to send invite to ' . $email . ': ' . $e3->getMessage());
+                    return null;
+                }
+            }
+        }
     }
 
     // ── Database (PostgreSQL PDO) ──────────────────────
@@ -150,6 +178,7 @@ class Supabase {
 
         if ($customToken !== null) {
             $headers[] = 'Authorization: Bearer ' . $customToken;
+            $headers[] = 'apikey: ' . $customToken;
         } elseif ($useAuthHeader) {
             $pos = strpos($path, '/admin/');
             if ($pos !== false) {
@@ -517,7 +546,12 @@ class SupabaseRestStmt {
     // ── SQL parsing and REST execution ──
 
     private function parseAndExecute(string $sql): bool {
-        $sql = trim(preg_replace('/\s+/', ' ', $sql));
+        // Normalize whitespace only outside of single-quoted string literals to preserve newlines/spaces within them
+        $parts = explode("'", $sql);
+        for ($i = 0; $i < count($parts); $i += 2) {
+            $parts[$i] = preg_replace('/\s+/', ' ', $parts[$i]);
+        }
+        $sql = trim(implode("'", $parts));
         $upper = strtoupper($sql);
 
         try {

@@ -2,19 +2,26 @@
 require_once __DIR__ . '/functions.php';
 require_login();
 
+// Send cache headers for static pages (non-POST requests)
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    header('Cache-Control: private, no-cache, must-revalidate');
+    header('Pragma: no-cache');
+    // Let browser cache static files (css/js/images) longer
+}
+
 $current = basename($_SERVER['SCRIPT_NAME']);
 $module = basename(dirname($_SERVER['SCRIPT_NAME'])) === 'modules' ? basename($_SERVER['SCRIPT_NAME']) : '';
 $active = $module ? str_replace('.php', '', $module) : '';
 
 // Nav groups rendered inline in the sidebar template below
-
-$unread_msgs = db_count_cached('unread_msgs', "SELECT COUNT(*) FROM contact_messages WHERE is_read = 0");
-$pendingTasks = db_count_cached('pending_tasks', "SELECT COUNT(*) FROM admin_tasks WHERE status IN ('pending','in_progress')");
-$tasksDueToday = db_count_cached('tasks_due_today', "SELECT COUNT(*) FROM admin_tasks WHERE status IN ('pending','in_progress') AND due_date::date = CURRENT_DATE");
+$unread_msgs = db_count_cached('unread_msgs', "SELECT COUNT(*) FROM contact_messages WHERE is_read = 0", [], 60);
+$pendingTasks = db_count_cached('pending_tasks', "SELECT COUNT(*) FROM admin_tasks WHERE status IN ('pending','in_progress')", [], 60);
+$tasksDueToday = db_count_cached('tasks_due_today', "SELECT COUNT(*) FROM admin_tasks WHERE status IN ('pending','in_progress') AND due_date::date = CURRENT_DATE", [], 60);
 $blogDrafts = db_count_cached('blog_drafts', "SELECT COUNT(*) FROM blog_posts WHERE status = 'draft'");
 $blogCount = db_count_cached('blog_count', "SELECT COUNT(*) FROM blog_posts");
 $unpubPosts = db_count_cached('unpub_posts', "SELECT COUNT(*) FROM generated_posts WHERE status = 'draft'");
 $newLeadsWeek = db_count_cached('new_leads_week', "SELECT COUNT(*) FROM leads WHERE is_blacklisted = 0 AND created_at >= CURRENT_DATE - INTERVAL '7 days'");
+$notesCount = db_count_cached('notes_count', "SELECT COUNT(*) FROM notes");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -663,13 +670,29 @@ $newLeadsWeek = db_count_cached('new_leads_week', "SELECT COUNT(*) FROM leads WH
     <button class="mobile-menu-btn" id="mobileMenuBtn" title="Menu">
         <i class="ti ti-menu-2"></i>
     </button>
+<?php
+$profilePhoto = get_setting('profile_photo', '');
+$founderName = get_setting('founder_name', 'Admin');
+$founderTitle = get_setting('founder_title', 'Administrator');
+$userEmail = supabase_user_email();
+$avatarLetter = strtoupper(substr($founderName ?: $userEmail, 0, 1));
+?>
     <aside class="sidebar v3-sidebar" id="sidebar">
         <div class="sidebar-user">
-            <div class="sidebar-avatar" data-name="<?= htmlspecialchars(supabase_user_email() ?: 'A') ?>"></div>
-            <div class="sidebar-user-info">
-                <div class="sidebar-user-name"><?= htmlspecialchars(supabase_user_email() ?: 'Admin') ?></div>
-                <div class="sidebar-user-role">Administrator</div>
-            </div>
+            <a href="<?= ADMIN_URL ?>/modules/settings.php" class="sidebar-user-link" title="Edit Profile">
+                <div class="sidebar-avatar" style="position:relative">
+                    <?php if ($profilePhoto): ?>
+                        <img src="<?= h(image_url($profilePhoto)) ?>" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">
+                    <?php else: ?>
+                        <?= $avatarLetter ?>
+                    <?php endif; ?>
+                    <span class="sidebar-avatar-badge"><i class="ti ti-settings"></i></span>
+                </div>
+                <div class="sidebar-user-info">
+                    <div class="sidebar-user-name"><?= htmlspecialchars($founderName) ?></div>
+                    <div class="sidebar-user-role"><?= htmlspecialchars($founderTitle) ?></div>
+                </div>
+            </a>
             <button class="v3-bell sidebar-bell" id="v3BellBtn" title="Notifications">
                 <i class="ti ti-bell"></i>
                 <?php if ($unread_msgs > 0 || $tasksDueToday > 0): ?>
@@ -721,6 +744,13 @@ $newLeadsWeek = db_count_cached('new_leads_week', "SELECT COUNT(*) FROM leads WH
                 <?php endif; ?>
             </a>
 
+            <!-- Notes -->
+            <?php $isNotesPage = strpos($_SERVER['SCRIPT_NAME'] ?? '', 'notes.php') !== false; ?>
+            <a href="<?= ADMIN_URL ?>/modules/notes.php" class="v3-focus-item <?= $isNotesPage ? 'active' : '' ?>">
+                <span class="fi-icon tasks"><i class="ti ti-notes"></i></span>
+                <span class="fi-label">Notes</span>
+                <span class="fi-badge <?= $notesCount > 0 ? 'has-items' : '' ?>"><?= $notesCount ?></span>
+            </a>
 
             <?php
             $focusItems = [
@@ -784,8 +814,14 @@ $newLeadsWeek = db_count_cached('new_leads_week', "SELECT COUNT(*) FROM leads WH
         </div>
 
         <div class="v3-sidebar-footer">
+            <a href="<?= ADMIN_URL ?>/modules/team.php" class="<?= $active === 'team' ? 'active' : '' ?>">
+                <i class="ti ti-users"></i><span>Team</span>
+            </a>
             <a href="<?= ADMIN_URL ?>/modules/settings.php" class="<?= $active === 'settings' ? 'active' : '' ?>">
                 <i class="ti ti-tool"></i><span>Settings</span>
+            </a>
+            <a href="<?= ADMIN_URL ?>/reset-password.php" style="font-size:0.75rem;color:var(--text-muted);border-top:1px solid var(--border);margin-top:4px;padding-top:10px">
+                <i class="ti ti-key"></i><span>Credentials</span>
             </a>
         </div>
         <div class="v3-cmdk-hint">Press <kbd>Ctrl+K</kbd> to search</div>

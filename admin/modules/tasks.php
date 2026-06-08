@@ -28,17 +28,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmt = $pdo->prepare($sql);
             $stmt->execute($data);
         } else {
-            // Compute max sort_order in PHP (COALESCE/MAX not supported by REST wrapper)
+            // Compute max sort_order using SQL (instant!)
             $maxSort = 0;
             try {
-                $allTasks = $pdo->query("SELECT sort_order FROM admin_tasks ORDER BY sort_order DESC")->fetchAll();
-                foreach ($allTasks as $t) {
-                    if (isset($t['sort_order']) && $t['sort_order'] > $maxSort) {
-                        $maxSort = (int)$t['sort_order'];
-                    }
-                }
-            } catch (Exception $e) {}
-            $maxSort++;
+                $result = $pdo->query("SELECT MAX(sort_order) AS max_sort FROM admin_tasks")->fetch();
+                $maxSort = ($result && $result['max_sort'] !== null) ? (int)$result['max_sort'] + 1 : 1;
+            } catch (Exception $e) {
+                $maxSort = 1; // Fallback if query fails
+            }
             $data['sort_order'] = $maxSort;
             $sql = "INSERT INTO admin_tasks (title, description, status, priority, due_date, category, lead_id, assignee_type, assignee_name, sort_order) VALUES (:title, :description, :status, :priority, :due_date, :category, :lead_id, :assignee_type, :assignee_name, :sort_order)";
             $stmt = $pdo->prepare($sql);
@@ -237,7 +234,7 @@ $stats = [
 .kanban-cards.drag-over { background: rgba(204,255,0,0.03); border: 1px dashed var(--accent); border-radius: 10px; }
 
 /* ─── TASK CARDS ─── */
-.task-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; cursor: grab; transition: all 0.2s ease; position: relative; animation: cardSlideIn 0.25s ease-out; user-select: none; border-left: 3px solid #6b7280; }
+.task-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px 14px 32px; cursor: grab; transition: all 0.2s ease; position: relative; animation: cardSlideIn 0.25s ease-out; user-select: none; border-left: 3px solid #6b7280; }
 .task-card[data-priority="urgent"] { border-left-color: #ff4757; }
 .task-card[data-priority="high"] { border-left-color: #f97316; }
 .task-card[data-priority="medium"] { border-left-color: #f59e0b; }
@@ -245,7 +242,7 @@ $stats = [
 .task-card:hover { border-color: rgba(200,255,0,0.2); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
 .task-card.dragging { opacity: 0.4; transform: rotate(2deg); }
 .task-card.fade-out { animation: cardFadeOut 0.2s ease-out forwards; }
-.task-card .drag-handle { display: none; position: absolute; left: 2px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.2); font-size: 1.1rem; cursor: grab; }
+.task-card .drag-handle { display: none; position: absolute; left: 4px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.3); font-size: 1.1rem; cursor: grab; z-index: 10; }
 .task-card:hover .drag-handle { display: block; }
 .task-card .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
 .task-card .card-title { font-size: 0.82rem; font-weight: 600; color: var(--text); line-height: 1.3; text-align:left; }
@@ -264,7 +261,22 @@ $stats = [
 .task-card .card-actions { display: none; gap: 2px; flex-shrink: 0; }
 .task-card:hover .card-actions { display: flex; }
 .task-card .card-actions button { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.07); color: var(--text2); width: 24px; height: 24px; border-radius: 6px; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center; transition: all 0.1s; }
-.task-card .card-actions button:hover { background: rgba(255,255,255,0.15); color: var(--text); }
+.task-card:hover .card-actions button:hover { background: rgba(255,255,255,0.15); color: var(--text); }
+
+.ai-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--accent);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    margin-right: 6px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
 .task-card .card-lead-link { font-size: 0.6rem; color: var(--blue); text-decoration: none; display: inline-flex; align-items: center; gap: 3px; }
 .task-card .card-lead-link:hover { text-decoration: underline; }
 .task-card .card-bottom { display: flex; align-items: center; justify-content: space-between; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.04); gap: 6px; flex-wrap: wrap; }
@@ -477,7 +489,7 @@ select.form-control option { background: #0e1420; color: var(--text); }
                         </div>
                     </div>
                     <?php if ($t['description']): ?>
-                    <div style="font-size:0.72rem;color:var(--text3);margin-bottom:8px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden"><?= h($t['description']) ?></div>
+                    <div style="font-size:0.72rem;color:var(--text3);margin-bottom:8px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-align:left"><?= h($t['description']) ?></div>
                     <?php endif; ?>
                     <?php if ($t['lead_id']): $lead = $pdo->query("SELECT id, business_name FROM leads WHERE id = " . (int)$t['lead_id'])->fetch(); if ($lead): ?>
                     <div class="card-meta">
@@ -739,11 +751,92 @@ function closeTaskModal() {
     document.getElementById('taskModal').classList.remove('open');
 }
 
+function createTaskCardElement(task) {
+    var card = document.createElement('div');
+    card.className = 'task-card';
+    card.setAttribute('draggable', 'true');
+    card.setAttribute('data-id', task.id);
+    card.setAttribute('data-status', task.status);
+    card.setAttribute('data-priority', task.priority);
+    card.setAttribute('data-due', task.due_date || '');
+    card.setAttribute('data-description', task.description || '');
+    card.setAttribute('data-category', task.category || '');
+    card.setAttribute('data-lead-id', task.lead_id || '');
+    card.setAttribute('data-assignee-type', task.assignee_type || '');
+    card.setAttribute('data-assignee-name', task.assignee_name || '');
+    card.addEventListener('dragstart', dragStart);
+    card.addEventListener('dragend', dragEnd);
+
+    var priorityColor = {
+        'urgent': '#ff4757',
+        'high': '#f97316',
+        'medium': '#f59e0b',
+        'low': '#6b7280'
+    }[task.priority];
+
+    var dueDate = task.due_date ? new Date(task.due_date) : null;
+    var formattedDue = dueDate ? dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+    var isOverdue = dueDate && dueDate < new Date() && task.status !== 'done';
+
+    card.innerHTML = `
+        <span class="drag-handle">⠿</span>
+        <div class="card-top">
+            <span class="card-title">${escapeHtml(task.title)}</span>
+            <div class="card-actions">
+                <button onclick="editTask(${task.id})" title="Edit"><i class="ti ti-pencil"></i></button>
+                <button onclick="deleteTask(${task.id}, '${escapeHtml(task.title)}')" title="Delete"><i class="ti ti-trash"></i></button>
+            </div>
+        </div>
+        ${task.description ? `<div style="font-size:0.72rem;color:var(--text3);margin-bottom:8px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-align:left">${escapeHtml(task.description)}</div>` : ''}
+        <div class="card-bottom">
+            <span class="card-priority priority-${task.priority}">${task.priority}</span>
+            ${task.category ? `<span class="card-category">${escapeHtml(task.category)}</span>` : ''}
+            ${task.assignee_name ? `<span class="assignee-badge assignee-${task.assignee_type || 'person'}">${escapeHtml(task.assignee_name)}</span>` : ''}
+            ${task.due_date ? `<span class="card-due-right ${isOverdue ? 'overdue' : ''}"><i class="ti ti-calendar"></i> ${formattedDue}</span>` : ''}
+        </div>
+    `;
+
+    return card;
+}
+
+function escapeHtml(text) {
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 function saveTask(e) {
     e.preventDefault();
     var fd = new FormData(document.getElementById('taskForm'));
     var id = parseInt(fd.get('id'));
     fd.set('action', id ? 'update' : 'create');
+
+    // For new tasks, create a temporary task object for instant UI update
+    var tempTask = null;
+    if (!id) {
+        tempTask = {
+            id: Date.now(), // Temporary ID
+            title: fd.get('title'),
+            description: fd.get('description'),
+            status: fd.get('status') || 'pending',
+            priority: fd.get('priority'),
+            due_date: fd.get('due_date'),
+            category: fd.get('category'),
+            lead_id: fd.get('lead_id') ? parseInt(fd.get('lead_id')) : null,
+            assignee_type: fd.get('assignee_type'),
+            assignee_name: fd.get('assignee_name')
+        };
+        // Add to UI instantly
+        var pendingColumn = document.querySelector('.kanban-col[data-status="pending"] .kanban-cards');
+        if (pendingColumn) {
+            var emptyCol = pendingColumn.querySelector('.empty-col');
+            if (emptyCol) emptyCol.remove();
+            var tempCard = createTaskCardElement(tempTask);
+            // Insert at the top
+            pendingColumn.insertBefore(tempCard, pendingColumn.firstChild);
+            updateStats();
+        }
+    }
 
     fetch('tasks.php', { method: 'POST', body: fd })
     .then(function(r) { return r.json(); })
@@ -751,12 +844,60 @@ function saveTask(e) {
         if (j.ok) {
             showToast(id ? 'Task updated' : 'Task created');
             closeTaskModal();
-            setTimeout(function() { location.reload(); }, 300);
+
+            if (id) {
+                // Update existing task
+                setTimeout(function() { location.reload(); }, 300);
+            } else {
+                // Replace temporary card with real one
+                if (tempTask) {
+                    var tempCard = document.querySelector('.task-card[data-id="' + tempTask.id + '"]');
+                    if (tempCard && j.id) {
+                        tempTask.id = j.id;
+                        var realCard = createTaskCardElement(tempTask);
+                        tempCard.replaceWith(realCard);
+                        // Update data-id
+                        realCard.setAttribute('data-id', j.id);
+                    }
+                }
+            }
         } else {
             showToast('Error: ' + (j.error || 'Unknown'), 'error');
+            // Remove temporary card if creation failed
+            if (!id && tempTask) {
+                var tempCard = document.querySelector('.task-card[data-id="' + tempTask.id + '"]');
+                if (tempCard) {
+                    tempCard.remove();
+                    updateStats();
+                    // Check if column is now empty
+                    var pendingColumn = document.querySelector('.kanban-col[data-status="pending"] .kanban-cards');
+                    var cards = pendingColumn.querySelectorAll('.task-card');
+                    var emptyCol = pendingColumn.querySelector('.empty-col');
+                    if (cards.length === 0 && !emptyCol) {
+                        pendingColumn.innerHTML = '<div class="empty-col"><i class="ti ti-inbox"></i> Drop tasks here</div>';
+                    }
+                }
+            }
         }
     })
-    .catch(function() { showToast('Request failed', 'error'); });
+    .catch(function() {
+        showToast('Request failed', 'error');
+        // Remove temporary card if request failed
+        if (!id && tempTask) {
+            var tempCard = document.querySelector('.task-card[data-id="' + tempTask.id + '"]');
+            if (tempCard) {
+                tempCard.remove();
+                updateStats();
+                // Check if column is now empty
+                var pendingColumn = document.querySelector('.kanban-col[data-status="pending"] .kanban-cards');
+                var cards = pendingColumn.querySelectorAll('.task-card');
+                var emptyCol = pendingColumn.querySelector('.empty-col');
+                if (cards.length === 0 && !emptyCol) {
+                    pendingColumn.innerHTML = '<div class="empty-col"><i class="ti ti-inbox"></i> Drop tasks here</div>';
+                }
+            }
+        }
+    });
     return false;
 }
 
@@ -790,10 +931,19 @@ function deleteTask(id, title) {
                 closeDeleteModal();
                 var card = document.querySelector('.task-card[data-id="' + id + '"]');
                 if (card) {
+                    var col = card.closest('.kanban-col');
+                    var countSpan = col.querySelector('.count');
                     card.classList.add('fade-out');
                     card.addEventListener('animationend', function() {
                         card.remove();
                         updateStats();
+                        if (countSpan) countSpan.textContent = parseInt(countSpan.textContent) - 1;
+                        // Check if column is now empty
+                        var cards = col.querySelectorAll('.task-card');
+                        var emptyCol = col.querySelector('.empty-col');
+                        if (cards.length === 0 && !emptyCol) {
+                            col.querySelector('.kanban-cards').innerHTML = '<div class="empty-col"><i class="ti ti-inbox"></i> Drop tasks here</div>';
+                        }
                     });
                 }
                 showToast('Task deleted');
@@ -821,9 +971,16 @@ function aiImproveTaskTitle() {
         body: JSON.stringify({task: 'improve', context: text})
     }).then(function(r) { return r.json(); }).then(function(j) {
         btn.disabled = false; btn.innerHTML = '<i class="ti ti-sparkles"></i> Improve';
-        if (j.success) { inp.value = j.data; inp.dispatchEvent(new Event('input')); }
-    }).catch(function() {
+        if (j.success) { 
+            inp.value = j.data; 
+            inp.dispatchEvent(new Event('input')); 
+        } else {
+            alert('Error: ' + (j.error || 'Something went wrong'));
+        }
+    }).catch(function(err) {
+        console.error('AI error:', err);
         btn.disabled = false; btn.innerHTML = '<i class="ti ti-sparkles"></i> Improve';
+        alert('Error communicating with AI');
     });
 }
 function aiImproveTaskDesc() {
@@ -835,12 +992,18 @@ function aiImproveTaskDesc() {
     fetch('../ai.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({task: 'improve', context: text})
+        body: JSON.stringify({task: 'improve_content', context: text})
     }).then(function(r) { return r.json(); }).then(function(j) {
         btn.disabled = false; btn.innerHTML = '<i class="ti ti-sparkles"></i> Improve';
-        if (j.success) ta.value = j.data;
-    }).catch(function() {
+        if (j.success) {
+            ta.value = j.data;
+        } else {
+            alert('Error: ' + (j.error || 'Something went wrong'));
+        }
+    }).catch(function(err) {
+        console.error('AI error:', err);
         btn.disabled = false; btn.innerHTML = '<i class="ti ti-sparkles"></i> Improve';
+        alert('Error communicating with AI');
     });
 }
 

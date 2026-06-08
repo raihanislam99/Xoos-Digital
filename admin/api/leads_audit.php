@@ -64,13 +64,13 @@ $curlErr = curl_error($ch);
 if ($curlErr || $httpCode >= 400) {
     curl_close($ch);
     $audit['error'] = $curlErr ?: "HTTP $httpCode";
-    $audit['lead_score'] = 60;
-// Save score & audit data back to lead
-if ($leadId) {
-    db_update('leads', ['lead_score' => $score, 'website_score' => round($score * 0.8), 'has_website' => 1, 'ai_audit' => json_encode($audit)], 'id = ?', [$leadId]);
-}
-
-echo json_encode(['success' => true, 'data' => $audit]);
+    $score = 60;
+    $audit['lead_score'] = $score;
+    // Save score & audit data back to lead
+    if ($leadId) {
+        db_update('leads', ['lead_score' => $score, 'website_score' => round($score * 0.8), 'has_website' => 1, 'ai_audit' => json_encode($audit)], 'id = ?', [$leadId]);
+    }
+    echo json_encode(['success' => true, 'data' => $audit]);
     exit;
 }
 

@@ -13,6 +13,16 @@ foreach ($autoloadPaths as $p) {
 // ── Supabase class ──
 require_once __DIR__ . '/supabase.php';
 
+// ── PostgREST schema reload helper ──
+function reload_pgrst_schema(): void {
+    try {
+        $pdo = db();
+        if ($pdo instanceof SupabaseRestDB) {
+            $pdo->restCall('GET', '', null, ['Prefer: reload-schema']);
+        }
+    } catch (Exception $e) {}
+}
+
 // ── Session-based query cache (avoids redundant COUNT queries per page load) ──
 function db_count_cached(string $cacheKey, string $query, array $params = [], int $ttl = 30): int {
     $cache = &$_SESSION['_db_cache']; $now = time();
@@ -29,6 +39,44 @@ function db_count_cached(string $cacheKey, string $query, array $params = [], in
     } catch (Exception $e) { $val = 0; }
     $cache[$cacheKey] = ['value' => $val, 'time' => $now];
     return $val;
+}
+
+// ── Simple Cache Helper (File-based) ──────────────────────────────────
+function get_cache(string $key, int $ttl = 300): mixed {
+    $cacheDir = __DIR__ . '/cache';
+    if (!is_dir($cacheDir)) {
+        @mkdir($cacheDir, 0755, true);
+    }
+    $cacheFile = $cacheDir . '/' . md5($key) . '.cache';
+    if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $ttl) {
+        $data = @file_get_contents($cacheFile);
+        if ($data !== false) {
+            return unserialize($data);
+        }
+    }
+    return null;
+}
+
+function set_cache(string $key, mixed $data): void {
+    $cacheDir = __DIR__ . '/cache';
+    if (!is_dir($cacheDir)) {
+        @mkdir($cacheDir, 0755, true);
+    }
+    $cacheFile = $cacheDir . '/' . md5($key) . '.cache';
+    @file_put_contents($cacheFile, serialize($data));
+}
+
+function clear_cache(string $prefix = ''): void {
+    $cacheDir = __DIR__ . '/cache';
+    if (!is_dir($cacheDir)) return;
+    
+    $pattern = $cacheDir . '/' . ($prefix ? md5($prefix) . '*' : '*');
+    $files = glob($pattern);
+    foreach ($files as $file) {
+        if (is_file($file)) {
+            @unlink($file);
+        }
+    }
 }
 
 // ── Supabase PostgreSQL (primary via PDO, fallback via REST) ──
@@ -123,28 +171,78 @@ function require_login() {
         redirect(ADMIN_URL . '/login.php');
     }
 
-    // Verify token is still valid with Supabase
-    $user = $supabase->authGetUser($_SESSION['supabase_access_token']);
-    if ($user === null) {
-        // Token expired — try refresh
-        if (!empty($_SESSION['supabase_refresh_token'])) {
-            try {
-                $refreshed = $supabase->authRefreshToken($_SESSION['supabase_refresh_token']);
-                $_SESSION['supabase_access_token']  = $refreshed['access_token'];
-                $_SESSION['supabase_refresh_token']  = $refreshed['refresh_token'];
-                $_SESSION['supabase_user']           = $refreshed['user'] ?? null;
-                $_SESSION['last_activity']           = time();
-                return;
-            } catch (\Exception $e) {
-                // Refresh failed
+    // Only verify token with Supabase every 5 minutes (300s) to reduce API calls
+    $tokenVerifyInterval = 300;
+    $needsTokenVerify = empty($_SESSION['token_verified_at']) || 
+                        (time() - $_SESSION['token_verified_at']) > $tokenVerifyInterval;
+
+    if ($needsTokenVerify) {
+        $user = $supabase->authGetUser($_SESSION['supabase_access_token']);
+        if ($user === null) {
+            // Token expired — try refresh
+            if (!empty($_SESSION['supabase_refresh_token'])) {
+                try {
+                    $refreshed = $supabase->authRefreshToken($_SESSION['supabase_refresh_token']);
+                    $_SESSION['supabase_access_token']  = $refreshed['access_token'];
+                    $_SESSION['supabase_refresh_token']  = $refreshed['refresh_token'];
+                    $_SESSION['supabase_user']           = $refreshed['user'] ?? null;
+                    $_SESSION['token_verified_at']       = time();
+                    $_SESSION['last_activity']           = time();
+                    return;
+                } catch (\Exception $e) {
+                    // Refresh failed
+                }
             }
+            supabase_logout();
+            redirect(ADMIN_URL . '/login.php');
         }
-        supabase_logout();
-        redirect(ADMIN_URL . '/login.php');
+        $_SESSION['supabase_user'] = $user;
+        $_SESSION['token_verified_at'] = time();
     }
 
-    $_SESSION['supabase_user'] = $user;
     $_SESSION['last_activity'] = time();
+
+    // Redirect to onboarding if team member hasn't completed it yet
+    $skipPages = ['onboarding.php', 'login.php', 'logout.php', 'forgot-password.php', 'reset-password.php'];
+    $currentScript = basename($_SERVER['SCRIPT_NAME'] ?? '');
+    if (!in_array($currentScript, $skipPages)) {
+        // Cache onboarding check in session
+        $onboardCheckKey = 'onboarding_check_' . md5(supabase_user_email());
+        $onboardCacheTtl = 60; // 1 minute cache
+        if (!isset($_SESSION[$onboardCheckKey]) || 
+            (time() - $_SESSION[$onboardCheckKey]['checked_at'] > $onboardCacheTtl)) {
+            $onboardPending = false;
+            $currentEmail = supabase_user_email();
+            if ($currentEmail) {
+                try {
+                    $rows = db_rows("SELECT onboarding_complete FROM team_members WHERE email = ? AND onboarding_complete = 0", [$currentEmail]);
+                    $onboardPending = !empty($rows);
+                } catch (Exception $e) {
+                    // Table or column may not exist in REST schema cache yet — try reload once
+                    try {
+                        $pdo = db();
+                        if ($pdo instanceof SupabaseRestDB) {
+                            $pdo->restCall('GET', '', null, ['Prefer: reload-schema']);
+                        }
+                    } catch (Exception $e2) {}
+                    try {
+                        $rows = db_rows("SELECT onboarding_complete FROM team_members WHERE email = ? AND onboarding_complete = 0", [$currentEmail]);
+                        $onboardPending = !empty($rows);
+                    } catch (Exception $e3) {}
+                }
+            }
+            $_SESSION[$onboardCheckKey] = [
+                'pending' => $onboardPending,
+                'checked_at' => time()
+            ];
+        } else {
+            $onboardPending = $_SESSION[$onboardCheckKey]['pending'];
+        }
+        
+        if ($onboardPending) {
+            redirect(ADMIN_URL . '/onboarding.php');
+        }
+    }
 }
 
 function supabase_login(string $email, string $password): bool {
@@ -228,7 +326,7 @@ function image_url($path) {
 // ── Generic DB shortcuts ──
 
 function get_all($table, $order = 'created_at DESC') {
-    $allowed = ['blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts'];
+    $allowed = ['notes','note_checklist_items','blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts','team_members'];
     if (!in_array($table, $allowed)) return [];
     $pdo = db();
     if ($pdo === null) return [];
@@ -243,7 +341,7 @@ function get_all($table, $order = 'created_at DESC') {
 }
 
 function get_row($table, $id) {
-    $allowed = ['blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts'];
+    $allowed = ['notes','note_checklist_items','blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts','team_members'];
     if (!in_array($table, $allowed)) return null;
     $pdo = db();
     if ($pdo === null) return null;
@@ -254,7 +352,7 @@ function get_row($table, $id) {
 }
 
 function insert($table, $data) {
-    $allowed = ['blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts'];
+    $allowed = ['notes','note_checklist_items','blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts','team_members'];
     if (!in_array($table, $allowed)) return false;
     $safe = preg_replace('/[^a-z_]/', '', $table);
     $cols = implode(', ', array_keys($data));
@@ -264,7 +362,7 @@ function insert($table, $data) {
 }
 
 function update($table, $id, $data) {
-    $allowed = ['blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts'];
+    $allowed = ['notes','note_checklist_items','blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts','team_members'];
     if (!in_array($table, $allowed)) return false;
     $safe = preg_replace('/[^a-z_]/', '', $table);
     $sets = implode(', ', array_map(fn($c) => "{$c} = :{$c}", array_keys($data)));
@@ -274,7 +372,7 @@ function update($table, $id, $data) {
 }
 
 function delete($table, $id) {
-    $allowed = ['blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts'];
+    $allowed = ['notes','note_checklist_items','blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts','team_members'];
     if (!in_array($table, $allowed)) return false;
     $safe = preg_replace('/[^a-z_]/', '', $table);
     $stmt = db()->prepare("DELETE FROM {$safe} WHERE id = ?");
@@ -323,17 +421,37 @@ function db_delete($table, $where, $params = []) {
 }
 
 // ── Settings ──
+function &get_settings_cache(): array {
+    static $cache = null;
+    if ($cache !== null) return $cache;
+
+    $cache = [];
+    $pdo = db();
+    if ($pdo === null) return $cache;
+    
+    try {
+        $rows = $pdo->query("SELECT setting_key, setting_value FROM settings")->fetchAll();
+        foreach ($rows as $row) {
+            $cache[$row['setting_key']] = $row['setting_value'];
+        }
+    } catch (Exception $e) {}
+    return $cache;
+}
+
+function get_all_settings(): array {
+    return get_settings_cache();
+}
 
 function get_setting($key, $default = '') {
-    $pdo = db();
-    if ($pdo === null) return $default;
-    $stmt = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_key = ?");
-    $stmt->execute([$key]);
-    $v = $stmt->fetchColumn();
-    return $v !== false ? $v : $default;
+    $settings = get_settings_cache();
+    return $settings[$key] ?? $default;
 }
 
 function set_setting($key, $value) {
+    // Update cache
+    $cache = &get_settings_cache();
+    $cache[$key] = $value;
+
     $pdo = db();
     if ($pdo instanceof SupabaseRestDB) {
         try {
@@ -403,6 +521,39 @@ function ai_feature_settings(string $feature): array {
     $key   = get_setting('api_key_' . $provider, ($provider === 'groq' && defined('GROQ_API_KEY')) ? GROQ_API_KEY : '');
     $model = ai_best_model($provider);
     $endpoint = $presets[$provider]['endpoint'] ?? '';
+    // Check if logged-in user is a team member with their own API key
+    $email = supabase_user_email();
+    if ($email) {
+        try {
+            $rows = db_rows("SELECT own_api_key, own_api_provider FROM team_members WHERE email = ? AND onboarding_complete = 1 AND own_api_key != ''", [$email]);
+            if (!empty($rows)) {
+                $ownKey = trim($rows[0]['own_api_key']);
+                $ownProvider = trim($rows[0]['own_api_provider']);
+                if ($ownKey && isset($presets[$ownProvider])) {
+                    $key = $ownKey;
+                    $provider = $ownProvider;
+                    $model = ai_best_model($provider);
+                    $endpoint = $presets[$provider]['endpoint'] ?? '';
+                }
+            }
+        } catch (Exception $e) {
+            // Retry once with schema reload
+            try {
+                reload_pgrst_schema();
+                $rows = db_rows("SELECT own_api_key, own_api_provider FROM team_members WHERE email = ? AND onboarding_complete = 1 AND own_api_key != ''", [$email]);
+                if (!empty($rows)) {
+                    $ownKey = trim($rows[0]['own_api_key']);
+                    $ownProvider = trim($rows[0]['own_api_provider']);
+                    if ($ownKey && isset($presets[$ownProvider])) {
+                        $key = $ownKey;
+                        $provider = $ownProvider;
+                        $model = ai_best_model($provider);
+                        $endpoint = $presets[$provider]['endpoint'] ?? '';
+                    }
+                }
+            } catch (Exception $e2) {}
+        }
+    }
     return compact('provider', 'key', 'model', 'endpoint');
 }
 

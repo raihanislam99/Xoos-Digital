@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS packages (
     tagline VARCHAR(255),
     price VARCHAR(50),
     features TEXT,
+    billing_cycle VARCHAR(50) DEFAULT 'one-time',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -454,6 +455,29 @@ CREATE TRIGGER trg_quotations_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER trg_invoices_updated_at
+
+-- ── Team Members (Moderator / Access Control) ────────────────
+
+CREATE TABLE IF NOT EXISTS team_members (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL DEFAULT '',
+    role VARCHAR(50) NOT NULL DEFAULT 'editor' CHECK (role IN ('admin','editor','viewer')),
+    permissions TEXT DEFAULT '{}',
+    avatar_url VARCHAR(500) DEFAULT '',
+    supabase_uid VARCHAR(255) DEFAULT '',
+    is_active SMALLINT DEFAULT 1,
+    invited_at TIMESTAMP DEFAULT NULL,
+    onboarding_complete SMALLINT DEFAULT 0,
+    own_api_key VARCHAR(500) DEFAULT '',
+    own_api_provider VARCHAR(50) DEFAULT '',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TRIGGER trg_team_members_updated_at
+    BEFORE UPDATE ON team_members FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
 
 -- ── Performance Indexes ───────────────────────────────────────
 

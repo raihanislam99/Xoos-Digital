@@ -39,7 +39,9 @@ if ($task === 'blog_ideas') {
     $systemPrompts = [
         'fix_grammar' => "You are a professional proofreader. Fix grammar, spelling, and punctuation. Return only the corrected text, no explanations, no quotes, no labels.",
 
-        'improve' => "You are a professional copywriter. Improve the given text to be clearer, more professional, and better structured. Keep it concise. Do NOT add new information or expand — only polish what is already there. Preserve any existing formatting (**bold**, *italic*). Return only the improved text, no explanations.",
+        'improve' => "You are a professional editor. Improve the given text — fix grammar, spelling, and awkward phrasing. Make sentences clearer and more natural. Do NOT add bold, italic, markdown, or any special formatting. No bullet points or lists unless the original had them. Preserve the original structure and meaning. Return only plain text. Do not add any extra sentences, explanations, or commentary. Just return the improved title only.",
+
+        'improve_content' => "You are a professional note editor. Improve the given text — fix grammar, spelling, and awkward phrasing. Make the content clearer, more organized, and well-structured. Use minimal formatting to improve readability: add bullet points (•) for lists, numbered lists (1. 2. 3.) for steps, emoji (📝 ✅ 🚀 etc.) sparingly to highlight key points, and short headings (· HEADING · or similar) to separate sections where appropriate. Keep paragraphs short. Do NOT use bold, italic, markdown, HTML tags, or code fences. Return only plain text with appropriate line breaks and formatting characters. Do not add any extra sentences, explanations, or commentary. Just return the improved content only.",
 
         'shorten' => "You are an editor. Shorten the given text to be concise and punchy while preserving all key meaning. Return only the shortened text, no explanations.",
 
@@ -84,24 +86,14 @@ if ($task === 'blog_ideas') {
         'blog_seo_full' => "You are an SEO content expert. Generate a complete, well-researched blog post following this exact anatomy:\n\nTHE HEADLINE (H1): Must be descriptive, promise clear value, include the primary target keyword, under 60 characters.\n\nTHE HOOK (Introduction): 100-150 words. State the problem, establish authority, explain exactly what the reader will learn.\n\nTABLE OF CONTENTS: A clickable list of H2 subheadings allowing readers to skip to sections.\n\nSUBHEADINGS (H2 & H3): Clear conceptual markers that break up text and help search engines understand the document flow.\n\nBODY PARAGRAPHS: 2-3 sentences max per paragraph for mobile readability.\n\nVISUAL ANCHORS: Place [Image: descriptive alt text] markers every 300-400 words.\n\nCONCLUSION & CTA: A concise wrap-up. No new data. Explicitly direct the user to take a next step.\n\nWORD COUNT: Target 1,400-1,500 words for a standard informational post.\n\nSEO RULES:\n- Primary keyword in the first 100 words\n- Naturally weave keywords into H2/H3 subheadings and image alt text\n- Meta title under 60 chars\n- Meta description 150-160 chars with a CTA\n- URL slug with primary keyword\n- 2-3 internal links + 1 external link to a high-authority site\n- No filler words or complex phrasing\n\nReturn the content as a JSON object with keys: title, content (full HTML), meta_title, meta_description, tags (comma-separated), slug. No markdown fences.",
     ];
 
-    if (!isset($systemPrompts[$task])) {
-        json_response(['success' => false, 'error' => 'Unknown task: ' . $task], 400);
-    }
-
-    $systemPrompt = $systemPrompts[$task];
-    $userMessage = $context;
-
-    if ($task === 'blog_tone') {
-        $userMessage = "Tone: " . $extra . "\n\nText:\n" . $context;
-    }
-
-    // Note AI tasks — handled inline
-    $noteTasks = ['note_improve','note_summarize','note_expand','note_grammar','note_translate_bangla','note_continue','note_generate','note_action_items','note_tags_suggest','note_title_suggest'];
-    $isNoteTask = in_array($task, $noteTasks);
-    if ($isNoteTask) {
+    // Initialize json_tasks array first
+$json_tasks = [];
+// Note AI tasks — handled inline (before systemPrompts since they're not in that map)
+$noteTasks = ['note_improve','note_summarize','note_expand','note_grammar','note_translate_bangla','note_continue','note_generate','note_action_items','note_tags_suggest','note_title_suggest'];
+if (in_array($task, $noteTasks)) {
         $systemPrompt = "You are Raihan Islam's personal assistant at Xoos Digital in Dhaka, Bangladesh. You help manage notes about clients, projects, ideas, and business operations. Be concise, practical, and focused on actionable insights. Always respond in the same language as the note content.";
 
-        $prompts = [
+        $notePrompts = [
             'note_improve' => "Improve the following note text — make it clearer, better structured, more professional. Preserve the original meaning and formatting. Return only the improved text.\n\n",
             'note_summarize' => "Summarize the following note into 3-5 concise bullet points. Return as HTML bullet list using <ul><li> tags.\n\n",
             'note_expand' => "Expand the following text with more detail and context. Make it more comprehensive while preserving the original meaning. Return only the expanded text.\n\n",
@@ -114,12 +106,23 @@ if ($task === 'blog_ideas') {
             'note_title_suggest' => "Based on the following note content, suggest 3 alternative titles. Return as a JSON array of strings.\n\n",
         ];
 
-        $userMessage = ($prompts[$task] ?? '') . $context;
+        $userMessage = ($notePrompts[$task] ?? '') . $context;
 
-        // JSON output tasks
         $noteJsonTasks = ['note_action_items', 'note_tags_suggest', 'note_title_suggest'];
         if (in_array($task, $noteJsonTasks)) {
             $json_tasks[] = $task;
+        }
+    } else {
+        // Regular tasks — use systemPrompts map
+        if (!isset($systemPrompts[$task])) {
+            json_response(['success' => false, 'error' => 'Unknown task: ' . $task], 400);
+        }
+
+        $systemPrompt = $systemPrompts[$task];
+        $userMessage = $context;
+
+        if ($task === 'blog_tone') {
+            $userMessage = "Tone: " . $extra . "\n\nText:\n" . $context;
         }
     }
 }
@@ -145,7 +148,7 @@ try {
 }
 
 // Strip markdown code fences for JSON-expected tasks
-$json_tasks = ['blog_meta', 'service_features', 'package_features', 'faq_generate', 'blog_seo_full', 'blog_generate_all', 'blog_title_suggestions', 'blog_ideas'];
+$json_tasks = array_merge($json_tasks, ['blog_meta', 'service_features', 'package_features', 'faq_generate', 'blog_seo_full', 'blog_generate_all', 'blog_title_suggestions', 'blog_ideas']);
 if (in_array($task, $json_tasks)) {
     $reply = preg_replace('/```(?:json)?\s*/i', '', $reply);
     $reply = preg_replace('/```/', '', $reply);

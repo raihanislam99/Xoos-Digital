@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             'tagline' => trim($_POST['tagline'] ?? ''),
             'price' => trim($_POST['price'] ?? ''),
             'features' => trim($_POST['features'] ?? ''),
+            'billing_cycle' => trim($_POST['billing_cycle'] ?? 'one-time'),
         ];
         if ($id) {
             update('packages', $id, $data);
@@ -44,6 +45,7 @@ $editItem = [
     'tagline'  => '',
     'price'    => '',
     'features' => '',
+    'billing_cycle' => 'one-time',
 ];
 $isEdit = false;
 if (!empty($_GET['edit']) && is_numeric($_GET['edit'])) {
@@ -82,7 +84,7 @@ $showForm = $isEdit || isset($_GET['new']);
                     <tr>
                         <td><strong style="color:var(--text)"><?= h($p['name'] ?? '') ?></strong></td>
                         <td><span class="text-muted"><?= h($p['tier'] ?? '') ?></span></td>
-                        <td style="color:var(--accent);font-weight:600"><?= h($p['price'] ?? '') ?></td>
+                        <td style="color:var(--accent);font-weight:600"><?= h($p['price'] ?? '') ?><?= ($p['billing_cycle'] ?? '') === 'monthly' ? ' /mo' : '' ?></td>
                         <td class="text-muted" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><?= h($p['tagline'] ?? '') ?></td>
                         <td style="text-align:right">
                             <a href="?edit=<?= $p['id'] ?? 0 ?>" class="btn btn-secondary btn-sm"><i class="ti ti-pencil"></i></a>
@@ -127,11 +129,18 @@ $showForm = $isEdit || isset($_GET['new']);
                     <input class="form-control" name="price" value="<?= h($editItem['price'] ?? '') ?>" placeholder="$999">
                 </div>
                 <div class="form-group">
-                    <label>Tagline</label>
-                    <input class="form-control" name="tagline" value="<?= h($editItem['tagline'] ?? '') ?>" placeholder="Best for growing businesses">
-                    <div class="flex" style="margin-top:4px;gap:4px">
-                        <button type="button" class="btn btn-ai btn-sm" onclick="aiTagline(this)"><i class="ti ti-sparkles"></i> Write Tagline</button>
-                    </div>
+                    <label>Billing Cycle</label>
+                    <select class="form-control" name="billing_cycle">
+                        <option value="one-time" <?= ($editItem['billing_cycle'] ?? '') === 'one-time' ? 'selected' : '' ?>>One-Time Project</option>
+                        <option value="monthly" <?= ($editItem['billing_cycle'] ?? '') === 'monthly' ? 'selected' : '' ?>>Monthly Retainer</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Tagline</label>
+                <input class="form-control" name="tagline" value="<?= h($editItem['tagline'] ?? '') ?>" placeholder="Best for growing businesses">
+                <div class="flex" style="margin-top:4px;gap:4px">
+                    <button type="button" class="btn btn-ai btn-sm" onclick="aiTagline(this)"><i class="ti ti-sparkles"></i> Write Tagline</button>
                 </div>
             </div>
             <div class="form-group">

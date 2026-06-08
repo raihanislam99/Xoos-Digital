@@ -57,6 +57,7 @@ define('SUPABASE_DB_PORT',         env('SUPABASE_DB_PORT', '5432'));
 define('SUPABASE_DB_NAME',         env('SUPABASE_DB_NAME', 'postgres'));
 define('SUPABASE_DB_USER',         env('SUPABASE_DB_USER', 'postgres'));
 define('SUPABASE_DB_PASS',         env('SUPABASE_DB_PASS', ''));
+define('SUPABASE_MANAGEMENT_API_KEY', env('SUPABASE_MANAGEMENT_API_KEY', ''));
 
 // ── AI Providers ─────────────────────────────────────
 define('GROQ_API_KEY', env('GROQ_API_KEY', ''));
