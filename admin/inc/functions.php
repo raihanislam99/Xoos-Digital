@@ -341,7 +341,11 @@ function get_all($table, $order = 'created_at DESC') {
         try {
             return $pdo->query("SELECT * FROM {$safe} ORDER BY created_at DESC")->fetchAll();
         } catch (Throwable $e2) {
-            return $pdo->query("SELECT * FROM {$safe}")->fetchAll();
+            try {
+                return $pdo->query("SELECT * FROM {$safe}")->fetchAll();
+            } catch (Throwable $e3) {
+                return [];
+            }
         }
     }
 }

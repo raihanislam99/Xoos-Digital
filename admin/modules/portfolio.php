@@ -50,7 +50,12 @@ $flash_type = $_SESSION['flash_type'] ?? '';
 unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
 
 $records = get_all('portfolio', 'sort_order ASC, created_at DESC');
-$categories = get_all('portfolio_categories', 'sort_order ASC, name ASC');
+$categories = [];
+try {
+    $categories = get_all('portfolio_categories', 'sort_order ASC, name ASC');
+} catch (Throwable $e) {
+    $categories = [];
+}
 $editItem = [
     'id'                => null,
     'project_name'      => '',
