@@ -22,11 +22,8 @@ if (!$task) {
 $json_tasks = [];
 
 if ($task === 'blog_ideas') {
-    $topicArr = is_array($context) ? $context : [];
-    $topic = $topicArr['topic'] ?? '';
-    $topicStr = $topic ? "related to: " . strip_tags($topic) : 'for a digital agency blog';
-    $systemPrompt = "You are a content strategist for Xoos Digital, a global creative agency offering branding, WordPress, SEO, digital marketing, and video production services. Return ONLY a valid JSON array of strings. No markdown. No explanation. No code fences. Just the raw JSON array. Example: [\"Title one\",\"Title two\",\"Title three\"]";
-    $userMessage = "Generate 8 compelling blog post title ideas {$topicStr}. Titles should be SEO-friendly, specific, trend on search engines easily, and appeal to a global international audience. Return as a JSON array of 8 strings only.";
+    $systemPrompt = "Return ONLY a valid JSON array of strings. No markdown. No explanation. No code fences.";
+    $userMessage = "You are an expert SEO strategist, content marketer, and B2B lead generation specialist.\n\nGenerate 5 high-quality blog post titles for a digital agency that offers:\n\nWebsite Development\nSEO & Local SEO\nPersonal Brand Growth Management\nLinkedIn Growth & Ghostwriting\nAI Content Systems\nMarketing Automation\n\nTarget audiences:\n\nDentists\nLawyers\nReal Estate Agents\nConsultants\nCoaches\nLocal Service Businesses\nTravel Agencies\nImmigration Consultants\n\nRequirements:\n\nFocus on topics that are trending in 2026 and likely to generate organic traffic.\nPrioritize educational content that teaches something valuable.\nInclude emerging topics such as AI, personal branding, local SEO, automation, lead generation, LinkedIn growth, and business growth.\nCreate titles that attract potential clients who may later purchase agency services.\nMix content types:\nHow-to guides\nCase studies\nIndustry trends\nMistakes to avoid\nChecklists\nComparisons\nGrowth strategies\nOptimize titles for search intent and click-through rate.\nAvoid generic agency-focused titles. Focus on solving real business problems.\nInclude industry-specific topics whenever relevant.\nMake titles feel modern, practical, and actionable.\nReturn ONLY a valid JSON array of strings.\n\nExample format:\n\n[\n\"How Dentists Are Using AI Content Systems to Generate More Patient Bookings in 2026\",\n\"Local SEO vs Google Ads for Lawyers: Which Delivers Better ROI?\",\n\"The LinkedIn Strategy Helping Consultants Generate 5X More Inbound Leads\"\n]";
 } elseif ($task === 'image_prompt' && is_array($context)) {
     $title = strip_tags($context['title'] ?? '');
     $excerpt = strip_tags($context['excerpt'] ?? '');
