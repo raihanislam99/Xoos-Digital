@@ -1,4 +1,5 @@
 <?php
+ob_start();
 require_once __DIR__ . '/inc/functions.php';
 require_login();
 
@@ -18,6 +19,8 @@ if (!$task) {
 }
 
 // blog_ideas accepts object context, skip string validation for it
+$json_tasks = [];
+
 if ($task === 'blog_ideas') {
     $topicArr = is_array($context) ? $context : [];
     $topic = $topicArr['topic'] ?? '';
@@ -86,9 +89,7 @@ if ($task === 'blog_ideas') {
         'blog_seo_full' => "You are an SEO content expert. Generate a complete, well-researched blog post following this exact anatomy:\n\nTHE HEADLINE (H1): Must be descriptive, promise clear value, include the primary target keyword, under 60 characters.\n\nTHE HOOK (Introduction): 100-150 words. State the problem, establish authority, explain exactly what the reader will learn.\n\nTABLE OF CONTENTS: A clickable list of H2 subheadings allowing readers to skip to sections.\n\nSUBHEADINGS (H2 & H3): Clear conceptual markers that break up text and help search engines understand the document flow.\n\nBODY PARAGRAPHS: 2-3 sentences max per paragraph for mobile readability.\n\nVISUAL ANCHORS: Place [Image: descriptive alt text] markers every 300-400 words.\n\nCONCLUSION & CTA: A concise wrap-up. No new data. Explicitly direct the user to take a next step.\n\nWORD COUNT: Target 1,400-1,500 words for a standard informational post.\n\nSEO RULES:\n- Primary keyword in the first 100 words\n- Naturally weave keywords into H2/H3 subheadings and image alt text\n- Meta title under 60 chars\n- Meta description 150-160 chars with a CTA\n- URL slug with primary keyword\n- 2-3 internal links + 1 external link to a high-authority site\n- No filler words or complex phrasing\n\nReturn the content as a JSON object with keys: title, content (full HTML), meta_title, meta_description, tags (comma-separated), slug. No markdown fences.",
     ];
 
-    // Initialize json_tasks array first
-$json_tasks = [];
-// Note AI tasks — handled inline (before systemPrompts since they're not in that map)
+    // Note AI tasks — handled inline (before systemPrompts since they're not in that map)
 $noteTasks = ['note_improve','note_summarize','note_expand','note_grammar','note_translate_bangla','note_continue','note_generate','note_action_items','note_tags_suggest','note_title_suggest'];
 if (in_array($task, $noteTasks)) {
         $systemPrompt = "You are Raihan Islam's personal assistant at Xoos Digital in Dhaka, Bangladesh. You help manage notes about clients, projects, ideas, and business operations. Be concise, practical, and focused on actionable insights. Always respond in the same language as the note content.";
@@ -142,7 +143,7 @@ $maxTokens = in_array($task, ['blog_seo_full', 'blog_generate', 'blog_generate_a
 
 try {
     $reply = ai_call($settings, $messages, $maxTokens, 0.7);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     json_response(['success' => false, 'error' => $e->getMessage()], 500);
     exit;
 }

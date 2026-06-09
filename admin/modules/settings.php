@@ -14,8 +14,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         set_setting($key, trim($value));
     }
     
-    // Handle profile photo upload
-    if (!empty($_FILES['profile_photo'])) {
+    // Handle profile photo upload (only when a file is actually selected)
+    if (!empty($_FILES['profile_photo']) && $_FILES['profile_photo']['error'] === UPLOAD_ERR_OK) {
         $uploadResult = upload_profile_photo($_FILES['profile_photo']);
         if ($uploadResult['success']) {
             set_setting('profile_photo', $uploadResult['path']);
@@ -436,6 +436,7 @@ require_once __DIR__ . '/../inc/header.php';
                 <label>Chatbot Enabled</label>
                 <div style="display:flex;align-items:center;gap:0.75rem;margin-top:4px">
                     <label class="switch">
+                        <input type="hidden" name="chatbot_enabled" value="0">
                         <input type="checkbox" name="chatbot_enabled" value="1" onchange="document.getElementById('chatbotStatusText').textContent = this.checked ? 'Enabled' : 'Disabled';" <?= get_setting('chatbot_enabled', '1') === '1' ? 'checked' : '' ?>>
                         <span class="slider"></span>
                     </label>
@@ -758,9 +759,11 @@ function aiImproveBio() {
         btn.innerHTML = '<i class="ti ti-sparkles"></i> Improve with AI';
         btn.disabled = false;
         if (j.success) field.value = j.data;
+        else alert(j.error || 'AI improvement failed');
     }).catch(function() {
         btn.innerHTML = '<i class="ti ti-sparkles"></i> Improve with AI';
         btn.disabled = false;
+        alert('AI improvement failed — check console');
     });
 }
 </script>

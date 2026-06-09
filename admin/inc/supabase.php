@@ -529,9 +529,11 @@ class SupabaseRestStmt {
             }
             return $result;
         }
-        // Named params: replace :name
-        foreach ($params as $key => $val) {
-            $sql = str_replace(':' . $key, $this->quoteParam($val), $sql);
+        // Named params: replace :name (longest keys first to avoid partial matches like :title inside :meta_title)
+        $keys = array_keys($params);
+        usort($keys, fn($a, $b) => strlen($b) <=> strlen($a));
+        foreach ($keys as $key) {
+            $sql = str_replace(':' . $key, $this->quoteParam($params[$key]), $sql);
         }
         return $sql;
     }
@@ -1086,14 +1088,42 @@ class SupabaseRestStmt {
         $this->rowCount = count($result);
     }
 
+    private function findWherePos(string $sql): ?int {
+        $inStr = false;
+        $len = strlen($sql);
+        for ($i = 0; $i < $len - 4; $i++) {
+            $ch = $sql[$i];
+            if ($inStr) {
+                if ($ch === "'") {
+                    if ($i + 1 < $len && $sql[$i + 1] === "'") {
+                        $i++;
+                    } else {
+                        $inStr = false;
+                    }
+                }
+            } elseif ($ch === "'") {
+                $inStr = true;
+            } elseif (
+                strtoupper(substr($sql, $i, 5)) === 'WHERE' &&
+                ($i === 0 || preg_match('/\s/', $sql[$i - 1])) &&
+                ($i + 5 >= $len || preg_match('/\s/', $sql[$i + 5]))
+            ) {
+                return $i;
+            }
+        }
+        return null;
+    }
+
     private function parseUpdate(string $sql, string $upper): bool {
         $this->operation = 'UPDATE';
 
-        // UPDATE table SET col1 = v1, col2 = v2 WHERE conditions
-        if (preg_match('/^\s*UPDATE\s+([a-z_][a-z0-9_]*)\s+SET\s+(.+?)(?:\s+WHERE\s+(.+))?$/is', $sql, $m)) {
+        if (preg_match('/^\s*UPDATE\s+([a-z_][a-z0-9_]*)\s+SET\s+/i', $sql, $m)) {
             $this->table = $m[1];
-            $setClause = $m[2];
-            $whereClause = $m[3] ?? '';
+            $rest = ltrim(substr($sql, strlen($m[0])));
+
+            $wherePos = $this->findWherePos($rest);
+            $setClause = $wherePos !== null ? substr($rest, 0, $wherePos) : $rest;
+            $whereClause = $wherePos !== null ? trim(substr($rest, $wherePos + 5)) : '';
 
             // Parse SET clause — split by top-level commas only (content may contain commas)
             $setParts = $this->splitTopLevelCommas($setClause);
@@ -1109,7 +1139,7 @@ class SupabaseRestStmt {
             }
 
             // Parse WHERE
-            if (!empty($whereClause)) {
+            if ($whereClause !== '') {
                 $this->parseWhere($whereClause);
             }
 
@@ -1155,12 +1185,14 @@ class SupabaseRestStmt {
     private function parseDelete(string $sql, string $upper): bool {
         $this->operation = 'DELETE';
 
-        // DELETE FROM table WHERE conditions
-        if (preg_match('/^\s*DELETE\s+FROM\s+([a-z_][a-z0-9_]*)(?:\s+WHERE\s+(.+))?$/is', $sql, $m)) {
+        if (preg_match('/^\s*DELETE\s+FROM\s+([a-z_][a-z0-9_]*)/i', $sql, $m)) {
             $this->table = $m[1];
-            $whereClause = $m[2] ?? '';
+            $rest = ltrim(substr($sql, strlen($m[0])));
 
-            if (!empty($whereClause)) {
+            $wherePos = $this->findWherePos($rest);
+            $whereClause = $wherePos !== null ? trim(substr($rest, $wherePos + 5)) : '';
+
+            if ($whereClause !== '') {
                 $this->parseWhere($whereClause);
             }
 

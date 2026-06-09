@@ -1,4 +1,5 @@
 <?php
+ob_start();
 require_once __DIR__ . '/../config.php';
 
 // ── Composer autoload (already loaded by config.php, but ensure) ──
@@ -300,6 +301,7 @@ function redirect($url) {
 }
 
 function json_response($data, $code = 200) {
+    while (ob_get_level()) ob_end_clean();
     http_response_code($code);
     header('Content-Type: application/json');
     echo json_encode($data);
@@ -579,7 +581,7 @@ function ai_call(array $settings, array $messages, int $maxTokens = 1000, float 
                 'anthropic-version: 2023-06-01',
             ],
             CURLOPT_TIMEOUT        => 30,
-            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYPEER => false,
         ]);
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -612,7 +614,7 @@ function ai_call(array $settings, array $messages, int $maxTokens = 1000, float 
             CURLOPT_POSTFIELDS     => $payload,
             CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
             CURLOPT_TIMEOUT        => 30,
-            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYPEER => false,
         ]);
 
         $response = curl_exec($ch);
@@ -648,7 +650,7 @@ function ai_call(array $settings, array $messages, int $maxTokens = 1000, float 
             'Authorization: Bearer ' . $settings['key'],
         ],
         CURLOPT_TIMEOUT        => 30,
-        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_SSL_VERIFYPEER => false,
     ]);
 
     $response = curl_exec($ch);

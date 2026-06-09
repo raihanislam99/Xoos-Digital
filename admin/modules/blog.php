@@ -248,8 +248,8 @@ document.getElementById('blog-sidebar-backdrop')?.addEventListener('click',funct
             <?php if ($p['meta_title'] ?? ''): ?><div style="font-size:0.65rem;color:var(--v3-text3);margin-top:4px">SEO: <?= h(mb_strimwidth($p['meta_title'], 0, 40, '...')) ?></div><?php endif; ?>
             <div class="bc-meta"><?= date('M j, Y', strtotime($p['updated_at'] ?? 'now')) ?></div>
             <div class="bc-actions">
-                <span class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:0.65rem;text-decoration:none;pointer-events:none" onclick="event.stopPropagation();event.preventDefault()"><i class="ti ti-pencil"></i> Edit</span>
-                <span class="btn btn-danger btn-sm" style="padding:2px 8px;font-size:0.65rem;text-decoration:none;pointer-events:none" onclick="event.stopPropagation();event.preventDefault();confirmDelete('blog.php?delete=<?= $p['id'] ?? 0 ?>', '<?= h(addslashes($p['title'] ?? '')) ?>')"><i class="ti ti-trash"></i></span>
+                <span class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:0.65rem;text-decoration:none;cursor:pointer" onclick="event.stopPropagation();window.location.href='?edit=<?= $p['id'] ?? 0 ?>'"><i class="ti ti-pencil"></i> Edit</span>
+                <span class="btn btn-danger btn-sm" style="padding:2px 8px;font-size:0.65rem;text-decoration:none;cursor:pointer" onclick="event.stopPropagation();event.preventDefault();confirmDelete('blog.php?delete=<?= $p['id'] ?? 0 ?>', '<?= h(addslashes($p['title'] ?? '')) ?>')"><i class="ti ti-trash"></i></span>
             </div>
         </a>
         <?php endforeach; ?>
@@ -369,7 +369,6 @@ document.getElementById('blog-sidebar-backdrop')?.addEventListener('click',funct
                         <button type="button" class="btn btn-ai btn-sm" onclick="document.getElementById('img-upload').click()"><i class="ti ti-upload"></i> Upload</button>
                     </div>
                     <div id="preview-featured"></div>
-                    <div id="blogImgPreview" style="margin-top:0.75rem"></div>
                 </div>
 
                 <div class="form-group">
@@ -587,7 +586,7 @@ function aiGenerateAll() {
     fetch('../ai.php', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({task:'blog_generate_all', context:keyword}) })
     .then(function(r){return r.json()}).then(function(j){
         aiButtonEnd('genAllBtn');
-        if (!j.success) { alert('Generation failed'); return; }
+        if (!j.success) { alert('Generation failed: ' + (j.error || 'Unknown error')); return; }
         var d = j.data;
         if (typeof d === 'string') { try { d = extractJson(d); } catch(e) { alert('Failed to parse response'); return; } }
         if (d.title) document.getElementById('blogTitle').value = d.title;
@@ -597,7 +596,7 @@ function aiGenerateAll() {
         if (d.meta_description) document.getElementById('metaDesc').value = d.meta_description;
         if (d.tags) document.querySelector('input[name="tags"]').value = d.tags;
         updateCounters();
-    }).catch(function(){ aiButtonEnd('genAllBtn'); });
+    }).catch(function(e){ console.error('AI generation error:', e); aiButtonEnd('genAllBtn'); alert('Generation failed — check console for details'); });
 }
 
 function aiBlogGenerate(btn) {
@@ -612,7 +611,8 @@ function aiBlogGenerate(btn) {
     }).then(function(r){return r.json()}).then(function(j){
         aiButtonEnd(btn);
         if (j.success) contentField.value = j.data;
-    }).catch(function(){ aiButtonEnd(btn); });
+        else alert(j.error || 'Content generation failed');
+    }).catch(function(){ aiButtonEnd(btn); alert('Content generation failed — check console'); });
 }
 
 function aiBlogOutline(btn) {
@@ -627,7 +627,8 @@ function aiBlogOutline(btn) {
     }).then(function(r){return r.json()}).then(function(j){
         aiButtonEnd(btn);
         if (j.success) contentField.value = j.data;
-    }).catch(function(){ aiButtonEnd(btn); });
+        else alert(j.error || 'Outline generation failed');
+    }).catch(function(){ aiButtonEnd(btn); alert('Outline generation failed — check console'); });
 }
 
 function aiTone(tone) {
@@ -643,8 +644,10 @@ function aiTone(tone) {
             window.__aiShowResult(contentField, j.data);
         } else if (j.success) {
             contentField.value = j.data;
+        } else {
+            alert(j.error || 'Tone rewrite failed');
         }
-    });
+    }).catch(function(){ alert('Tone rewrite failed — check console'); });
 }
 
 function aiBlogMeta() {
@@ -655,13 +658,13 @@ function aiBlogMeta() {
         headers: {'Content-Type':'application/json'},
         body: JSON.stringify({task:'blog_meta', context: content})
     }).then(function(r){return r.json()}).then(function(j){
-        if (!j.success) return;
+        if (!j.success) { alert(j.error || 'SEO meta generation failed'); return; }
         var d = j.data;
-        if (typeof d === 'string') { try { d = extractJson(d); } catch(e) {} }
+        if (typeof d === 'string') { try { d = extractJson(d); } catch(e) { alert('Failed to parse meta response'); return; } }
         if (d.meta_title) document.getElementById('metaTitle').value = d.meta_title;
         if (d.meta_description) document.getElementById('metaDesc').value = d.meta_description;
         if (d.tags) document.querySelector('input[name="tags"]').value = d.tags;
-    });
+    }).catch(function(){ alert('SEO meta generation failed — check console'); });
 }
 
 function uploadImage(input) {
@@ -672,13 +675,14 @@ function uploadImage(input) {
     .then(function(r) { return r.json(); })
     .then(function(j) {
         if (j.success) {
-            document.querySelector('input[name="featured_image"]').value = j.url;
-            showBlogImagePreview(j.url);
+            var input = document.querySelector('input[name="featured_image"]');
+            input.value = j.url;
+            showImagePreview(input, 'preview-featured');
         } else {
             alert('Upload failed: ' + (j.error || 'Unknown error'));
         }
     })
-    .catch(function() { alert('Upload failed'); });
+    .catch(function(e) { console.error('Upload error:', e); alert('Upload failed — check console'); });
 }
 
 function showList() { window.location.href = 'blog.php'; }
@@ -720,7 +724,8 @@ function aiImagePromptGen() {
     }).then(function(r) { return r.json(); }).then(function(j) {
         aiButtonEnd('genImgPromptBtn');
         if (j.success) document.getElementById('imagePrompt').value = j.data;
-    }).catch(function() { aiButtonEnd('genImgPromptBtn'); });
+        else alert(j.error || 'Image prompt generation failed');
+    }).catch(function(e) { console.error('Image prompt generation error:', e); aiButtonEnd('genImgPromptBtn'); alert('Image prompt generation failed — check console'); });
 }
 
 function copyImagePrompt() {
@@ -745,7 +750,8 @@ function aiSeoTitle() {
     .then(function(r){return r.json()}).then(function(j){
         aiButtonEnd(btn);
         if (j.success) document.getElementById('blogTitle').value = j.data;
-    }).catch(function(){ aiButtonEnd(btn); });
+        else alert(j.error || 'SEO title generation failed');
+    }).catch(function(){ aiButtonEnd(btn); alert('SEO title generation failed — check console'); });
 }
 
 function aiSeoPost() {
@@ -758,7 +764,7 @@ function aiSeoPost() {
     fetch('../ai.php', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({task:'blog_seo_full', context:title}) })
     .then(function(r){return r.json()}).then(function(j){
         aiButtonEnd(btn);
-        if (!j.success) return;
+        if (!j.success) { alert(j.error || 'SEO post generation failed'); return; }
         var d = j.data;
         if (typeof d === 'string') { try { d = extractJson(d); } catch(e) { document.getElementById('content').value = d; return; } }
         if (d.title) document.getElementById('blogTitle').value = d.title;
@@ -766,7 +772,7 @@ function aiSeoPost() {
         if (d.meta_title) document.getElementById('metaTitle').value = d.meta_title;
         if (d.meta_description) document.getElementById('metaDesc').value = d.meta_description;
         if (d.tags) document.querySelector('input[name="tags"]').value = d.tags;
-    }).catch(function(){ aiButtonEnd(btn); });
+    }).catch(function(){ aiButtonEnd(btn); alert('SEO post generation failed — check console'); });
 }
 
 function renderSuggestions(titles) {

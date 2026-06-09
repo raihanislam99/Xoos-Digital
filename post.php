@@ -8,9 +8,15 @@ $recent = [];
 
 if ($slug) {
     try {
-        $stmt = db()->prepare("SELECT blog_posts.*, blog_categories.name AS category_name FROM blog_posts LEFT JOIN blog_categories ON blog_posts.category_id = blog_categories.id WHERE blog_posts.slug = ? AND blog_posts.status = 'published' LIMIT 1");
+        $stmt = db()->prepare("SELECT * FROM blog_posts WHERE slug = ? AND status = 'published' LIMIT 1");
         $stmt->execute([$slug]);
         $post = $stmt->fetch();
+        if ($post && $post['category_id']) {
+            $catStmt = db()->prepare("SELECT name FROM blog_categories WHERE id = ? LIMIT 1");
+            $catStmt->execute([$post['category_id']]);
+            $cat = $catStmt->fetch();
+            $post['category_name'] = $cat['name'] ?? '';
+        }
     } catch (Exception $e) {
         error_log('Blog post fetch error: ' . $e->getMessage());
     }
@@ -27,13 +33,8 @@ if ($post) {
 }
 
 if (!$post) {
-    header('HTTP/1.0 404 Not Found');
-    echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Post Not Found — Xoos Digital</title>';
-    echo '<link rel="stylesheet" href="css/style.css">';
-    echo '<style>body{display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:2rem}</style>';
-    echo '</head><body><div><h1 style="font-family:Orbitron,sans-serif;font-weight:900;font-size:3rem;color:#CCFF00">404</h1>';
-    echo '<p style="color:#9CA3AF;margin:1rem 0 2rem">Post not found.</p>';
-    echo '<a href="." class="pricing-cta" style="text-decoration:none">← BACK TO HOME</a></div></body></html>';
+    http_response_code(404);
+    require __DIR__ . '/404.php';
     exit;
 }
 
