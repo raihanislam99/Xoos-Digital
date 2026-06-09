@@ -19,12 +19,20 @@ $pages = [
 ];
 
 $posts = [];
+$portfolioItems = [];
 try {
   $stmt = db()->query("SELECT slug, updated_at FROM blog_posts WHERE status = 'published' ORDER BY updated_at DESC");
   while ($row = $stmt->fetch()) {
     $posts[] = [
       'loc' => $base . '/post/' . urlencode($row['slug']),
       'lastmod' => date('c', strtotime($row['updated_at'] ?: $row['created_at'])),
+    ];
+  }
+  $stmt2 = db()->query("SELECT slug, updated_at FROM portfolio WHERE is_active = true AND slug IS NOT NULL AND slug != '' ORDER BY updated_at DESC");
+  while ($row = $stmt2->fetch()) {
+    $portfolioItems[] = [
+      'loc' => $base . '/portfolio?slug=' . urlencode($row['slug']),
+      'lastmod' => date('c', strtotime($row['updated_at'])),
     ];
   }
 } catch (Exception $e) {}
@@ -44,6 +52,14 @@ echo '<?xml version="1.0" encoding="UTF-8"?>';
     <loc><?= h($p['loc']) ?></loc>
     <lastmod><?= $p['lastmod'] ?></lastmod>
     <priority>0.6</priority>
+    <changefreq>monthly</changefreq>
+  </url>
+<?php endforeach; ?>
+<?php foreach ($portfolioItems as $p): ?>
+  <url>
+    <loc><?= h($p['loc']) ?></loc>
+    <lastmod><?= $p['lastmod'] ?></lastmod>
+    <priority>0.7</priority>
     <changefreq>monthly</changefreq>
   </url>
 <?php endforeach; ?>

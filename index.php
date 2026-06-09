@@ -7,7 +7,11 @@ $blogs = [];
 
 try {
     $services    = get_all('services', 'sort_order ASC');
-    $portfolios  = array_slice(get_all('portfolio', 'created_at DESC'), 0, 5);
+    $tmp  = get_all('portfolio', 'sort_order ASC, created_at DESC');
+    $tmp = array_values(array_filter($tmp, fn($p) => !empty($p['is_active'])));
+    $portfolios = array_slice($tmp, 0, 5);
+    foreach ($portfolios as &$p) { $p['image_url'] = image_url($p['image_url'] ?? ''); }
+    unset($p);
     $packages    = get_all('packages', 'created_at ASC');
     $faqs        = get_all('faq', 'sort_order ASC');
     $testimonials = get_all('testimonials', 'sort_order ASC');
@@ -440,15 +444,16 @@ $allCats = array_unique($allCats);
           [[4, 1, 220], [4, 1, 220], [4, 1, 220]],
         ];
         ?>
-        <?php $pi = 0; foreach ($portfolios as $p): ?>
+        <?php foreach ($portfolios as $p): ?>
         <?php $pCat = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $p['service'] ?? '')); ?>
         <?php
           $row = $rowPatterns[$patIdx % count($rowPatterns)];
           $s = $row[$patPos];
           $patPos++;
           if ($patPos >= count($row)) { $patIdx++; $patPos = 0; }
+          $detailSlug = !empty($p['slug']) ? 'portfolio?slug=' . urlencode($p['slug']) : 'portfolio?slug=' . $p['id'];
         ?>
-        <div class="p-card" style="grid-column:span <?= $s[0] ?>;grid-row:span <?= $s[1] ?>;min-height:<?= $s[2] ?>px" data-category="<?= h($pCat) ?>" data-description="<?= h($p['description'] ?? '') ?>" data-link="<?= h($p['link'] ?? '') ?>">
+        <a href="<?= $detailSlug ?>" class="p-card" style="grid-column:span <?= $s[0] ?>;grid-row:span <?= $s[1] ?>;min-height:<?= $s[2] ?>px" data-category="<?= h($pCat) ?>">
           <div class="p-card-bg"><?php if ($p['image_url']): ?><img src="<?= h($p['image_url']) ?>" alt="" class="p-card-img" loading="lazy"><?php endif; ?>
           </div>
           <div class="p-card-overlay">
@@ -459,8 +464,8 @@ $allCats = array_unique($allCats);
             </div>
             <div class="p-view-btn"><span>↗</span></div>
           </div>
-        </div>
-        <?php $pi++; endforeach; ?>
+        </a>
+        <?php endforeach; ?>
 
         <!-- CTA Card (full 12-col) -->
         <div class="p-card-cta">

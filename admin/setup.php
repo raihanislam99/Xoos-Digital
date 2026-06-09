@@ -42,7 +42,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->exec("CREATE TABLE IF NOT EXISTS packages (id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL, tier VARCHAR(50), tagline VARCHAR(255), price VARCHAR(50), features TEXT, billing_cycle VARCHAR(50) DEFAULT 'one-time', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
             $pdo->exec("CREATE TABLE IF NOT EXISTS testimonials (id SERIAL PRIMARY KEY, client_name VARCHAR(255) NOT NULL, quote TEXT NOT NULL, rating SMALLINT DEFAULT 5, service_used VARCHAR(255), client_image VARCHAR(500), client_country VARCHAR(100) DEFAULT '', country_flag VARCHAR(10) DEFAULT '', platform VARCHAR(50) DEFAULT '', avatar_gradient VARCHAR(255) DEFAULT '', avatar_letter VARCHAR(2) DEFAULT '', sort_order INT DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
             $pdo->exec("CREATE TABLE IF NOT EXISTS faq (id SERIAL PRIMARY KEY, question VARCHAR(500) NOT NULL, answer TEXT NOT NULL, category VARCHAR(100), sort_order INT DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
-            $pdo->exec("CREATE TABLE IF NOT EXISTS portfolio (id SERIAL PRIMARY KEY, project_name VARCHAR(255) NOT NULL, client VARCHAR(255), service VARCHAR(255), description TEXT, image_url VARCHAR(500), link VARCHAR(500), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+            $pdo->exec("CREATE TABLE IF NOT EXISTS portfolio_categories (id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL, slug VARCHAR(255) NOT NULL UNIQUE, sort_order INT DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+            $pdo->exec("CREATE TABLE IF NOT EXISTS portfolio (id SERIAL PRIMARY KEY, project_name VARCHAR(255) NOT NULL, client VARCHAR(255), service VARCHAR(255), description TEXT, image_url VARCHAR(500), link VARCHAR(500), slug VARCHAR(255) UNIQUE, category_id INT DEFAULT 0, challenge TEXT, solution TEXT, results TEXT, client_testimonial TEXT, technologies VARCHAR(500), video_url VARCHAR(500), meta_title VARCHAR(255), meta_description TEXT, sort_order INT DEFAULT 0, is_active BOOLEAN DEFAULT true, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
             $pdo->exec("CREATE TABLE IF NOT EXISTS brands (id SERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL, logo_url VARCHAR(500) NOT NULL, industry VARCHAR(100) DEFAULT '', country VARCHAR(100) DEFAULT '', service VARCHAR(100) DEFAULT '', bloom_color VARCHAR(50) DEFAULT 'rgba(0,0,0,0.18)', sort_order INT DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
             $pdo->exec("CREATE TABLE IF NOT EXISTS contact_messages (id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL, email VARCHAR(255) NOT NULL, phone VARCHAR(100) DEFAULT '', company VARCHAR(255) DEFAULT '', country VARCHAR(100) DEFAULT '', services TEXT, budget VARCHAR(100) DEFAULT '', timeline VARCHAR(100) DEFAULT '', message TEXT, ip_address VARCHAR(45) DEFAULT '', is_read SMALLINT DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
             $pdo->exec("CREATE TABLE IF NOT EXISTS settings (id SERIAL PRIMARY KEY, setting_key VARCHAR(100) NOT NULL UNIQUE, setting_value TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
@@ -57,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->exec("CREATE TABLE IF NOT EXISTS leads (id SERIAL PRIMARY KEY, business_name VARCHAR(255) NOT NULL, owner_name VARCHAR(255) DEFAULT '', email VARCHAR(255) DEFAULT '', phone VARCHAR(100) DEFAULT '', whatsapp VARCHAR(100) DEFAULT '', website VARCHAR(500) DEFAULT '', facebook VARCHAR(500) DEFAULT '', instagram VARCHAR(500) DEFAULT '', city VARCHAR(100) DEFAULT '', country VARCHAR(100) DEFAULT '', address TEXT, niche VARCHAR(255) DEFAULT '', lead_score INT DEFAULT 0, status VARCHAR(50) DEFAULT 'new', source VARCHAR(100) DEFAULT '', tags TEXT, is_blacklisted SMALLINT DEFAULT 0, google_maps_url VARCHAR(500) DEFAULT '', has_website SMALLINT DEFAULT 0, website_score INT DEFAULT 0, ai_audit TEXT, notes TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
 
             // ── Set up updated_at triggers ──
-            $triggerTables = ['services','packages','testimonials','faq','portfolio','brands','blog_posts','settings','leads','outreach_templates','company_info','quotations','invoices'];
+            $triggerTables = ['services','packages','testimonials','faq','portfolio','portfolio_categories','brands','blog_posts','settings','leads','outreach_templates','company_info','quotations','invoices'];
             foreach ($triggerTables as $t) {
                 pg_ensure_updated_at_trigger($t);
             }
@@ -162,15 +163,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message .= ' Blog posts seeded.';
         }
 
+        // ── Seed Portfolio Categories ──
+        if ($pdo->query("SELECT COUNT(*) FROM portfolio_categories")->fetchColumn() == 0) {
+            $catStmt = $pdo->prepare("INSERT INTO portfolio_categories (name, slug, sort_order) VALUES (?, ?, ?)");
+            $catStmt->execute(['Branding', 'branding', 1]);
+            $catStmt->execute(['Web Development', 'web-development', 2]);
+            $catStmt->execute(['Digital Marketing', 'digital-marketing', 3]);
+            $catStmt->execute(['Social Media', 'social-media', 4]);
+            $catStmt->execute(['Video Production', 'video-production', 5]);
+            $message .= ' Portfolio categories seeded.';
+        }
+
         // ── Seed Portfolio ──
         if ($pdo->query("SELECT COUNT(*) FROM portfolio")->fetchColumn() == 0) {
-            $portStmt = $pdo->prepare("INSERT INTO portfolio (project_name, client, service, description, image_url) VALUES (?, ?, ?, ?, ?)");
-            $portStmt->execute(['XOOS DIGITAL BRAND', 'Xoos Digital', 'Branding', 'Full brand identity & digital presence.', 'images/Xoos_Digital_Facebook_Cover_Image.jpg']);
-            $portStmt->execute(['BRIGHT HASH', 'Bright Hash Ltd.', 'Branding', 'Logo design and comprehensive brand system.', 'images/Brands_that_we work_with/Bright-hash-Logo-1.webp']);
-            $portStmt->execute(['HOLY BASKET', 'Holy Basket', 'Branding', 'Complete visual identity system for food & retail brand.', 'images/Brands_that_we work_with/Holy-Basket-Logo.webp']);
-            $portStmt->execute(['FLY DREAM AVIATION', 'Fly Dream Aviation', 'Branding', 'Corporate brand identity for aviation.', 'images/Brands_that_we work_with/Fly-Dream-Logo-1.webp']);
-            $portStmt->execute(['GUG', 'GUG', 'Branding', 'Logo design and brand guidelines.', 'images/Brands_that_we work_with/GUG-Logo-2.webp']);
-            $portStmt->execute(['HOLY AGRO', 'Holy Agro', 'Branding', 'Agricultural brand identity system.', 'images/Brands_that_we work_with/Holy-Agro-Logo.webp']);
+            $portStmt = $pdo->prepare("INSERT INTO portfolio (project_name, client, service, description, image_url, slug, is_active, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $portStmt->execute(['XOOS DIGITAL BRAND', 'Xoos Digital', 'Branding', 'Full brand identity & digital presence.', 'images/Xoos_Digital_Facebook_Cover_Image.jpg', 'xoos-digital-brand', true, 1]);
+            $portStmt->execute(['BRIGHT HASH', 'Bright Hash Ltd.', 'Branding', 'Logo design and comprehensive brand system.', 'images/Brands_that_we work_with/Bright-hash-Logo-1.webp', 'bright-hash-brand', true, 2]);
+            $portStmt->execute(['HOLY BASKET', 'Holy Basket', 'Branding', 'Complete visual identity system for food & retail brand.', 'images/Brands_that_we work_with/Holy-Basket-Logo.webp', 'holy-basket-brand', true, 3]);
+            $portStmt->execute(['FLY DREAM AVIATION', 'Fly Dream Aviation', 'Branding', 'Corporate brand identity for aviation.', 'images/Brands_that_we work_with/Fly-Dream-Logo-1.webp', 'fly-dream-aviation-brand', true, 4]);
+            $portStmt->execute(['GUG', 'GUG', 'Branding', 'Logo design and brand guidelines.', 'images/Brands_that_we work_with/GUG-Logo-2.webp', 'gug-brand', true, 5]);
+            $portStmt->execute(['HOLY AGRO', 'Holy Agro', 'Branding', 'Agricultural brand identity system.', 'images/Brands_that_we work_with/Holy-Agro-Logo.webp', 'holy-agro-brand', true, 6]);
             $message .= ' Portfolio seeded.';
         }
 

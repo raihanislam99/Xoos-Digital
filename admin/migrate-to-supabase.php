@@ -67,9 +67,17 @@ if ($isRestMode) {
             category VARCHAR(100), sort_order INT DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )",
+        "CREATE TABLE IF NOT EXISTS portfolio_categories (
+            id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL, slug VARCHAR(255) NOT NULL UNIQUE,
+            sort_order INT DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )",
         "CREATE TABLE IF NOT EXISTS portfolio (
             id SERIAL PRIMARY KEY, project_name VARCHAR(255) NOT NULL, client VARCHAR(255),
             service VARCHAR(255), description TEXT, image_url VARCHAR(500), link VARCHAR(500),
+            slug VARCHAR(255) UNIQUE, category_id INT DEFAULT 0, challenge TEXT, solution TEXT,
+            results TEXT, client_testimonial TEXT, technologies VARCHAR(500), video_url VARCHAR(500),
+            meta_title VARCHAR(255), meta_description TEXT, sort_order INT DEFAULT 0,
+            is_active BOOLEAN DEFAULT true,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )",
         "CREATE TABLE IF NOT EXISTS brands (
@@ -227,7 +235,7 @@ if ($isRestMode) {
 
 // ── Step 2: Set up updated_at triggers (skip in REST mode) ──
 if (!$isRestMode) {
-    $triggerTables = ['services','packages','testimonials','faq','portfolio','brands','blog_posts','settings','leads','outreach_templates'];
+    $triggerTables = ['services','packages','testimonials','faq','portfolio','portfolio_categories','brands','blog_posts','settings','leads','outreach_templates'];
     foreach ($triggerTables as $t) {
         try {
             $funcName = 'update_' . $t . '_updated_at';

@@ -19,6 +19,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             'description' => trim($_POST['description'] ?? ''),
             'image_url' => trim($_POST['image_url'] ?? ''),
             'link' => trim($_POST['link'] ?? ''),
+            'slug' => trim($_POST['slug'] ?? ''),
+            'category_id' => (int)($_POST['category_id'] ?? 0),
+            'challenge' => trim($_POST['challenge'] ?? ''),
+            'solution' => trim($_POST['solution'] ?? ''),
+            'results' => trim($_POST['results'] ?? ''),
+            'client_testimonial' => trim($_POST['client_testimonial'] ?? ''),
+            'technologies' => trim($_POST['technologies'] ?? ''),
+            'video_url' => trim($_POST['video_url'] ?? ''),
+            'meta_title' => trim($_POST['meta_title'] ?? ''),
+            'meta_description' => trim($_POST['meta_description'] ?? ''),
+            'sort_order' => (int)($_POST['sort_order'] ?? 0),
+            'is_active' => !empty($_POST['is_active']) ? 1 : 0,
         ];
         if ($id) {
             update('portfolio', $id, $data);
@@ -37,17 +49,28 @@ $flash_msg = $_SESSION['flash_msg'] ?? '';
 $flash_type = $_SESSION['flash_type'] ?? '';
 unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
 
-$records = get_all('portfolio', 'created_at DESC');
+$records = get_all('portfolio', 'sort_order ASC, created_at DESC');
+$categories = get_all('portfolio_categories', 'sort_order ASC, name ASC');
 $editItem = [
-    'id'           => null,
-    'project_name' => '',
-    'client'       => '',
-    'service'      => '',
-    'description'  => '',
-    'image_url'    => '',
-    'link'         => '',
-    'sort_order'   => 0,
-    'is_active'    => 1,
+    'id'                => null,
+    'project_name'      => '',
+    'client'            => '',
+    'service'           => '',
+    'description'       => '',
+    'image_url'         => '',
+    'link'              => '',
+    'slug'              => '',
+    'category_id'       => 0,
+    'challenge'         => '',
+    'solution'          => '',
+    'results'           => '',
+    'client_testimonial'=> '',
+    'technologies'      => '',
+    'video_url'         => '',
+    'meta_title'        => '',
+    'meta_description'  => '',
+    'sort_order'        => 0,
+    'is_active'         => 1,
 ];
 $isEdit = false;
 if (!empty($_GET['edit']) && is_numeric($_GET['edit'])) {
@@ -81,15 +104,16 @@ $showForm = $isEdit || isset($_GET['new']);
         <div class="table-wrap">
             <table>
                 <thead>
-                    <tr><th>Project</th><th>Client</th><th>Service</th><th>Description</th><th style="text-align:right">Actions</th></tr>
+                    <tr><th>Order</th><th>Project</th><th>Client</th><th>Service</th><th>Status</th><th style="text-align:right">Actions</th></tr>
                 </thead>
                 <tbody>
                     <?php foreach ($records as $p): ?>
                     <tr>
+                        <td class="text-muted" style="font-size:0.8rem"><?= (int)($p['sort_order'] ?? 0) ?></td>
                         <td><strong style="color:var(--text)"><?= h($p['project_name'] ?? '') ?></strong></td>
                         <td class="text-muted"><?= h($p['client'] ?? '') ?></td>
                         <td><span class="status-badge status-published"><?= h($p['service'] ?? '') ?></span></td>
-                        <td class="text-muted" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><?= h($p['description'] ?? '') ?></td>
+                        <td><span class="status-badge <?= !empty($p['is_active']) ? 'status-published' : 'status-draft' ?>"><?= !empty($p['is_active']) ? 'Active' : 'Hidden' ?></span></td>
                         <td style="text-align:right">
                             <a href="?edit=<?= $p['id'] ?? 0 ?>" class="btn btn-secondary btn-sm"><i class="ti ti-pencil"></i></a>
                             <button onclick="confirmDelete('portfolio.php?delete=<?= $p['id'] ?? 0 ?>', '<?= h(addslashes($p['project_name'] ?? '')) ?>')" class="btn btn-danger btn-sm"><i class="ti ti-trash"></i></button>
@@ -116,7 +140,7 @@ $showForm = $isEdit || isset($_GET['new']);
             <div class="form-row">
                 <div class="form-group">
                     <label>Project Name</label>
-                    <input class="form-control" name="project_name" value="<?= h($editItem['project_name'] ?? '') ?>" required>
+                    <input class="form-control" name="project_name" id="pf-name" value="<?= h($editItem['project_name'] ?? '') ?>" required oninput="autoSlug(this)">
                 </div>
                 <div class="form-group">
                     <label>Client</label>
@@ -129,8 +153,36 @@ $showForm = $isEdit || isset($_GET['new']);
                     <input class="form-control" name="service" value="<?= h($editItem['service'] ?? '') ?>" placeholder="Branding, Web Dev, etc.">
                 </div>
                 <div class="form-group">
+                    <label>Category</label>
+                    <select class="form-control" name="category_id">
+                        <option value="0">None</option>
+                        <?php foreach ($categories as $cat): ?>
+                        <option value="<?= $cat['id'] ?>" <?= ($editItem['category_id'] ?? 0) == $cat['id'] ? 'selected' : '' ?>><?= h($cat['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Slug</label>
+                    <div class="flex" style="gap:4px">
+                        <input class="form-control" name="slug" id="pf-slug" value="<?= h($editItem['slug'] ?? '') ?>" placeholder="Auto-generated from name" style="flex:1">
+                        <button type="button" class="btn btn-ai btn-sm" onclick="document.getElementById('pf-slug').value = slugify(document.getElementById('pf-name').value)"><i class="ti ti-refresh"></i></button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Sort Order</label>
+                    <input class="form-control" name="sort_order" type="number" value="<?= (int)($editItem['sort_order'] ?? 0) ?>" placeholder="0">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
                     <label>Project Link</label>
                     <input class="form-control" name="link" value="<?= h($editItem['link'] ?? '') ?>" placeholder="https://...">
+                </div>
+                <div class="form-group">
+                    <label>Video URL</label>
+                    <input class="form-control" name="video_url" value="<?= h($editItem['video_url'] ?? '') ?>" placeholder="https://youtube.com/...">
                 </div>
             </div>
             <div class="form-group">
@@ -144,12 +196,58 @@ $showForm = $isEdit || isset($_GET['new']);
                 <div id="preview-pf"></div>
             </div>
             <div class="form-group">
-                <label>Description</label>
-                <textarea class="form-control" name="description" rows="5" placeholder="Project description..."><?= h($editItem['description'] ?? '') ?></textarea>
+                <label>Technologies / Tools Used</label>
+                <input class="form-control" name="technologies" value="<?= h($editItem['technologies'] ?? '') ?>" placeholder="React, Node.js, Figma, Google Ads...">
+            </div>
+            <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px">
+                    <input type="checkbox" name="is_active" value="1" <?= !empty($editItem['is_active']) ? 'checked' : '' ?>>
+                    Active / Published
+                </label>
+            </div>
+
+            <hr style="border-color:#2a2d3a;margin:1.5rem 0">
+
+            <h3 style="color:var(--accent);margin-bottom:1rem;font-size:0.9rem;text-transform:uppercase;letter-spacing:0.08em">Case Study Details</h3>
+            <div class="form-group">
+                <label>Short Description <span style="color:#6b7280;font-weight:400">(shown in grid card)</span></label>
+                <textarea class="form-control" name="description" rows="3" placeholder="Brief project summary..."><?= h($editItem['description'] ?? '') ?></textarea>
                 <div class="flex" style="margin-top:4px;gap:4px">
                     <button type="button" class="btn btn-ai btn-sm" onclick="aiPortfolioDesc(this)"><i class="ti ti-sparkles"></i> Write Description</button>
                 </div>
             </div>
+            <div class="form-group">
+                <label>The Challenge</label>
+                <textarea class="form-control" name="challenge" rows="4" placeholder="What problem did the client have?"><?= h($editItem['challenge'] ?? '') ?></textarea>
+            </div>
+            <div class="form-group">
+                <label>The Solution</label>
+                <textarea class="form-control" name="solution" rows="6" placeholder="What did you deliver and how?"><?= h($editItem['solution'] ?? '') ?></textarea>
+            </div>
+            <div class="form-group">
+                <label>The Results</label>
+                <textarea class="form-control" name="results" rows="4" placeholder="Measurable outcomes (traffic, conversions, etc.)"><?= h($editItem['results'] ?? '') ?></textarea>
+            </div>
+            <div class="form-group">
+                <label>Client Testimonial</label>
+                <textarea class="form-control" name="client_testimonial" rows="3" placeholder="Client quote..."><?= h($editItem['client_testimonial'] ?? '') ?></textarea>
+            </div>
+            <div class="flex" style="gap:4px;margin-bottom:1.5rem">
+                <button type="button" class="btn btn-ai btn-sm" onclick="aiPortfolioCaseStudy()"><i class="ti ti-sparkles"></i> Generate Full Case Study</button>
+            </div>
+
+            <hr style="border-color:#2a2d3a;margin:1.5rem 0">
+
+            <h3 style="color:var(--accent);margin-bottom:1rem;font-size:0.9rem;text-transform:uppercase;letter-spacing:0.08em">SEO Settings</h3>
+            <div class="form-group">
+                <label>Meta Title <span style="color:#6b7280;font-weight:400">(max 60 chars)</span></label>
+                <input class="form-control" name="meta_title" value="<?= h($editItem['meta_title'] ?? '') ?>" placeholder="SEO title..." maxlength="60">
+            </div>
+            <div class="form-group">
+                <label>Meta Description <span style="color:#6b7280;font-weight:400">(max 160 chars)</span></label>
+                <textarea class="form-control" name="meta_description" rows="2" placeholder="SEO meta description..." maxlength="160"><?= h($editItem['meta_description'] ?? '') ?></textarea>
+            </div>
+
             <div class="form-actions">
                 <button type="submit" name="action" value="save" class="btn btn-primary"><i class="ti ti-device-floppy"></i> Save</button>
                 <button type="button" class="btn btn-secondary" onclick="showList()">Cancel</button>
@@ -205,6 +303,40 @@ function aiPortfolioImagePrompt() {
             prompt('Image prompt:\n\n' + prompt);
         }
     });
+}
+
+function aiPortfolioCaseStudy() {
+    var name = document.querySelector('input[name="project_name"]').value.trim();
+    var client = document.querySelector('input[name="client"]').value.trim();
+    var service = document.querySelector('input[name="service"]').value.trim();
+    var desc = document.querySelector('textarea[name="description"]').value.trim();
+    if (!name) { alert('Enter project name first'); return; }
+    var context = JSON.stringify({project_name: name, client: client, service: service, description: desc});
+    fetch('../ai.php', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({task:'portfolio_case_study', context: context})})
+    .then(function(r) { return r.json(); })
+    .then(function(j) {
+        if (!j.success) return;
+        var d = j.data;
+        if (d.challenge) document.querySelector('textarea[name="challenge"]').value = d.challenge;
+        if (d.solution) document.querySelector('textarea[name="solution"]').value = d.solution;
+        if (d.results) document.querySelector('textarea[name="results"]').value = d.results;
+        if (d.testimonial) document.querySelector('textarea[name="client_testimonial"]').value = d.testimonial;
+    });
+}
+
+function slugify(text) {
+    return text.toString().toLowerCase().trim()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/[\s_]+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+}
+
+function autoSlug(input) {
+    var slugField = document.getElementById('pf-slug');
+    if (!slugField.value || slugField.dataset.auto !== 'false') {
+        slugField.value = slugify(input.value);
+    }
 }
 </script>
 <?php require_once __DIR__ . '/../inc/footer.php'; ?>

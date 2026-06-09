@@ -806,6 +806,7 @@ $avatarLetter = strtoupper(substr($founderName ?: $userEmail, 0, 1));
                 ['testimonials', 'Testimonials',  'ti ti-quote'],
                 ['faq',          'FAQ',           'ti ti-help'],
                 ['portfolio',    'Portfolio',     'ti ti-briefcase'],
+                ['portfolio-categories', 'Categories', 'ti ti-tags'],
                 ['brands',       'Brands',        'ti ti-building'],
                 ['media',        'Media Library', 'ti ti-photo'],
             ];

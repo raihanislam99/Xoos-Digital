@@ -328,7 +328,7 @@ function image_url($path) {
 // ── Generic DB shortcuts ──
 
 function get_all($table, $order = 'created_at DESC') {
-    $allowed = ['notes','note_checklist_items','blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts','team_members'];
+    $allowed = ['notes','note_checklist_items','blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','portfolio_categories','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts','team_members'];
     if (!in_array($table, $allowed)) return [];
     $pdo = db();
     if ($pdo === null) return [];
@@ -343,7 +343,7 @@ function get_all($table, $order = 'created_at DESC') {
 }
 
 function get_row($table, $id) {
-    $allowed = ['notes','note_checklist_items','blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts','team_members'];
+    $allowed = ['notes','note_checklist_items','blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','portfolio_categories','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts','team_members'];
     if (!in_array($table, $allowed)) return null;
     $pdo = db();
     if ($pdo === null) return null;
@@ -354,7 +354,7 @@ function get_row($table, $id) {
 }
 
 function insert($table, $data) {
-    $allowed = ['notes','note_checklist_items','blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts','team_members'];
+    $allowed = ['notes','note_checklist_items','blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','portfolio_categories','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts','team_members'];
     if (!in_array($table, $allowed)) return false;
     $safe = preg_replace('/[^a-z_]/', '', $table);
     $cols = implode(', ', array_keys($data));
@@ -364,7 +364,7 @@ function insert($table, $data) {
 }
 
 function update($table, $id, $data) {
-    $allowed = ['notes','note_checklist_items','blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts','team_members'];
+    $allowed = ['notes','note_checklist_items','blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','portfolio_categories','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts','team_members'];
     if (!in_array($table, $allowed)) return false;
     $safe = preg_replace('/[^a-z_]/', '', $table);
     $sets = implode(', ', array_map(fn($c) => "{$c} = :{$c}", array_keys($data)));
@@ -374,7 +374,7 @@ function update($table, $id, $data) {
 }
 
 function delete($table, $id) {
-    $allowed = ['notes','note_checklist_items','blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts','team_members'];
+    $allowed = ['notes','note_checklist_items','blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','portfolio_categories','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts','team_members'];
     if (!in_array($table, $allowed)) return false;
     $safe = preg_replace('/[^a-z_]/', '', $table);
     $stmt = db()->prepare("DELETE FROM {$safe} WHERE id = ?");

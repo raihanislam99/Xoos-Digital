@@ -416,11 +416,18 @@ document.addEventListener('DOMContentLoaded', function() {
   const lightboxCategory = document.getElementById('lightboxCategory');
   const lightboxDesc = document.getElementById('lightboxDesc');
 
-  window.openLightbox = function(img, title, cat, desc) {
+  window.openLightbox = function(img, title, cat, desc, caseStudyUrl) {
     lightboxImg.src = img || '';
     lightboxTitle.textContent = title || '';
     lightboxCategory.textContent = cat || '';
     lightboxDesc.textContent = desc || '';
+    var csLink = document.getElementById('lightboxCaseStudyLink');
+    if (csLink && caseStudyUrl) {
+      csLink.href = caseStudyUrl;
+      csLink.style.display = 'inline-flex';
+    } else if (csLink) {
+      csLink.style.display = 'none';
+    }
     lightbox.classList.add('open');
     document.body.style.overflow = 'hidden';
   };

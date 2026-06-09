@@ -2,10 +2,185 @@
 require_once __DIR__ . '/admin/config.php';
 require_once __DIR__ . '/admin/inc/functions.php';
 
+$isDetail = !empty($_GET['slug']);
+
+// ── Detail View ──
+if ($isDetail) {
+    $slug = trim($_GET['slug']);
+    $project = get_all('portfolio', 'slug ASC');
+    $project = array_filter($project, fn($p) => ($p['slug'] ?? '') === $slug || (string)($p['id'] ?? '') === $slug);
+    $project = reset($project) ?: null;
+
+    if (!$project || empty($project['is_active'])) {
+        http_response_code(404);
+        $pageTitle = 'Project Not Found | Xoos Digital';
+        $pageDesc = 'The requested portfolio project could not be found.';
+        require __DIR__ . '/inc/head.php';
+        require __DIR__ . '/inc/navbar.php';
+        echo '<section class="page-hero"><div class="page-hero-content"><h1 class="page-hero-title">PROJECT NOT <span class="brand-line">FOUND</span></h1><p class="page-hero-sub" style="margin-top:1rem"><a href="portfolio" style="color:#CCFF00">← Back to Portfolio</a></p></div></section>';
+        require __DIR__ . '/inc/footer.php';
+        require __DIR__ . '/inc/scripts.php';
+        exit;
+    }
+
+    $project['image_url'] = image_url($project['image_url'] ?? '');
+    $pageTitle = ($project['meta_title'] ?: $project['project_name'] . ' | Xoos Digital Portfolio');
+    $pageDesc = $project['meta_description'] ?: strip_tags($project['description'] ?? '');
+
+    // Get related projects (same category, excluding current)
+    $allProjects = get_all('portfolio', 'sort_order ASC, created_at DESC');
+    $related = array_filter($allProjects, fn($p) =>
+        ($p['id'] !== $project['id']) && !empty($p['is_active']) &&
+        ($p['category_id'] ?? 0) === ($project['category_id'] ?? 0)
+    );
+    $related = array_slice(array_values($related), 0, 3);
+
+    require __DIR__ . '/inc/head.php';
+    require __DIR__ . '/inc/navbar.php';
+?>
+
+<section class="cs-hero">
+  <div class="container-xl">
+    <a href="portfolio" class="cs-back-link">← Back to Portfolio</a>
+    <div class="cs-hero-content">
+      <?php if ($project['image_url']): ?>
+      <div class="cs-hero-img-wrap">
+        <img src="<?= h($project['image_url']) ?>" alt="<?= h($project['project_name']) ?>" class="cs-hero-img">
+      </div>
+      <?php endif; ?>
+      <div class="cs-hero-text">
+        <span class="p-badge"><?= h(strtoupper($project['service'] ?? 'PROJECT')) ?></span>
+        <h1 class="cs-title"><?= h($project['project_name']) ?></h1>
+        <?php if ($project['client']): ?><p class="cs-client">for <strong><?= h($project['client']) ?></strong></p><?php endif; ?>
+        <?php if ($project['description']): ?><p class="cs-desc"><?= h($project['description']) ?></p><?php endif; ?>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="cs-body">
+  <div class="container-xl">
+    <div class="cs-grid">
+      <div class="cs-main">
+        <?php if ($project['challenge']): ?>
+        <div class="cs-section">
+          <h2 class="cs-section-title"><span class="cs-section-icon">◆</span> The Challenge</h2>
+          <p class="cs-section-text"><?= nl2br(h($project['challenge'])) ?></p>
+        </div>
+        <?php endif; ?>
+
+        <?php if ($project['solution']): ?>
+        <div class="cs-section">
+          <h2 class="cs-section-title"><span class="cs-section-icon">◇</span> The Solution</h2>
+          <div class="cs-section-text"><?= nl2br(h($project['solution'])) ?></div>
+        </div>
+        <?php endif; ?>
+
+        <?php if ($project['results']): ?>
+        <div class="cs-section cs-results-section">
+          <h2 class="cs-section-title"><span class="cs-section-icon">◆</span> The Results</h2>
+          <div class="cs-section-text"><?= nl2br(h($project['results'])) ?></div>
+        </div>
+        <?php endif; ?>
+
+        <?php if ($project['client_testimonial']): ?>
+        <div class="cs-testimonial-card">
+          <div class="cs-testimonial-quote">"<?= h($project['client_testimonial']) ?>"</div>
+          <?php if ($project['client']): ?>
+          <div class="cs-testimonial-author">— <?= h($project['client']) ?></div>
+          <?php endif; ?>
+        </div>
+        <?php endif; ?>
+      </div>
+
+      <aside class="cs-sidebar">
+        <?php if ($project['technologies']): ?>
+        <div class="cs-sidebar-block">
+          <h3 class="cs-sidebar-title">Technologies Used</h3>
+          <div class="cs-tech-tags">
+            <?php foreach (explode(',', $project['technologies']) as $tech): ?>
+            <span class="cs-tech-tag"><?= h(trim($tech)) ?></span>
+            <?php endforeach; ?>
+          </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if ($project['service']): ?>
+        <div class="cs-sidebar-block">
+          <h3 class="cs-sidebar-title">Service</h3>
+          <p class="cs-sidebar-text"><?= h($project['service']) ?></p>
+        </div>
+        <?php endif; ?>
+
+        <?php if ($project['client']): ?>
+        <div class="cs-sidebar-block">
+          <h3 class="cs-sidebar-title">Client</h3>
+          <p class="cs-sidebar-text"><?= h($project['client']) ?></p>
+        </div>
+        <?php endif; ?>
+
+        <?php if ($project['link']): ?>
+        <a href="<?= h($project['link']) ?>" target="_blank" rel="noopener" class="cs-visit-btn">Visit Live Site →</a>
+        <?php endif; ?>
+
+        <?php if ($project['video_url']): ?>
+        <a href="<?= h($project['video_url']) ?>" target="_blank" rel="noopener" class="cs-video-btn">▶ Watch Case Study Video</a>
+        <?php endif; ?>
+
+        <div class="cs-sidebar-block cs-share-block">
+          <h3 class="cs-sidebar-title">Share</h3>
+          <div class="cs-share-links">
+            <a href="https://www.facebook.com/sharer.php?u=<?= urlencode(BASE_URL . '/portfolio?slug=' . $project['slug']) ?>" target="_blank" rel="noopener" class="cs-share-link" title="Share on Facebook">FB</a>
+            <a href="https://twitter.com/intent/tweet?text=<?= urlencode($project['project_name']) ?>&url=<?= urlencode(BASE_URL . '/portfolio?slug=' . $project['slug']) ?>" target="_blank" rel="noopener" class="cs-share-link" title="Share on Twitter">X</a>
+            <a href="https://www.linkedin.com/sharing/share-offsite/?url=<?= urlencode(BASE_URL . '/portfolio?slug=' . $project['slug']) ?>" target="_blank" rel="noopener" class="cs-share-link" title="Share on LinkedIn">IN</a>
+          </div>
+        </div>
+
+        <div class="cs-sidebar-cta">
+          <p>Want a similar project?</p>
+          <a href="#" onclick="event.preventDefault();openProjectForm()" class="p-start-link">START A PROJECT →</a>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<?php if (count($related)): ?>
+<section class="cs-related">
+  <div class="container-xl">
+    <h2 class="cs-related-title">Related Projects</h2>
+    <div class="cs-related-grid">
+      <?php foreach ($related as $rp):
+        $rp['image_url'] = image_url($rp['image_url'] ?? '');
+      ?>
+      <a href="portfolio?slug=<?= h($rp['slug'] ?: $rp['id']) ?>" class="cs-related-card">
+        <div class="cs-related-img-wrap">
+          <?php if ($rp['image_url']): ?><img src="<?= h($rp['image_url']) ?>" alt="" loading="lazy"><?php endif; ?>
+        </div>
+        <div class="cs-related-info">
+          <span class="cs-related-badge"><?= h($rp['service'] ?? '') ?></span>
+          <h3><?= h($rp['project_name']) ?></h3>
+        </div>
+      </a>
+      <?php endforeach; ?>
+    </div>
+  </div>
+</section>
+<?php endif; ?>
+
+<?php
+require __DIR__ . '/inc/footer.php';
+require __DIR__ . '/inc/project-form.php';
+require __DIR__ . '/inc/chatbot.php';
+require __DIR__ . '/inc/scripts.php';
+exit;
+}
+
+// ── Listing View ──
 $portfolios = [];
 try {
-    $portfolios = get_all('portfolio', 'created_at DESC');
-    // Normalize image URLs for JS
+    $tmp = get_all('portfolio', 'sort_order ASC, created_at DESC');
+    $portfolios = array_values(array_filter($tmp, fn($p) => !empty($p['is_active'])));
     foreach ($portfolios as &$p) {
         $p['image_url'] = image_url($p['image_url'] ?? '');
     }
@@ -68,9 +243,10 @@ require __DIR__ . '/inc/navbar.php';
         $s = $row[$patPos];
         $patPos++;
         if ($patPos >= count($row)) { $patIdx++; $patPos = 0; }
+        $detailSlug = !empty($p['slug']) ? '?slug=' . urlencode($p['slug']) : '?slug=' . $p['id'];
       ?>
-      <div class="p-card" style="grid-column:span <?= $s[0] ?>;grid-row:span <?= $s[1] ?>;min-height:<?= $s[2] ?>px" data-category="<?= h($pCat) ?>" onclick="openLightbox(<?= $pi ?>)">
-        <div class="p-card-bg"><?php if ($p['image_url']): ?><img src="<?= h(image_url($p['image_url'])) ?>" alt="" class="p-card-img" loading="lazy"><?php endif; ?></div>
+      <a href="portfolio<?= $detailSlug ?>" class="p-card" style="grid-column:span <?= $s[0] ?>;grid-row:span <?= $s[1] ?>;min-height:<?= $s[2] ?>px" data-category="<?= h($pCat) ?>" onclick="event.stopPropagation();">
+        <div class="p-card-bg"><?php if ($p['image_url']): ?><img src="<?= h($p['image_url']) ?>" alt="" class="p-card-img" loading="lazy"><?php endif; ?></div>
         <div class="p-card-overlay" style="background:linear-gradient(to top,rgba(0,0,0,0.92) 0%,rgba(0,0,0,0.3) 50%,rgba(0,0,0,0) 100%)">
           <span class="p-badge"><?= h(strtoupper($p['service'] ?? 'PROJECT')) ?></span>
           <div class="p-card-info">
@@ -79,7 +255,7 @@ require __DIR__ . '/inc/navbar.php';
           </div>
           <div class="p-view-btn"><span>↗</span></div>
         </div>
-      </div>
+      </a>
       <?php $pi++; endforeach; ?>
 
       <div class="p-card-cta">
@@ -113,38 +289,6 @@ function filterPortfolio(el, filter) {
     card.style.pointerEvents = match ? '' : 'none';
   });
 }
-
-function openLightbox(idx) {
-  var p = portfolioData[idx];
-  if (!p) return;
-  document.getElementById('lightboxImg').src = p.image_url || 'images/Xoos_Digital_Facebook_Cover_Image.jpg';
-  document.getElementById('lightboxCategory').textContent = p.service || '';
-  document.getElementById('lightboxTitle').textContent = p.project_name || '';
-  document.getElementById('lightboxDesc').textContent = p.description || '';
-
-  var link = document.getElementById('lightboxLink');
-  if (p.link) {
-    link.style.display = 'inline-flex';
-    link.href = p.link;
-  } else {
-    link.style.display = 'none';
-  }
-
-  document.getElementById('lightbox').classList.add('active');
-  document.body.style.overflow = 'hidden';
-}
-
-document.getElementById('lightboxClose').addEventListener('click', function() {
-  document.getElementById('lightbox').classList.remove('active');
-  document.body.style.overflow = '';
-});
-
-document.getElementById('lightbox').addEventListener('click', function(e) {
-  if (e.target === this) {
-    this.classList.remove('active');
-    document.body.style.overflow = '';
-  }
-});
 </script>
 
 <?php

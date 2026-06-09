@@ -29,6 +29,15 @@ if ($task === 'blog_ideas') {
     $excerpt = strip_tags($context['excerpt'] ?? '');
     $systemPrompt = "You are an expert at writing AI image generation prompts. Write a detailed, vivid prompt for a professional blog featured image. Return ONLY the prompt text, no explanation.";
     $userMessage = "Write an AI image generation prompt for a blog post titled: \"{$title}\" " . ($excerpt ? "Content summary: {$excerpt}" : "") . " The image should be professional, modern, suitable for a digital agency blog. Style: photorealistic or clean digital art. Include: lighting, composition, color palette, mood. Return only the prompt text (2-3 sentences max).";
+} elseif ($task === 'portfolio_case_study') {
+    $details = is_array($context) ? $context : json_decode($context, true) ?? [];
+    $name = strip_tags($details['project_name'] ?? '');
+    $client = strip_tags($details['client'] ?? '');
+    $service = strip_tags($details['service'] ?? '');
+    $desc = strip_tags($details['description'] ?? '');
+    $systemPrompt = "You are a senior case study writer for a creative digital agency. Based on the project details provided, generate a complete case study. Return ONLY a valid JSON object with these keys: challenge (2-3 sentences describing the client's problem), solution (3-5 sentences describing what was delivered), results (2-3 sentences with measurable outcomes), testimonial (a 1-sentence client testimonial quote). No markdown fences, no explanation.";
+    $userMessage = "Write a case study for:\nProject: {$name}\nClient: {$client}\nService: {$service}\nDescription: {$desc}";
+    $json_tasks[] = 'portfolio_case_study';
 } else {
     if (!$context) {
         json_response(['success' => false, 'error' => 'Missing context'], 400);
@@ -72,6 +81,8 @@ if ($task === 'blog_ideas') {
         'faq_improve' => "You are an editor. Improve the given FAQ answer to be clearer, more helpful, and professionally worded. Return only the improved answer, no explanations.",
 
         'portfolio_description' => "You are a copywriter. Write a compelling project description for a portfolio based on the project name and client. Keep it 2-4 sentences. Return only the description text, no explanations.",
+
+        'portfolio_case_study' => "You are a senior case study writer for a creative digital agency. Based on the project details provided, generate a complete case study. Return ONLY a valid JSON object with these keys: challenge (2-3 sentences describing the client's problem), solution (3-5 sentences describing what was delivered), results (2-3 sentences with measurable outcomes), testimonial (a 1-sentence client testimonial quote). No markdown fences, no explanation.",
 
         'image_prompt' => "You are a creative AI artist. Given the following blog title and content, generate a short image generation prompt (1-2 sentences) suitable for Midjourney, DALL-E, or Stable Diffusion. Describe the visual scene, style, mood, and composition. Return only the prompt text, no explanations.",
 

@@ -52,5 +52,6 @@ if (strpos($_SERVER['REQUEST_URI'], '/post/') === 0) $ogType = 'article';
       <div class="lightbox-badge" id="lightboxCategory"></div>
       <div class="lightbox-title" id="lightboxTitle"></div>
       <div class="lightbox-desc" id="lightboxDesc"></div>
+      <a class="lightbox-case-study-link" id="lightboxCaseStudyLink" style="display:none" href="">View Full Case Study →</a>
     </div>
   </div>

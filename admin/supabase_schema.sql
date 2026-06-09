@@ -97,6 +97,14 @@ CREATE TABLE IF NOT EXISTS faq (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS portfolio_categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) NOT NULL UNIQUE,
+    sort_order INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS portfolio (
     id SERIAL PRIMARY KEY,
     project_name VARCHAR(255) NOT NULL,
@@ -105,6 +113,18 @@ CREATE TABLE IF NOT EXISTS portfolio (
     description TEXT,
     image_url VARCHAR(500),
     link VARCHAR(500),
+    slug VARCHAR(255) UNIQUE,
+    category_id INT DEFAULT 0,
+    challenge TEXT,
+    solution TEXT,
+    results TEXT,
+    client_testimonial TEXT,
+    technologies VARCHAR(500),
+    video_url VARCHAR(500),
+    meta_title VARCHAR(255),
+    meta_description TEXT,
+    sort_order INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -619,14 +639,22 @@ INSERT INTO blog_posts (title, slug, content, meta_title, meta_description, tags
  'video marketing, social media, reels',
  'published', 'images/Xoos_Digital_Facebook_Cover_Image.jpg');
 
+-- Portfolio Categories
+INSERT INTO portfolio_categories (name, slug, sort_order) VALUES
+('Branding', 'branding', 1),
+('Web Development', 'web-development', 2),
+('Digital Marketing', 'digital-marketing', 3),
+('Social Media', 'social-media', 4),
+('Video Production', 'video-production', 5);
+
 -- Portfolio
-INSERT INTO portfolio (project_name, client, service, description, image_url) VALUES
-('XOOS DIGITAL BRAND', 'Xoos Digital', 'Branding', 'Full brand identity & digital presence.', 'images/Xoos_Digital_Facebook_Cover_Image.jpg'),
-('BRIGHT HASH', 'Bright Hash Ltd.', 'Branding', 'Logo design and comprehensive brand system.', 'images/Brands_that_we work_with/Bright-hash-Logo-1.webp'),
-('HOLY BASKET', 'Holy Basket', 'Branding', 'Complete visual identity system for food & retail brand.', 'images/Brands_that_we work_with/Holy-Basket-Logo.webp'),
-('FLY DREAM AVIATION', 'Fly Dream Aviation', 'Branding', 'Corporate brand identity for aviation.', 'images/Brands_that_we work_with/Fly-Dream-Logo-1.webp'),
-('GUG', 'GUG', 'Branding', 'Logo design and brand guidelines.', 'images/Brands_that_we work_with/GUG-Logo-2.webp'),
-('HOLY AGRO', 'Holy Agro', 'Branding', 'Agricultural brand identity system.', 'images/Brands_that_we work_with/Holy-Agro-Logo.webp');
+INSERT INTO portfolio (project_name, client, service, description, image_url, slug, is_active, sort_order) VALUES
+('XOOS DIGITAL BRAND', 'Xoos Digital', 'Branding', 'Full brand identity & digital presence.', 'images/Xoos_Digital_Facebook_Cover_Image.jpg', 'xoos-digital-brand', true, 1),
+('BRIGHT HASH', 'Bright Hash Ltd.', 'Branding', 'Logo design and comprehensive brand system.', 'images/Brands_that_we work_with/Bright-hash-Logo-1.webp', 'bright-hash-brand', true, 2),
+('HOLY BASKET', 'Holy Basket', 'Branding', 'Complete visual identity system for food & retail brand.', 'images/Brands_that_we work_with/Holy-Basket-Logo.webp', 'holy-basket-brand', true, 3),
+('FLY DREAM AVIATION', 'Fly Dream Aviation', 'Branding', 'Corporate brand identity for aviation.', 'images/Brands_that_we work_with/Fly-Dream-Logo-1.webp', 'fly-dream-aviation-brand', true, 4),
+('GUG', 'GUG', 'Branding', 'Logo design and brand guidelines.', 'images/Brands_that_we work_with/GUG-Logo-2.webp', 'gug-brand', true, 5),
+('HOLY AGRO', 'Holy Agro', 'Branding', 'Agricultural brand identity system.', 'images/Brands_that_we work_with/Holy-Agro-Logo.webp', 'holy-agro-brand', true, 6);
 
 -- Brands
 INSERT INTO brands (name, logo_url, industry, country, service, bloom_color, sort_order) VALUES
