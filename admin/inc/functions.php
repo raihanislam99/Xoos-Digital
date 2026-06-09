@@ -337,8 +337,12 @@ function get_all($table, $order = 'created_at DESC') {
     $order = trim(preg_replace('/\s+/', ' ', $order));
     try {
         return $pdo->query("SELECT * FROM {$safe} ORDER BY {$order}")->fetchAll();
-    } catch (PDOException $e) {
-        return $pdo->query("SELECT * FROM {$safe}")->fetchAll();
+    } catch (Throwable $e) {
+        try {
+            return $pdo->query("SELECT * FROM {$safe} ORDER BY created_at DESC")->fetchAll();
+        } catch (Throwable $e2) {
+            return $pdo->query("SELECT * FROM {$safe}")->fetchAll();
+        }
     }
 }
 
