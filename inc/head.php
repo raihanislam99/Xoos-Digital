@@ -14,7 +14,12 @@ if (strpos($_SERVER['REQUEST_URI'], '/post/') === 0) $ogType = 'article';
 ?>
   <title><?= h($pageTitle) ?></title>
   <meta name="description" content="<?= h($pageDesc) ?>">
-  <link rel="icon" href="<?= BASE_URL ?>/images/Icons/favicon.png" type="image/png">
+  <link rel="icon" type="image/png" href="<?= BASE_URL ?>/favicon-96x96.png" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="<?= BASE_URL ?>/favicon.svg" />
+  <link rel="shortcut icon" href="<?= BASE_URL ?>/favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="<?= BASE_URL ?>/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-title" content="Xoos Digital" />
+  <link rel="manifest" href="<?= BASE_URL ?>/site.webmanifest" />
   <link rel="canonical" href="<?= $canonical ?>">
   <meta property="og:title" content="<?= h($pageTitle) ?>">
   <meta property="og:description" content="<?= h($pageDesc) ?>">

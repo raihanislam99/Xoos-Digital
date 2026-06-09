@@ -29,7 +29,12 @@ $notesCount = db_count_cached('notes_count', "SELECT COUNT(*) FROM notes");
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin — Xoos Digital</title>
-    <link rel="icon" href="<?= BASE_URL ?>/images/Icons/favicon.png">
+    <link rel="icon" type="image/png" href="<?= BASE_URL ?>/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="<?= BASE_URL ?>/favicon.svg" />
+    <link rel="shortcut icon" href="<?= BASE_URL ?>/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= BASE_URL ?>/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Xoos Digital" />
+    <link rel="manifest" href="<?= BASE_URL ?>/site.webmanifest" />
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" crossorigin="anonymous">
     <link rel="stylesheet" href="<?= ADMIN_URL ?>/assets/css/admin-ui.css?v=<?= filemtime(__DIR__ . '/../assets/css/admin-ui.css') ?>">
