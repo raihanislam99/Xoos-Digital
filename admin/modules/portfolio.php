@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             'meta_title' => trim($_POST['meta_title'] ?? ''),
             'meta_description' => trim($_POST['meta_description'] ?? ''),
             'sort_order' => (int)($_POST['sort_order'] ?? 0),
-            'is_active' => !empty($_POST['is_active']) ? 1 : 0,
+            'is_active' => !empty($_POST['is_active']) ? true : false,
         ];
         if ($id) {
             update('portfolio', $id, $data);
@@ -42,6 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         redirect('portfolio.php');
     } catch (Exception $e) {
         $msg = 'Error: ' . $e->getMessage();
+        error_log('Portfolio save failed: ' . $e->getMessage());
     }
 }
 

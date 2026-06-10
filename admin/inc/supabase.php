@@ -529,11 +529,18 @@ class SupabaseRestStmt {
             }
             return $result;
         }
-        // Named params: replace :name (longest keys first to avoid partial matches like :title inside :meta_title)
+        // Named params: replace :name with unique tokens first to prevent
+        // str_replace from corrupting values that contain parameter-like text
         $keys = array_keys($params);
         usort($keys, fn($a, $b) => strlen($b) <=> strlen($a));
-        foreach ($keys as $key) {
-            $sql = str_replace(':' . $key, $this->quoteParam($params[$key]), $sql);
+        $tokens = [];
+        foreach ($keys as $i => $key) {
+            $token = "\x00P{$i}\x00";
+            $tokens[$token] = $this->quoteParam($params[$key]);
+            $sql = str_replace(':' . $key, $token, $sql);
+        }
+        foreach ($tokens as $token => $value) {
+            $sql = str_replace($token, $value, $sql);
         }
         return $sql;
     }
