@@ -15,13 +15,17 @@ foreach ($autoloadPaths as $p) {
 require_once __DIR__ . '/supabase.php';
 
 // ── PostgREST schema reload helper ──
-function reload_pgrst_schema(): void {
+function reload_pgrst_schema(): bool {
     try {
         $pdo = db();
         if ($pdo instanceof SupabaseRestDB) {
             $pdo->restCall('GET', '', null, ['Prefer: reload-schema']);
+            return true;
         }
-    } catch (Exception $e) {}
+    } catch (Exception $e) {
+        error_log('PostgREST schema reload failed: ' . $e->getMessage());
+    }
+    return false;
 }
 
 // ── Session-based query cache (avoids redundant COUNT queries per page load) ──
@@ -108,6 +112,11 @@ function db() {
     if ($useRest) {
         if ($restDb === null) {
             $restDb = Supabase::getInstance()->restDb();
+            try {
+                $restDb->restCall('GET', '', null, ['Prefer: reload-schema']);
+            } catch (Exception $reloadErr) {
+                error_log('PostgREST schema reload failed: ' . $reloadErr->getMessage());
+            }
         }
         return $restDb;
     }
@@ -127,6 +136,11 @@ function db() {
         } catch (PDOException $e) {
             $useRest = true;
             $restDb = Supabase::getInstance()->restDb();
+            try {
+                $restDb->restCall('GET', '', null, ['Prefer: reload-schema']);
+            } catch (Exception $reloadErr) {
+                error_log('PostgREST schema reload failed: ' . $reloadErr->getMessage());
+            }
             return $restDb;
         }
     }
