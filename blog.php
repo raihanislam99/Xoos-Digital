@@ -31,16 +31,16 @@ require __DIR__ . '/inc/navbar.php';
     <article class="blog-card blog-card-featured" data-href="post/<?= h($featured['slug']) ?>">
       <div class="blog-featured-grid">
         <div class="blog-img-wrap">
-          <img src="<?= h(image_url($featured['featured_image'] ?: 'images/Xoos_Digital_Facebook_Cover_Image.jpg')) ?>" alt="<?= h($featured['title']) ?>" loading="lazy">
+          <img src="<?= h(image_url($featured['featured_image'] ?: 'images/placeholder.svg')) ?>" alt="<?= h($featured['title']) ?>" width="900" height="506" loading="lazy">
           <div class="blog-img-overlay blog-overlay-1"></div>
           <div class="blog-author-badge">
-            <img src="images/Icons/user1.svg" alt="" loading="lazy">
+            <img src="images/Icons/user1.svg" alt="" width="20" height="20" loading="lazy">
             XOOS DIGITAL
           </div>
         </div>
         <div class="blog-featured-body">
           <div class="blog-date">
-            <img src="images/Icons/date1.svg" alt="" loading="lazy">
+            <img src="images/Icons/date1.svg" alt="" width="20" height="20" loading="lazy">
             <span><?= strtoupper(date('d M Y', strtotime($featured['created_at']))) ?></span>
           </div>
           <h3 style="font-size:1.4rem"><?= h($featured['title']) ?></h3>
@@ -58,16 +58,16 @@ require __DIR__ . '/inc/navbar.php';
     <?php if ($bi === 0) continue; ?>
     <article class="blog-card" data-animate data-href="post/<?= h($post['slug']) ?>">
       <div class="blog-img-wrap">
-        <img src="<?= h(image_url($post['featured_image'] ?: 'images/Xoos_Digital_Facebook_Cover_Image.jpg')) ?>" alt="<?= h($post['title']) ?>" loading="lazy">
+        <img src="<?= h(image_url($post['featured_image'] ?: 'images/placeholder.svg')) ?>" alt="<?= h($post['title']) ?>" width="900" height="506" loading="lazy">
         <div class="blog-img-overlay blog-overlay-<?= ($bi % 3) + 1 ?>"></div>
         <div class="blog-author-badge">
-          <img src="images/Icons/user1.svg" alt="" loading="lazy">
+          <img src="images/Icons/user1.svg" alt="" width="20" height="20" loading="lazy">
           XOOS DIGITAL
         </div>
       </div>
       <div class="blog-body">
         <div class="blog-date">
-          <img src="images/Icons/date1.svg" alt="" loading="lazy">
+          <img src="images/Icons/date1.svg" alt="" width="20" height="20" loading="lazy">
           <span><?= strtoupper(date('d M Y', strtotime($post['created_at']))) ?></span>
         </div>
         <h3><?= h($post['title']) ?></h3>

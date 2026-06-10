@@ -37,7 +37,7 @@ require __DIR__ . '/inc/navbar.php';
   <div class="section-container">
     <div class="founder-grid">
       <div class="founder-img-wrap" data-animate="slide-left">
-        <img src="images/founder-photo-Raihan-1.jpg" alt="<?= h($founderName) ?> — Founder, Xoos Digital" loading="lazy">
+        <img src="images/founder-photo-Raihan-1.jpg" alt="<?= h($founderName) ?> — Founder, Xoos Digital" width="410" height="512" loading="lazy">
         <div class="founder-img-glow"></div>
       </div>
       <div class="founder-content" data-animate="slide-right">
@@ -250,14 +250,14 @@ require __DIR__ . '/inc/navbar.php';
       <p class="cta-sub">Tell us about your project and we'll get back to you within 24 hours with a clear plan and honest quote.</p>
       <div class="cta-details">
         <div class="cta-detail-row">
-          <img src="images/Icons/phn2.svg" alt="" class="cta-icon-img" loading="lazy">
+          <img src="images/Icons/phn2.svg" alt="" class="cta-icon-img" width="20" height="20" loading="lazy">
           <div>
             <div class="cta-detail-label">PHONE</div>
             <div class="cta-detail-value"><?= h($contactPhone) ?></div>
           </div>
         </div>
         <div class="cta-detail-row">
-          <img src="images/Icons/mail2.svg" alt="" class="cta-icon-img" loading="lazy">
+          <img src="images/Icons/mail2.svg" alt="" class="cta-icon-img" width="20" height="20" loading="lazy">
           <div>
             <div class="cta-detail-label">EMAIL</div>
             <div class="cta-detail-value"><?= h($contactEmail) ?></div>

@@ -29,9 +29,13 @@ if (strpos($_SERVER['REQUEST_URI'], '/post/') === 0) $ogType = 'article';
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="<?= h($pageTitle) ?>">
   <meta name="twitter:description" content="<?= h($pageDesc) ?>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700;800;900&family=Inter:wght@500;600;700;800;900&display=swap" as="style">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700;800;900&family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
-  <link rel="stylesheet" href="<?= BASE_URL ?>/css/style.css?v=<?= filemtime(__DIR__ . '/../css/style.css') ?>">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
+  <link rel="stylesheet" href="<?= BASE_URL ?>/css/style.min.css?v=<?= filemtime(__DIR__ . '/../css/style.css') ?>">
 <base href="<?= BASE_URL ?>/">
 </head>
 

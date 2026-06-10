@@ -73,7 +73,7 @@ foreach ($scanDirs as $label => $dir) {
 }
 
 // Get DB uploaded files
-$dbFiles = db_rows("SELECT * FROM media_files ORDER BY created_at DESC");
+$dbFiles = db_rows("SELECT * FROM media_files ORDER BY created_at DESC LIMIT 200");
 
 // Tag DB files
 $taggedDb = [];

@@ -18,27 +18,30 @@ $platforms = [
 ];
 function plat($key, $field) { global $platforms; return $platforms[$key][$field] ?? ''; }
 
-// ── DB Migration ──
-try {
-    $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS language VARCHAR(50) DEFAULT 'english'");
-    $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS tone VARCHAR(50) DEFAULT 'semi-professional'");
-    $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS niche VARCHAR(500) DEFAULT ''");
-    $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS color VARCHAR(7) DEFAULT '#c8f135'");
-    $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS post_length INT DEFAULT 200");
-    $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS type VARCHAR(20) DEFAULT 'personal'");
-    $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS business_type VARCHAR(200) DEFAULT ''");
-    $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS target_audience TEXT DEFAULT ''");
-    $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS brand_voice TEXT DEFAULT ''");
-    $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS avoid_topics TEXT DEFAULT ''");
-    $pdo->exec("ALTER TABLE post_training_data ADD COLUMN IF NOT EXISTS profile_id INT DEFAULT NULL");
-    $pdo->exec("CREATE TABLE IF NOT EXISTS post_hashtags (id SERIAL PRIMARY KEY, platform VARCHAR(50) NOT NULL, tag VARCHAR(100) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
-    $pdo->exec("ALTER TABLE generated_posts ADD COLUMN IF NOT EXISTS profile_id INT DEFAULT NULL");
-    $pdo->exec("ALTER TABLE generated_posts ADD COLUMN IF NOT EXISTS linkedin_content TEXT");
-    $pdo->exec("ALTER TABLE generated_posts ADD COLUMN IF NOT EXISTS facebook_content TEXT");
-    $pdo->exec("ALTER TABLE generated_posts ADD COLUMN IF NOT EXISTS hashtags_used TEXT");
-    $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500) DEFAULT ''");
-    $pdo->exec("CREATE TABLE IF NOT EXISTS post_versions (id SERIAL PRIMARY KEY, post_id INT NOT NULL, content TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
-} catch (Exception $e) { /* columns may already exist */ }
+// ── DB Migration (runs once per session, not every page load) ──
+if (empty($_SESSION['_pg_migrated'])) {
+    try {
+        $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS language VARCHAR(50) DEFAULT 'english'");
+        $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS tone VARCHAR(50) DEFAULT 'semi-professional'");
+        $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS niche VARCHAR(500) DEFAULT ''");
+        $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS color VARCHAR(7) DEFAULT '#c8f135'");
+        $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS post_length INT DEFAULT 200");
+        $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS type VARCHAR(20) DEFAULT 'personal'");
+        $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS business_type VARCHAR(200) DEFAULT ''");
+        $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS target_audience TEXT DEFAULT ''");
+        $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS brand_voice TEXT DEFAULT ''");
+        $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS avoid_topics TEXT DEFAULT ''");
+        $pdo->exec("ALTER TABLE post_training_data ADD COLUMN IF NOT EXISTS profile_id INT DEFAULT NULL");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS post_hashtags (id SERIAL PRIMARY KEY, platform VARCHAR(50) NOT NULL, tag VARCHAR(100) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+        $pdo->exec("ALTER TABLE generated_posts ADD COLUMN IF NOT EXISTS profile_id INT DEFAULT NULL");
+        $pdo->exec("ALTER TABLE generated_posts ADD COLUMN IF NOT EXISTS linkedin_content TEXT");
+        $pdo->exec("ALTER TABLE generated_posts ADD COLUMN IF NOT EXISTS facebook_content TEXT");
+        $pdo->exec("ALTER TABLE generated_posts ADD COLUMN IF NOT EXISTS hashtags_used TEXT");
+        $pdo->exec("ALTER TABLE post_profiles ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500) DEFAULT ''");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS post_versions (id SERIAL PRIMARY KEY, post_id INT NOT NULL, content TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+        $_SESSION['_pg_migrated'] = true;
+    } catch (Exception $e) { /* columns may already exist */ }
+}
 
 function fetch_og_image(string $url): string {
     if (empty($url)) return '';

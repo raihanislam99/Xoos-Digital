@@ -63,7 +63,7 @@ require __DIR__ . '/inc/navbar.php';
             <?php endforeach; ?>
           </div>
           <div class="svc-right">
-            <div class="svc-icon-circle"><img src="images/Icons/service<?= (($si % 4) + 1) ?>.svg" alt="" loading="lazy"></div>
+            <div class="svc-icon-circle"><img src="images/Icons/service<?= (($si % 4) + 1) ?>.svg" alt="" width="48" height="48" loading="lazy"></div>
             <div class="svc-expand-btn"><svg class="svc-plus-icon" width="14" height="14" viewBox="0 0 14 14" fill="none"><line x1="7" y1="0" x2="7" y2="14" stroke="currentColor" stroke-width="2"/><line x1="0" y1="7" x2="14" y2="7" stroke="currentColor" stroke-width="2"/></svg></div>
           </div>
         </div>
@@ -90,7 +90,7 @@ require __DIR__ . '/inc/navbar.php';
             </div>
             <div class="svc-visual-panel desktop-only">
               <div>
-                <div class="panel-icon"><img src="images/Icons/service<?= (($si % 4) + 1) ?>.svg" alt="" loading="lazy"></div>
+                <div class="panel-icon"><img src="images/Icons/service<?= (($si % 4) + 1) ?>.svg" alt="" width="48" height="48" loading="lazy"></div>
                 <div class="panel-stat">50+</div>
                 <div class="panel-stat-label">Clients Served</div>
               </div>

@@ -31,13 +31,13 @@ $waNum   = get_setting('whatsapp_number', '8801572932943');
           <p class="footer-body">Empowering brands with smart digital solutions. Your trusted partner for digital success.</p>
           <div class="social-icons">
             <a href="<?= h($fbUrl) ?>" class="social-icon" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
-              <img src="images/Icons/facebook.svg" alt="Facebook" loading="lazy">
+              <img src="images/Icons/facebook.svg" alt="Facebook" width="20" height="20" loading="lazy">
             </a>
             <a href="<?= h($liUrl) ?>" class="social-icon" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
-              <img src="images/Icons/linkedin.svg" alt="LinkedIn" loading="lazy">
+              <img src="images/Icons/linkedin.svg" alt="LinkedIn" width="20" height="20" loading="lazy">
             </a>
             <a href="<?= h($igUrl) ?>" class="social-icon" aria-label="Instagram">
-              <img src="images/Icons/instagram.svg" alt="Instagram" loading="lazy">
+              <img src="images/Icons/instagram.svg" alt="Instagram" width="20" height="20" loading="lazy">
             </a>
           </div>
         </div>
@@ -52,15 +52,15 @@ $waNum   = get_setting('whatsapp_number', '8801572932943');
         <div>
           <div class="footer-heading">Contact Us</div>
           <div class="contact-item">
-            <img src="images/Icons/phn2.svg" alt="" loading="lazy">
+            <img src="images/Icons/phn2.svg" alt="" width="20" height="20" loading="lazy">
             <span><?= h($ctPhone) ?></span>
           </div>
           <div class="contact-item">
-            <img src="images/Icons/location1.svg" alt="" loading="lazy">
+            <img src="images/Icons/location1.svg" alt="" width="20" height="20" loading="lazy">
             <span><?= h($ctAddr) ?></span>
           </div>
           <div class="contact-item">
-            <img src="images/Icons/mail2.svg" alt="" loading="lazy">
+            <img src="images/Icons/mail2.svg" alt="" width="20" height="20" loading="lazy">
             <span><?= h($ctEmail) ?></span>
           </div>
         </div>

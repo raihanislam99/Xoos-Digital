@@ -29,7 +29,7 @@
       </svg>
     </button>
     <div class="mobile-nav-logo">
-      <a href="."><img src="images/logo.png" alt="Xoos Digital" loading="lazy"></a>
+      <a href="."><img src="images/logo.png" alt="Xoos Digital" width="119" height="36"></a>
     </div>
     <div class="mobile-nav-links">
       <a href="." class="mobile-nav-link" data-delay="0">Home</a>

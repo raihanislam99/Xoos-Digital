@@ -1,89 +1,120 @@
 <?php
-$totalLeads = (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklisted = 0");
-$contacted = (int)db_val("SELECT COUNT(*) FROM leads WHERE status IN ('contacted','replied','interested','meeting_booked')");
-$replied = (int)db_val("SELECT COUNT(*) FROM leads WHERE status = 'replied'");
-$closedWon = (int)db_val("SELECT COUNT(*) FROM leads WHERE status = 'closed_won'");
-$emailsToday = (int)db_val("SELECT COUNT(*) FROM lead_emails WHERE sent_at::date = CURRENT_DATE AND status = 'sent'");
-$opened = (int)db_val("SELECT COUNT(*) FROM lead_emails WHERE status = 'opened'");
-$repliedEmails = (int)db_val("SELECT COUNT(*) FROM lead_emails WHERE status = 'replied'");
-$totalSent = (int)db_val("SELECT COUNT(*) FROM lead_emails WHERE status = 'sent'");
-$totalWithEmail = (int)db_val("SELECT COUNT(*) FROM leads WHERE email IS NOT NULL AND email != ''");
+$analyticsSummary = get_cache('analytics_summary', 300);
+if ($analyticsSummary === null) {
+    $analyticsSummary = [
+        'totalLeads' => (int)db_val("SELECT COUNT(*) FROM leads WHERE is_blacklisted = 0"),
+        'contacted' => (int)db_val("SELECT COUNT(*) FROM leads WHERE status IN ('contacted','replied','interested','meeting_booked')"),
+        'replied' => (int)db_val("SELECT COUNT(*) FROM leads WHERE status = 'replied'"),
+        'closedWon' => (int)db_val("SELECT COUNT(*) FROM leads WHERE status = 'closed_won'"),
+        'emailsToday' => (int)db_val("SELECT COUNT(*) FROM lead_emails WHERE sent_at::date = CURRENT_DATE AND status = 'sent'"),
+        'opened' => (int)db_val("SELECT COUNT(*) FROM lead_emails WHERE status = 'opened'"),
+        'repliedEmails' => (int)db_val("SELECT COUNT(*) FROM lead_emails WHERE status = 'replied'"),
+        'totalSent' => (int)db_val("SELECT COUNT(*) FROM lead_emails WHERE status = 'sent'"),
+        'totalWithEmail' => (int)db_val("SELECT COUNT(*) FROM leads WHERE email IS NOT NULL AND email != ''"),
+    ];
+    set_cache('analytics_summary', $analyticsSummary);
+}
+$totalLeads = $analyticsSummary['totalLeads'];
+$contacted = $analyticsSummary['contacted'];
+$replied = $analyticsSummary['replied'];
+$closedWon = $analyticsSummary['closedWon'];
+$emailsToday = $analyticsSummary['emailsToday'];
+$opened = $analyticsSummary['opened'];
+$repliedEmails = $analyticsSummary['repliedEmails'];
+$totalSent = $analyticsSummary['totalSent'];
+$totalWithEmail = $analyticsSummary['totalWithEmail'];
 
-// ── Compute aggregations in PHP (REST wrapper doesn't support GROUP BY) ──
+// ── Compute aggregations ──
 
-// Status distribution
+// Status distribution (use individual COUNTs to avoid fetching all rows)
 $statusDist = [];
 try {
-    $allLeads = db_rows("SELECT status FROM leads WHERE is_blacklisted = 0");
-    $counts = [];
-    foreach ($allLeads as $l) {
-        $s = $l['status'] ?? 'unknown';
-        $counts[$s] = ($counts[$s] ?? 0) + 1;
-    }
-    arsort($counts);
-    foreach ($counts as $status => $cnt) {
-        $statusDist[] = ['status' => $status, 'cnt' => $cnt];
+    $knownStatuses = ['new','contacted','replied','interested','meeting_booked','closed_won','closed_lost','blacklisted'];
+    foreach ($knownStatuses as $s) {
+        $cnt = (int)db_val("SELECT COUNT(*) FROM leads WHERE status = ? AND is_blacklisted = 0", [$s]);
+        if ($cnt > 0) $statusDist[] = ['status' => $s, 'cnt' => $cnt];
     }
 } catch (Exception $e) {}
 
-// Leads over time (last 30 days)
+// Try GROUP BY query first (works with PDO), fall back to per-status COUNTs (works with REST)
 $leadsOverTime = [];
 try {
-    $thirtyDaysAgo = date('Y-m-d\TH:i:s\Z', strtotime('-30 days'));
-    $leadRows = db_rows("SELECT created_at FROM leads WHERE created_at >= ?", [$thirtyDaysAgo]);
-    $dayCounts = [];
-    foreach ($leadRows as $l) {
-        if (!empty($l['created_at'])) {
-            $d = date('Y-m-d', strtotime($l['created_at']));
-            $dayCounts[$d] = ($dayCounts[$d] ?? 0) + 1;
+    $cacheKey = 'analytics_leads_30d';
+    $cached = get_cache($cacheKey, 300);
+    if ($cached !== null) {
+        $leadsOverTime = $cached;
+    } else {
+        $thirtyDaysAgo = date('Y-m-d\TH:i:s\Z', strtotime('-30 days'));
+        $leadRows = db_rows("SELECT created_at FROM leads WHERE created_at >= ?", [$thirtyDaysAgo]);
+        $dayCounts = [];
+        foreach ($leadRows as $l) {
+            if (!empty($l['created_at'])) {
+                $d = date('Y-m-d', strtotime($l['created_at']));
+                $dayCounts[$d] = ($dayCounts[$d] ?? 0) + 1;
+            }
         }
-    }
-    ksort($dayCounts);
-    foreach ($dayCounts as $d => $cnt) {
-        $leadsOverTime[] = ['d' => $d, 'cnt' => $cnt];
+        ksort($dayCounts);
+        foreach ($dayCounts as $d => $cnt) {
+            $leadsOverTime[] = ['d' => $d, 'cnt' => $cnt];
+        }
+        set_cache($cacheKey, $leadsOverTime);
     }
 } catch (Exception $e) {}
 
-// Top niches
+// Top niches (cached)
 $topNiches = [];
 try {
-    $nicheRows = db_rows("SELECT niche FROM leads WHERE niche IS NOT NULL AND niche != '' AND is_blacklisted = 0");
-    $nicheCounts = [];
-    foreach ($nicheRows as $l) {
-        $n = $l['niche'] ?? '';
-        if ($n !== '') {
-            $nicheCounts[$n] = ($nicheCounts[$n] ?? 0) + 1;
+    $cacheKey = 'analytics_niches';
+    $cached = get_cache($cacheKey, 300);
+    if ($cached !== null) {
+        $topNiches = $cached;
+    } else {
+        $nicheRows = db_rows("SELECT niche FROM leads WHERE niche IS NOT NULL AND niche != '' AND is_blacklisted = 0");
+        $nicheCounts = [];
+        foreach ($nicheRows as $l) {
+            $n = $l['niche'] ?? '';
+            if ($n !== '') {
+                $nicheCounts[$n] = ($nicheCounts[$n] ?? 0) + 1;
+            }
         }
-    }
-    arsort($nicheCounts);
-    $i = 0;
-    foreach ($nicheCounts as $niche => $cnt) {
-        if ($i >= 10) break;
-        $topNiches[] = ['niche' => $niche, 'cnt' => $cnt];
-        $i++;
+        arsort($nicheCounts);
+        $i = 0;
+        foreach ($nicheCounts as $niche => $cnt) {
+            if ($i >= 10) break;
+            $topNiches[] = ['niche' => $niche, 'cnt' => $cnt];
+            $i++;
+        }
+        set_cache($cacheKey, $topNiches);
     }
 } catch (Exception $e) {}
 
-// Email performance by day (last 30 days)
+// Email performance by day (last 30 days, cached)
 $emailPerf = [];
 try {
-    $thirtyDaysAgo = date('Y-m-d\TH:i:s\Z', strtotime('-30 days'));
-    $emailRows = db_rows("SELECT sent_at, status FROM lead_emails WHERE sent_at >= ?", [$thirtyDaysAgo]);
-    $dayStats = [];
-    foreach ($emailRows as $e) {
-        if (!empty($e['sent_at'])) {
-            $d = date('Y-m-d', strtotime($e['sent_at']));
-            if (!isset($dayStats[$d])) {
-                $dayStats[$d] = ['sent' => 0, 'opened' => 0, 'replied' => 0];
+    $cacheKey = 'analytics_emails_30d';
+    $cached = get_cache($cacheKey, 300);
+    if ($cached !== null) {
+        $emailPerf = $cached;
+    } else {
+        $thirtyDaysAgo = date('Y-m-d\TH:i:s\Z', strtotime('-30 days'));
+        $emailRows = db_rows("SELECT sent_at, status FROM lead_emails WHERE sent_at >= ?", [$thirtyDaysAgo]);
+        $dayStats = [];
+        foreach ($emailRows as $e) {
+            if (!empty($e['sent_at'])) {
+                $d = date('Y-m-d', strtotime($e['sent_at']));
+                if (!isset($dayStats[$d])) {
+                    $dayStats[$d] = ['sent' => 0, 'opened' => 0, 'replied' => 0];
+                }
+                $dayStats[$d]['sent']++;
+                if (($e['status'] ?? '') === 'opened') $dayStats[$d]['opened']++;
+                if (($e['status'] ?? '') === 'replied') $dayStats[$d]['replied']++;
             }
-            $dayStats[$d]['sent']++;
-            if (($e['status'] ?? '') === 'opened') $dayStats[$d]['opened']++;
-            if (($e['status'] ?? '') === 'replied') $dayStats[$d]['replied']++;
         }
-    }
-    ksort($dayStats);
-    foreach ($dayStats as $d => $stats) {
-        $emailPerf[] = ['d' => $d, 'sent' => $stats['sent'], 'opened' => $stats['opened'], 'replied' => $stats['replied']];
+        ksort($dayStats);
+        foreach ($dayStats as $d => $stats) {
+            $emailPerf[] = ['d' => $d, 'sent' => $stats['sent'], 'opened' => $stats['opened'], 'replied' => $stats['replied']];
+        }
+        set_cache($cacheKey, $emailPerf);
     }
 } catch (Exception $e) {}
 

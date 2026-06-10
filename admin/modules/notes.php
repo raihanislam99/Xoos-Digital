@@ -166,8 +166,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
         if ($action === 'toggle_pin') {
             $id = (int)($_POST['id'] ?? 0);
-            $all = $pdo->query("SELECT is_pinned FROM notes WHERE id = $id")->fetchAll();
-            $current = !empty($all) ? $all[0]['is_pinned'] : 0;
+            $stmt = $pdo->prepare("SELECT is_pinned FROM notes WHERE id = ?");
+            $stmt->execute([$id]);
+            $current = (int)$stmt->fetchColumn();
             $pdo->prepare("UPDATE notes SET is_pinned = ? WHERE id = ?")->execute([$current ? 0 : 1, $id]);
             json_response(['ok' => true, 'is_pinned' => $current ? 0 : 1]);
         }
@@ -216,7 +217,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             if (empty($text)) json_response(['ok' => false, 'error' => 'Text required'], 400);
             $maxSort = 0;
             try {
-                $existing = $pdo->query("SELECT sort_order FROM note_checklist_items WHERE note_id = $note_id ORDER BY sort_order DESC")->fetchAll(PDO::FETCH_COLUMN);
+                $stmt = $pdo->prepare("SELECT sort_order FROM note_checklist_items WHERE note_id = ? ORDER BY sort_order DESC");
+                $stmt->execute([$note_id]);
+                $existing = $stmt->fetchAll(PDO::FETCH_COLUMN);
                 if (!empty($existing)) $maxSort = (int)$existing[0];
             } catch (Exception $e) {}
             $pdo->prepare("INSERT INTO note_checklist_items (note_id, text, sort_order) VALUES (?, ?, ?)")->execute([$note_id, $text, $maxSort + 1]);
@@ -225,8 +228,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
         if ($action === 'checklist_toggle') {
             $id = (int)($_POST['id'] ?? 0);
-            $all = $pdo->query("SELECT is_checked FROM note_checklist_items WHERE id = $id")->fetchAll();
-            $current = !empty($all) ? $all[0]['is_checked'] : 0;
+            $stmt = $pdo->prepare("SELECT is_checked FROM note_checklist_items WHERE id = ?");
+            $stmt->execute([$id]);
+            $current = (int)$stmt->fetchColumn();
             $pdo->prepare("UPDATE note_checklist_items SET is_checked = ? WHERE id = ?")->execute([$current ? 0 : 1, $id]);
             json_response(['ok' => true, 'is_checked' => $current ? 0 : 1]);
         }
@@ -322,7 +326,7 @@ try {
     }
     $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
 
-    $stmt = $pdo->prepare("SELECT * FROM notes $whereClause ORDER BY is_pinned DESC, created_at DESC");
+    $stmt = $pdo->prepare("SELECT * FROM notes $whereClause ORDER BY is_pinned DESC, created_at DESC LIMIT 200");
     $stmt->execute($params);
     $notes = $stmt->fetchAll();
 
@@ -358,7 +362,7 @@ try {
         }
     }
 
-    $categories = $pdo->query("SELECT * FROM note_categories ORDER BY sort_order, name")->fetchAll();
+    $categories = $cats;
 
     $totalNotes = count($notes);
     $pinnedCount = count(array_filter($notes, fn($n) => $n['is_pinned']));

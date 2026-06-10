@@ -29,7 +29,7 @@ function reload_pgrst_schema(): bool {
 }
 
 // ── Session-based query cache (avoids redundant COUNT queries per page load) ──
-function db_count_cached(string $cacheKey, string $query, array $params = [], int $ttl = 30): int {
+function db_count_cached(string $cacheKey, string $query, array $params = [], int $ttl = 300): int {
     $cache = &$_SESSION['_db_cache']; $now = time();
     if (!is_array($cache)) $cache = [];
     if (isset($cache[$cacheKey]) && ($now - $cache[$cacheKey]['time']) < $ttl) return $cache[$cacheKey]['value'];
@@ -223,7 +223,7 @@ function require_login() {
     if (!in_array($currentScript, $skipPages)) {
         // Cache onboarding check in session
         $onboardCheckKey = 'onboarding_check_' . md5(supabase_user_email());
-        $onboardCacheTtl = 60; // 1 minute cache
+        $onboardCacheTtl = 600; // 10 minute cache
         if (!isset($_SESSION[$onboardCheckKey]) || 
             (time() - $_SESSION[$onboardCheckKey]['checked_at'] > $onboardCacheTtl)) {
             $onboardPending = false;
@@ -341,7 +341,7 @@ function image_url($path) {
 
 // ── Generic DB shortcuts ──
 
-function get_all($table, $order = 'created_at DESC') {
+function get_all($table, $order = 'created_at DESC', ?int $limit = null) {
     $allowed = ['notes','note_checklist_items','blog_posts','blog_categories','services','packages','testimonials','faq','portfolio','portfolio_categories','brands','leads','lead_emails','lead_whatsapp','lead_activity','outreach_templates','admin_tasks','company_info','quotations','quotation_items','invoices','invoice_items','contact_messages','media_files','settings','post_training_data','post_profiles','generated_posts','team_members'];
     if (!in_array($table, $allowed)) return [];
     $pdo = db();
@@ -349,14 +349,15 @@ function get_all($table, $order = 'created_at DESC') {
     $safe = preg_replace('/[^a-z_]/', '', $table);
     $order = preg_replace('/[^a-z0-9_ ,.\-]+/i', '', $order);
     $order = trim(preg_replace('/\s+/', ' ', $order));
+    $limitClause = $limit !== null ? " LIMIT " . (int)$limit : '';
     try {
-        return $pdo->query("SELECT * FROM {$safe} ORDER BY {$order}")->fetchAll();
+        return $pdo->query("SELECT * FROM {$safe} ORDER BY {$order}{$limitClause}")->fetchAll();
     } catch (Throwable $e) {
         try {
-            return $pdo->query("SELECT * FROM {$safe} ORDER BY created_at DESC")->fetchAll();
+            return $pdo->query("SELECT * FROM {$safe} ORDER BY created_at DESC{$limitClause}")->fetchAll();
         } catch (Throwable $e2) {
             try {
-                return $pdo->query("SELECT * FROM {$safe}")->fetchAll();
+                return $pdo->query("SELECT * FROM {$safe}{$limitClause}")->fetchAll();
             } catch (Throwable $e3) {
                 return [];
             }
@@ -450,6 +451,12 @@ function &get_settings_cache(): array {
     if ($cache !== null) return $cache;
 
     $cache = [];
+    $cached = get_cache('settings_all', 300);
+    if ($cached !== null) {
+        $cache = $cached;
+        return $cache;
+    }
+
     $pdo = db();
     if ($pdo === null) return $cache;
     
@@ -458,6 +465,7 @@ function &get_settings_cache(): array {
         foreach ($rows as $row) {
             $cache[$row['setting_key']] = $row['setting_value'];
         }
+        set_cache('settings_all', $cache);
     } catch (Exception $e) {}
     return $cache;
 }
