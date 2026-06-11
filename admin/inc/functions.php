@@ -403,12 +403,15 @@ function get_all($table, $order = 'created_at DESC', ?int $limit = null) {
     try {
         return $pdo->query("SELECT * FROM {$safe} ORDER BY {$order}{$limitClause}")->fetchAll();
     } catch (Throwable $e) {
+        error_log('get_all(' . $safe . ') 1st attempt: ' . $e->getMessage());
         try {
             return $pdo->query("SELECT * FROM {$safe} ORDER BY created_at DESC{$limitClause}")->fetchAll();
         } catch (Throwable $e2) {
+            error_log('get_all(' . $safe . ') 2nd attempt: ' . $e2->getMessage());
             try {
                 return $pdo->query("SELECT * FROM {$safe}{$limitClause}")->fetchAll();
             } catch (Throwable $e3) {
+                error_log('get_all(' . $safe . ') 3rd attempt: ' . $e3->getMessage());
                 return [];
             }
         }
