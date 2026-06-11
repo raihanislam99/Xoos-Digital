@@ -1,5 +1,10 @@
 <?php
 ob_start();
+register_shutdown_function(function () {
+    while (ob_get_level() > 0) {
+        ob_end_flush();
+    }
+});
 require_once __DIR__ . '/../config.php';
 
 // ── Composer autoload (already loaded by config.php, but ensure) ──

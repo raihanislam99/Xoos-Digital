@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', function() {
         animObserver.unobserve(el);
       }
     });
-  }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+  }, { threshold: 0.1, rootMargin: ['0px', '0px', '-50px', '0px'].join(' ') });
 
   document.querySelectorAll('[data-animate]').forEach(function(el) {
     animObserver.observe(el);

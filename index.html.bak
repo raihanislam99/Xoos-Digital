@@ -1,0 +1,2338 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Xoos Digital — Creative Agency, Dhaka, Bangladesh</title>
+  <meta name="description"
+    content="Xoos Digital — eXcellence | Opportunity | Outcome | Success. Creative agency based in Dhaka, Bangladesh specializing in branding, web development, digital marketing, SEO, and video production.">
+  <link rel="icon" type="image/png" href="favicon-96x96.png" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="shortcut icon" href="favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-title" content="Xoos Digital" />
+  <link rel="manifest" href="site.webmanifest" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css">
+<style>
+/* ── Project Form Popup ── */
+.pf-overlay{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,0.85);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  z-index:9999;
+  display:flex;align-items:center;justify-content:center;
+  padding:1rem;
+  opacity:0;pointer-events:none;
+  transition:opacity 0.4s cubic-bezier(0.16,1,0.3,1);
+}
+.pf-overlay.open{opacity:1;pointer-events:all}
+
+.pf-modal{
+  background:#111111;
+  border:1px solid #222222;
+  border-radius:1.25rem;
+  width:100%;max-width:680px;
+  position:relative;overflow:hidden;
+  transform:translateY(24px) scale(0.97);
+  transition:transform 0.5s cubic-bezier(0.16,1,0.3,1);
+  max-height:90vh;overflow-y:auto;
+  scrollbar-width:none;
+}
+.pf-modal::-webkit-scrollbar{display:none}
+.pf-overlay.open .pf-modal{transform:translateY(0) scale(1)}
+.pf-modal::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,#CCFF00,transparent);
+}
+
+.pf-header{
+  padding:2rem 2rem 1.5rem;
+  border-bottom:1px solid #222222;
+  display:flex;align-items:flex-start;justify-content:space-between;
+  gap:1rem;
+  position:sticky;top:0;background:#111111;z-index:10;
+}
+.pf-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(204,255,0,0.06);border:1px solid rgba(204,255,0,0.15);
+  border-radius:999px;padding:4px 12px;margin-bottom:0.75rem;
+}
+.pf-badge-dot{
+  width:5px;height:5px;border-radius:50%;
+  background:#CCFF00;display:inline-block;
+  animation:pfPulse 2s ease-in-out infinite;
+}
+@keyframes pfPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.7)}}
+.pf-badge span{font-family:'Orbitron',sans-serif;font-size:9px;font-weight:700;color:#CCFF00;letter-spacing:0.2em;text-transform:uppercase}
+.pf-title{font-family:'Orbitron',sans-serif;font-size:1.25rem;font-weight:900;text-transform:uppercase;letter-spacing:0.02em;line-height:1.1;color:white}
+.pf-sub{font-size:0.8rem;color:#9CA3AF;margin-top:4px;line-height:1.6}
+.pf-close{
+  width:36px;height:36px;border-radius:50%;
+  border:1px solid #2a2a2a;background:transparent;
+  color:#9CA3AF;cursor:pointer;font-size:1.1rem;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.2s;flex-shrink:0;margin-top:4px;
+}
+.pf-close:hover{background:#CCFF00;color:#0A0A0A;border-color:#CCFF00}
+
+.pf-progress-wrap{padding:1.25rem 2rem;border-bottom:1px solid #222222}
+.pf-progress-steps{display:flex;align-items:center;margin-bottom:0.875rem}
+.pf-p-step{display:flex;align-items:center;flex:1}
+.pf-p-step:last-child{flex:0}
+.pf-step-circle{
+  width:30px;height:30px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Orbitron',sans-serif;font-size:0.6rem;font-weight:700;
+  border:1.5px solid #2a2a2a;color:#555555;
+  background:#181818;flex-shrink:0;
+  transition:all 0.4s cubic-bezier(0.16,1,0.3,1);
+  position:relative;z-index:1;
+}
+.pf-step-circle.pf-active{border-color:#CCFF00;color:#CCFF00;background:rgba(204,255,0,0.1);box-shadow:0 0 16px rgba(204,255,0,0.2)}
+.pf-step-circle.pf-done{border-color:#CCFF00;background:#CCFF00;color:#0A0A0A}
+.pf-step-line{flex:1;height:1.5px;background:#2a2a2a;transition:background 0.4s;margin:0 4px}
+.pf-step-line.pf-done{background:#CCFF00}
+.pf-step-labels{display:flex;justify-content:space-between}
+.pf-step-label{font-family:'Orbitron',sans-serif;font-size:0.55rem;letter-spacing:0.1em;text-transform:uppercase;color:#555;transition:color 0.3s;text-align:center;flex:1}
+.pf-step-label:last-child{flex:0;min-width:50px;text-align:right}
+.pf-step-label.pf-active{color:#CCFF00}
+.pf-step-label.pf-done{color:#9CA3AF}
+
+.pf-steps-container{padding:2rem;min-height:320px}
+.pf-step{display:none}
+.pf-step.pf-step-active{display:block}
+.pf-step-title{font-family:'Orbitron',sans-serif;font-size:1.15rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#CCFF00;margin-bottom:0.5rem}
+.pf-step-desc{font-size:0.82rem;color:#9CA3AF;margin-bottom:1.75rem;line-height:1.6}
+
+.pf-form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+.pf-form-row.pf-single{grid-template-columns:1fr}
+.pf-form-group{display:flex;flex-direction:column;gap:6px}
+.pf-label{font-family:'Orbitron',sans-serif;font-size:0.6rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#9CA3AF}
+.pf-label .pf-req{color:#CCFF00}
+.pf-input,.pf-select,.pf-textarea{
+  background:#181818;border:1px solid #2a2a2a;
+  color:white;padding:0.75rem 1rem;
+  border-radius:0.625rem;font-family:'Inter',sans-serif;font-size:0.875rem;
+  outline:none;transition:border-color 0.3s,box-shadow 0.3s;width:100%;
+}
+.pf-input:focus,.pf-select:focus,.pf-textarea:focus{
+  border-color:#CCFF00;
+  box-shadow:0 0 0 3px rgba(204,255,0,0.08);
+}
+.pf-input::placeholder,.pf-textarea::placeholder{color:#555}
+.pf-select{appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 7L11 1' stroke='%23555' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 1rem center}
+.pf-select option{background:#1a1a1a;color:white}
+.pf-textarea{resize:vertical;min-height:100px;line-height:1.6}
+.pf-field-error{font-size:0.7rem;color:#ff6b6b;margin-top:3px;display:none}
+.pf-input.pf-error,.pf-select.pf-error,.pf-textarea.pf-error{border-color:#ff6b6b}
+.pf-char-count{display:none}
+
+.pf-service-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem}
+.pf-svc-card{
+  background:#181818;border:1.5px solid #2a2a2a;
+  border-radius:0.875rem;padding:1rem;cursor:pointer;
+  transition:all 0.3s;position:relative;overflow:hidden;text-align:left;
+}
+.pf-svc-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:#CCFF00;transform:scaleX(0);transition:transform 0.3s}
+.pf-svc-card:hover{border-color:rgba(204,255,0,0.35);background:#1a1a0a}
+.pf-svc-card.pf-selected{border-color:#CCFF00;background:rgba(204,255,0,0.06)}
+.pf-svc-card.pf-selected::before{transform:scaleX(1)}
+.pf-svc-icon{width:40px;height:40px;border-radius:0.5rem;background:rgba(204,255,0,0.08);border:1px solid rgba(204,255,0,0.15);display:flex;align-items:center;justify-content:center;margin-bottom:0.75rem;font-size:1.1rem}
+.pf-svc-card.pf-selected .pf-svc-icon{background:rgba(204,255,0,0.15);border-color:rgba(204,255,0,0.3)}
+.pf-svc-name{font-family:'Orbitron',sans-serif;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:white;margin-bottom:3px;transition:color 0.3s}
+.pf-svc-card.pf-selected .pf-svc-name{color:#CCFF00}
+.pf-svc-desc{font-size:0.72rem;color:#9CA3AF;line-height:1.5}
+.pf-svc-check{position:absolute;top:0.75rem;right:0.75rem;width:20px;height:20px;border-radius:50%;background:#CCFF00;color:#0A0A0A;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:900;opacity:0;transform:scale(0.5);transition:all 0.3s cubic-bezier(0.16,1,0.3,1)}
+.pf-svc-card.pf-selected .pf-svc-check{opacity:1;transform:scale(1)}
+
+.pf-budget-display{text-align:center;margin-bottom:1.5rem;background:#181818;border:1px solid #2a2a2a;border-radius:0.875rem;padding:1.25rem}
+.pf-budget-amount{font-family:'Orbitron',sans-serif;font-size:2rem;font-weight:900;color:#CCFF00}
+.pf-budget-lbl{font-size:0.75rem;color:#9CA3AF;margin-top:4px}
+input[type=range].pf-slider{width:100%;height:4px;-webkit-appearance:none;appearance:none;background:#2a2a2a;border-radius:999px;outline:none;cursor:pointer}
+input[type=range].pf-slider::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#CCFF00;cursor:pointer;border:none;box-shadow:0 0 12px rgba(204,255,0,0.4);transition:transform 0.2s}
+input[type=range].pf-slider::-webkit-slider-thumb:hover{transform:scale(1.2)}
+input[type=range].pf-slider::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:#CCFF00;cursor:pointer;border:none}
+.pf-range-labels{display:flex;justify-content:space-between;margin-top:0.625rem}
+.pf-range-labels span{font-size:0.7rem;color:#555}
+
+.pf-timeline-opts{display:grid;grid-template-columns:repeat(3,1fr);gap:0.625rem;margin-top:1rem}
+.pf-tl-opt{background:#181818;border:1.5px solid #2a2a2a;border-radius:0.625rem;padding:0.75rem 0.5rem;text-align:center;cursor:pointer;transition:all 0.3s}
+.pf-tl-opt:hover{border-color:rgba(204,255,0,0.3)}
+.pf-tl-opt.pf-selected{border-color:#CCFF00;background:rgba(204,255,0,0.06)}
+.pf-tl-name{font-family:'Orbitron',sans-serif;font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:white;transition:color 0.3s}
+.pf-tl-opt.pf-selected .pf-tl-name{color:#CCFF00}
+.pf-tl-sub{font-size:0.65rem;color:#9CA3AF;margin-top:2px}
+
+.pf-review-card{background:#181818;border:1px solid #2a2a2a;border-radius:0.875rem;overflow:hidden;margin-bottom:1rem}
+.pf-review-header{padding:0.75rem 1rem;border-bottom:1px solid #222;display:flex;align-items:center}
+.pf-review-header-label{font-family:'Orbitron',sans-serif;font-size:0.6rem;font-weight:700;color:#CCFF00;letter-spacing:0.1em;text-transform:uppercase}
+.pf-review-body{padding:1rem}
+.pf-review-row{display:flex;justify-content:space-between;align-items:flex-start;padding:0.375rem 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+.pf-review-row:last-child{border-bottom:none}
+.pf-review-key{font-size:0.75rem;color:#9CA3AF}
+.pf-review-val{font-size:0.8rem;color:white;font-weight:500;text-align:right;max-width:60%}
+.pf-svc-tags{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end}
+.pf-svc-tag{background:rgba(204,255,0,0.08);border:1px solid rgba(204,255,0,0.2);color:#CCFF00;font-size:0.65rem;font-family:'Orbitron',sans-serif;font-weight:700;padding:2px 8px;border-radius:999px;letter-spacing:0.06em;text-transform:uppercase}
+
+.pf-terms-row{display:flex;align-items:flex-start;gap:0.75rem;padding:1rem;background:rgba(204,255,0,0.03);border:1px solid rgba(204,255,0,0.1);border-radius:0.75rem;cursor:pointer;transition:background 0.2s}
+.pf-terms-row:hover{background:rgba(204,255,0,0.06)}
+.pf-checkbox{width:20px;height:20px;border-radius:4px;border:1.5px solid #2a2a2a;background:#181818;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:all 0.2s}
+.pf-checkbox.pf-checked{background:#CCFF00;border-color:#CCFF00}
+.pf-checkbox.pf-checked::after{content:'\2713';font-size:0.7rem;font-weight:900;color:#0A0A0A}
+.pf-terms-text{font-size:0.8rem;color:#9CA3AF;line-height:1.6}
+
+.pf-success-wrap{text-align:center;padding:2.5rem 1rem}
+.pf-success-ring{width:80px;height:80px;border-radius:50%;background:rgba(204,255,0,0.1);border:2px solid #CCFF00;display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;animation:pfSuccessPop 0.6s cubic-bezier(0.16,1,0.3,1) forwards}
+@keyframes pfSuccessPop{0%{transform:scale(0.5);opacity:0}100%{transform:scale(1);opacity:1}}
+.pf-success-check{font-size:2rem;color:#CCFF00}
+.pf-success-title{font-family:'Orbitron',sans-serif;font-size:1.25rem;font-weight:900;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.75rem;color:white}
+.pf-success-sub{font-size:0.875rem;color:#9CA3AF;line-height:1.7;max-width:380px;margin:0 auto}
+.pf-success-ref{margin-top:1.5rem;background:#181818;border:1px solid #2a2a2a;border-radius:0.75rem;padding:0.875rem 1.25rem;display:inline-flex;align-items:center;gap:0.75rem}
+.pf-ref-label{font-size:0.7rem;color:#9CA3AF}
+.pf-ref-code{font-family:'Orbitron',sans-serif;font-size:0.9rem;font-weight:700;color:#CCFF00;letter-spacing:0.1em}
+.pf-success-btns{display:flex;gap:0.75rem;justify-content:center;margin-top:1.5rem;flex-wrap:wrap}
+.pf-success-btn{display:inline-flex;align-items:center;gap:6px;padding:0.625rem 1.25rem;border-radius:999px;font-size:0.75rem;font-weight:600;text-decoration:none;transition:all 0.2s}
+.pf-wa-btn{background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.3);color:#25D366}
+.pf-wa-btn:hover{background:rgba(37,211,102,0.2)}
+.pf-em-btn{background:rgba(204,255,0,0.08);border:1px solid rgba(204,255,0,0.2);color:#CCFF00}
+.pf-em-btn:hover{background:rgba(204,255,0,0.14)}
+
+.pf-footer{
+  padding:1.25rem 2rem;border-top:1px solid #222222;
+  display:flex;align-items:center;justify-content:space-between;gap:1rem;
+  background:#111111;position:sticky;bottom:0;z-index:10;
+}
+.pf-step-counter{font-family:'Orbitron',sans-serif;font-size:0.65rem;color:#555;letter-spacing:0.1em}
+.pf-footer-right{display:flex;gap:0.75rem;align-items:center}
+.pf-btn-back{background:transparent;border:1px solid #2a2a2a;color:#9CA3AF;padding:0.75rem 1.5rem;font-family:'Orbitron',sans-serif;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;cursor:pointer;border-radius:0;transition:all 0.2s}
+.pf-btn-back:hover{border-color:#9CA3AF;color:white}
+.pf-btn-next{background:#CCFF00;color:#0A0A0A;border:none;padding:0.75rem 2rem;font-family:'Orbitron',sans-serif;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;cursor:pointer;border-radius:0;transition:all 0.2s;display:flex;align-items:center;gap:6px;min-width:140px;justify-content:center}
+.pf-btn-next:hover{background:#b8e600;transform:translateX(2px)}
+.pf-btn-next:disabled{opacity:0.4;cursor:not-allowed;transform:none}
+
+@media(max-width:640px){
+  .pf-form-row{grid-template-columns:1fr}
+  .pf-service-grid{grid-template-columns:1fr}
+  .pf-timeline-opts{grid-template-columns:1fr 1fr}
+  .pf-header{padding:1.5rem 1.25rem 1rem}
+  .pf-steps-container{padding:1.5rem 1.25rem}
+  .pf-footer{padding:1rem 1.25rem}
+  .pf-progress-wrap{padding:1rem 1.25rem}
+  .pf-title{font-size:1rem}
+  .pf-step-label{display:none}
+}
+
+/* ══ Xoos AI Chatbot Widget ══ */
+
+#xdWidget {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 49;
+}
+
+#xdChatBtn {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0d0d0d, #1a1a1a);
+  border: 1.5px solid rgba(204,255,0,0.4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: transform 0.3s, box-shadow 0.3s;
+  box-shadow:
+    0 4px 20px rgba(0,0,0,0.5),
+    0 0 0 0 rgba(204,255,0,0.3);
+  animation: xdBtnIdlePulse 3s ease-in-out infinite;
+}
+
+@keyframes xdBtnIdlePulse {
+  0%   {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5),
+                0 0 0 0 rgba(204,255,0,0.4);
+    border-color: rgba(204,255,0,0.35);
+  }
+  50%  {
+    box-shadow: 0 6px 28px rgba(0,0,0,0.6),
+                0 0 0 8px rgba(204,255,0,0.08);
+    border-color: rgba(204,255,0,0.7);
+  }
+  100% {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5),
+                0 0 0 0 rgba(204,255,0,0.0);
+    border-color: rgba(204,255,0,0.35);
+  }
+}
+
+#xdChatBtn .xd-ripple {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(204,255,0,0.25);
+  animation: xdRippleExpand 3s ease-out infinite;
+  pointer-events: none;
+}
+#xdChatBtn .xd-ripple-2 {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1px solid rgba(204,255,0,0.12);
+  animation: xdRippleExpand 3s ease-out infinite 1s;
+  pointer-events: none;
+}
+@keyframes xdRippleExpand {
+  0%   { transform: scale(1);    opacity: 0.8; }
+  70%  { transform: scale(1.5);  opacity: 0.1; }
+  100% { transform: scale(1.6);  opacity: 0;   }
+}
+
+#xdChatBtn .xd-btn-icon {
+  animation: xdIconFloat 2.5s ease-in-out infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+@keyframes xdIconFloat {
+  0%,100% { transform: translateY(0)   rotate(0deg);   }
+  25%      { transform: translateY(-3px) rotate(-5deg); }
+  75%      { transform: translateY(2px)  rotate(3deg);  }
+}
+
+#xdChatBtn:hover {
+  animation: none;
+  transform: scale(1.12);
+  border-color: #CCFF00;
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.6),
+    0 0 24px rgba(204,255,0,0.2),
+    0 0 0 0 rgba(204,255,0,0);
+}
+#xdChatBtn:hover .xd-ripple,
+#xdChatBtn:hover .xd-ripple-2 {
+  animation: none;
+  opacity: 0;
+}
+#xdChatBtn:hover .xd-btn-icon {
+  animation: none;
+  transform: scale(1.1);
+}
+
+#xdChatBtn.xd-is-open {
+  animation: none;
+  border-color: rgba(204,255,0,0.5);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+#xdChatBtn.xd-is-open .xd-ripple,
+#xdChatBtn.xd-is-open .xd-ripple-2 {
+  display: none;
+}
+#xdChatBtn.xd-is-open .xd-btn-icon {
+  animation: none;
+}
+
+.xd-bubble {
+  position: absolute;
+  bottom: 70px;
+  right: 0;
+  background: #1a1a1a;
+  border: 1px solid rgba(204,255,0,0.3);
+  border-radius: 1rem 1rem 0.25rem 1rem;
+  padding: 0.625rem 1rem;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0;
+  transform: translateY(8px) scale(0.92);
+  transform-origin: bottom right;
+  transition: opacity 0.4s cubic-bezier(0.16,1,0.3,1),
+              transform 0.4s cubic-bezier(0.16,1,0.3,1);
+}
+.xd-bubble.xd-bubble-show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+.xd-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -7px;
+  right: 18px;
+  width: 0; height: 0;
+  border-left:  7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top:   7px solid rgba(204,255,0,0.3);
+}
+.xd-bubble::before {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  right: 19px;
+  width: 0; height: 0;
+  border-left:  6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top:   6px solid #1a1a1a;
+  z-index: 1;
+}
+#xdBubbleText {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: white;
+  line-height: 1;
+  display: inline-block;
+  animation: none;
+}
+.xd-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 14px;
+  background: #CCFF00;
+  margin-left: 2px;
+  animation: xdCursorBlink 0.7s step-end infinite;
+  vertical-align: middle;
+}
+@keyframes xdCursorBlink {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.xd-bubble-glow {
+  position: absolute;
+  top: 0; left: 15%; right: 15%;
+  height: 1.5px;
+  border-radius: 999px;
+  background: linear-gradient(90deg,
+    transparent, rgba(204,255,0,0.5), transparent);
+}
+#xdChatBtn.xd-is-open ~ #xdBubble,
+.xd-bubble-hidden {
+  opacity: 0 !important;
+  pointer-events: none;
+  transform: translateY(8px) scale(0.92) !important;
+}
+@media (max-width: 640px) {
+  .xd-bubble {
+    bottom: 66px;
+    white-space: nowrap;
+  }
+  #xdBubbleText { font-size: 0.72rem; }
+}
+
+#xdChatWindow {
+  position: absolute;
+  bottom: 68px; right: 0;
+  width: 340px;
+  border-radius: 1.25rem;
+  background: #111111;
+  border: 1px solid #222222;
+  overflow: hidden;
+  transform: scale(0.85) translateY(10px);
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: bottom right;
+}
+#xdChatWindow::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, #CCFF00, transparent);
+}
+#xdChatWindow.xd-open {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+  pointer-events: all;
+}
+
+.xd-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #1e1e1e;
+  display: flex; align-items: center; gap: 10px;
+  background: #111111;
+}
+.xd-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(204,255,0,0.1);
+  border: 1.5px solid rgba(204,255,0,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.65rem; font-weight: 700; color: #CCFF00;
+  flex-shrink: 0;
+}
+.xd-header-info { flex: 1; min-width: 0; }
+.xd-header-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.75rem; font-weight: 700; color: white;
+}
+.xd-header-status {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 0.63rem; color: #9CA3AF; margin-top: 2px;
+}
+.xd-status-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: #22c55e; flex-shrink: 0;
+  animation: xdStatusPulse 2s ease-in-out infinite;
+}
+@keyframes xdStatusPulse {
+  0%,100% { opacity:1; } 50% { opacity:0.4; }
+}
+.xd-clear-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 0.65rem; color: #555;
+  font-family: 'Inter', sans-serif;
+  transition: color 0.2s; padding: 4px;
+}
+.xd-clear-btn:hover { color: #CCFF00; }
+
+#xdMessages {
+  height: 300px; overflow-y: auto;
+  padding: 1rem;
+  display: flex; flex-direction: column; gap: 0.75rem;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: #222 transparent;
+}
+#xdMessages::-webkit-scrollbar { width: 3px; }
+#xdMessages::-webkit-scrollbar-thumb { background: #222; border-radius: 999px; }
+
+.xd-msg-user {
+  align-self: flex-end;
+  background: rgba(204,255,0,0.1);
+  border: 1px solid rgba(204,255,0,0.2);
+  border-radius: 1rem 1rem 0.25rem 1rem;
+  padding: 0.625rem 0.875rem;
+  max-width: 80%;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.82rem; color: white; line-height: 1.5;
+}
+.xd-msg-bot {
+  align-self: flex-start;
+  background: #1a1a1a;
+  border: 1px solid #222;
+  border-radius: 0.25rem 1rem 1rem 1rem;
+  padding: 0.625rem 0.875rem;
+  max-width: 85%;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.82rem; color: #e5e7eb; line-height: 1.65;
+}
+
+.xd-typing {
+  align-self: flex-start;
+  background: #1a1a1a;
+  border: 1px solid #222;
+  border-radius: 0.25rem 1rem 1rem 1rem;
+  padding: 0.75rem 1rem;
+  display: flex; gap: 4px; align-items: center;
+}
+.xd-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #555; display: inline-block;
+  animation: xdDotBounce 1.2s infinite;
+}
+.xd-dot:nth-child(2) { animation-delay: 0.2s; }
+.xd-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes xdDotBounce {
+  0%,60%,100% { transform: translateY(0); background: #555; }
+  30% { transform: translateY(-6px); background: #CCFF00; }
+}
+
+#xdQuickReplies {
+  padding: 0 1rem 0.875rem;
+  display: flex; flex-wrap: wrap; gap: 0.5rem;
+}
+.xd-qr {
+  background: #181818;
+  border: 1px solid #2a2a2a;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.7rem; color: #9CA3AF;
+  cursor: pointer; transition: all 0.2s;
+  white-space: nowrap;
+}
+.xd-qr:hover {
+  border-color: #CCFF00; color: #CCFF00;
+  background: rgba(204,255,0,0.05);
+}
+
+.xd-input-area {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid #1e1e1e;
+  display: flex; gap: 0.5rem; align-items: flex-end;
+  background: #111111;
+}
+.xd-textarea {
+  flex: 1;
+  background: #181818;
+  border: 1px solid #2a2a2a;
+  border-radius: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  color: white;
+  font-family: 'Inter', sans-serif; font-size: 0.82rem;
+  outline: none; resize: none;
+  min-height: 38px; max-height: 100px;
+  line-height: 1.5; overflow-y: auto;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.xd-textarea::placeholder { color: #444; }
+.xd-textarea:focus {
+  border-color: rgba(204,255,0,0.4);
+  box-shadow: 0 0 0 2px rgba(204,255,0,0.06);
+}
+.xd-send-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: #CCFF00; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s; flex-shrink: 0;
+}
+.xd-send-btn:hover { background: #b8e600; transform: scale(1.1); }
+.xd-send-btn:disabled {
+  background: #2a2a2a; cursor: not-allowed; transform: none;
+}
+.xd-send-btn:disabled svg { stroke: #555; }
+
+.xd-powered {
+  padding: 0.5rem 1rem;
+  border-top: 1px solid #1a1a1a;
+  text-align: center;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.6rem; color: #333;
+}
+
+@media (max-width: 640px) {
+  #xdChatWindow {
+    width: calc(100vw - 2rem);
+    max-width: 320px;
+  }
+  #xdMessages { height: 260px; }
+  #xdWidget { bottom: 1rem; right: 1rem; }
+}
+</style>
+</head>
+
+<body class="overflow-safe">
+
+  <!-- TOP BAR -->
+  <div class="top-bar"></div>
+
+  <!-- CUSTOM CURSOR -->
+  <div class="cursor-dot" id="cursorDot"></div>
+  <div class="cursor-ring" id="cursorRing"></div>
+
+  <!-- NOISE OVERLAY (disabled for performance) -->
+  <!-- <svg class="noise-overlay" xmlns="http://www.w3.org/2000/svg">
+    <filter id="noise">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
+    </filter>
+    <rect width="100%" height="100%" filter="url(#noise)" opacity="0.5" />
+  </svg> -->
+
+  <!-- LIGHTBOX -->
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close" id="lightboxClose">✕</button>
+    <div class="lightbox-content">
+      <img id="lightboxImg" src="" alt="">
+      <div class="lightbox-badge" id="lightboxCategory"></div>
+      <div class="lightbox-title" id="lightboxTitle"></div>
+      <div class="lightbox-desc" id="lightboxDesc"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       NAVBAR
+  ══════════════════════════════════════════ -->
+  <nav class="navbar overflow-safe" id="navbar">
+    <div class="navbar-inner">
+      <!-- Logo -->
+      <a href="#" class="flex items-center">
+        <img src="images/logo.png" alt="Xoos Digital" class="footer-logo m-0" loading="eager" width="119" height="36">
+      </a>
+      <!-- Desktop Nav Links (centered) -->
+      <div class="desktop-only flex items-center gap-8 mx-auto">
+        <a href="#about" class="nav-link">About Us</a>
+        <a href="#services" class="nav-link">Services</a>
+        <a href="#portfolio" class="nav-link">Portfolio</a>
+        <a href="#blog" class="nav-link">Blog</a>
+      </div>
+      <!-- Desktop Right -->
+      <div class="desktop-only flex items-center gap-4">
+        <a href="#" onclick="event.preventDefault();openProjectForm()" class="nav-cta" data-magnetic>LET'S BUILD TOGETHER</a>
+      </div>
+      <!-- Mobile Hamburger -->
+      <button class="hamburger mobile-only" id="hamburger" aria-label="Open menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- MOBILE NAV OVERLAY -->
+  <div class="mobile-nav-overlay" id="mobileNavOverlay"></div>
+  <div class="mobile-nav" id="mobileNav">
+    <button class="mobile-nav-close" id="mobileNavClose" aria-label="Close menu">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <line x1="18" y1="6" x2="6" y2="18"/>
+        <line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+    <div class="mobile-nav-logo">
+      <img src="images/logo.png" alt="Xoos Digital" loading="lazy">
+    </div>
+    <div class="mobile-nav-links">
+      <a href="#" class="mobile-nav-link" data-delay="0">Home</a>
+      <a href="#about" class="mobile-nav-link" data-delay="1">About Us</a>
+      <a href="#services" class="mobile-nav-link" data-delay="2">Services</a>
+      <a href="#portfolio" class="mobile-nav-link" data-delay="3">Portfolio</a>
+      <a href="#pricing" class="mobile-nav-link" data-delay="4">Pricing</a>
+      <a href="#faq" class="mobile-nav-link" data-delay="5">FAQ</a>
+      <a href="#blog" class="mobile-nav-link" data-delay="6">Blog</a>
+    </div>
+    <a href="#" onclick="event.preventDefault();openProjectForm()" class="mobile-nav-cta">Get a Free Quote</a>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SECTION 2 — HERO
+  ══════════════════════════════════════════ -->
+  <section class="hero-section has-corners overflow-safe" id="home">
+    <!-- Corner bracket markers -->
+    <div class="corner-tl"></div>
+    <div class="corner-tr"></div>
+    <div class="corner-bl"></div>
+    <div class="corner-br"></div>
+    <!-- Animated rays container -->
+    <div class="hero-rays" id="heroRays"></div>
+    <!-- Center glow -->
+    <div class="hero-glow"></div>
+    <!-- Corner bracket -->
+    <div class="hero-corner"></div>
+
+    <!-- Spinning badge -->
+    <a href="#" onclick="event.preventDefault();openProjectForm()" class="hero-badge hero-badge-pos">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A"
+        stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="7" y1="17" x2="17" y2="7" />
+        <polyline points="7 7 17 7 17 17" />
+      </svg>
+      <span>Get<br>Started</span>
+    </a>
+
+    <!-- Hero content -->
+    <div class="hero-content hero-content-wrap">
+      <img src="images/logo.png" alt="Xoos Digital" class="hero-logo" loading="eager" width="240" height="73">
+      <p class="hero-tagline"><span class="accent-sq">◼</span> e<span class="highlight">X</span>cellence | <span
+          class="highlight">O</span>pportunity | <span class="highlight">O</span>utcome | <span
+          class="highlight">S</span>uccess <span class="accent-sq">◼</span></p>
+    </div>
+
+    <!-- Ticker tape -->
+    <div class="hero-ticker">
+      <div class="ticker-inner">
+        <span class="ticker-text">✳ CREATIVE BRANDING & GRAPHIC DESIGN</span>
+        <span class="ticker-text">✳ CUSTOM WORDPRESS WEBSITE DEVELOPMENT</span>
+        <span class="ticker-text">✳ PERFORMANCE-DRIVEN DIGITAL MARKETING</span>
+        <span class="ticker-text">✳ SEO & ORGANIC GROWTH</span>
+        <span class="ticker-text">✳ RESULT-ORIENTED VIDEO PRODUCTION</span>
+        <span class="ticker-text">✳ CREATIVE BRANDING & GRAPHIC DESIGN</span>
+        <span class="ticker-text">✳ CUSTOM WORDPRESS WEBSITE DEVELOPMENT</span>
+        <span class="ticker-text">✳ PERFORMANCE-DRIVEN DIGITAL MARKETING</span>
+        <span class="ticker-text">✳ SEO & ORGANIC GROWTH</span>
+        <span class="ticker-text">✳ RESULT-ORIENTED VIDEO PRODUCTION</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       SECTION 3 — FOUNDER / ABOUT
+  ══════════════════════════════════════════ -->
+  <section id="about" class="about-section overflow-safe">
+    <div class="section-container">
+      <div class="founder-grid">
+        <!-- Left: Photo -->
+        <div class="founder-img-wrap" data-animate="slide-left">
+          <img src="images/founder-photo-Raihan-1.jpg" alt="Raihan Islam — Founder, Xoos Digital" loading="lazy">
+          <div class="founder-img-glow"></div>
+        </div>
+        <!-- Right: Content -->
+        <div class="founder-content" data-animate="slide-right">
+          <div class="brands-pill">
+            <span class="brands-pill-dot"></span>
+            <span class="brands-pill-text">FOUNDER & DIGITAL GROWTH STRATEGIST</span>
+          </div>
+          <h2 class="founder-headline">CRAFTING DIGITAL EXPERIENCES WITH STRATEGY AND CREATIVITY</h2>
+          <p class="founder-body">
+            I'm Raihan Islam, the Founder & Digital Growth Strategist at Xoos
+            Digital. With over 4 years of experience in design, development, and digital
+            marketing, I help businesses build strong online identities and achieve measurable growth. My
+            focus is on combining creative design, modern technology, and strategic
+            marketing to deliver impactful digital solutions for brands worldwide.
+          </p>
+          <!-- Skill Bars -->
+          <div class="skill-item skill-item-first" data-animate>
+            <div class="skill-label-row">
+              <span>CREATIVE BRANDING & GRAPHIC DESIGN</span>
+              <span>95%</span>
+            </div>
+            <div class="skill-track">
+              <div class="skill-fill" data-width="95"></div>
+            </div>
+          </div>
+          <div class="skill-item" data-animate>
+            <div class="skill-label-row">
+              <span>CUSTOM WORDPRESS DEVELOPMENT</span>
+              <span>97%</span>
+            </div>
+            <div class="skill-track">
+              <div class="skill-fill" data-width="97"></div>
+            </div>
+          </div>
+          <a href="https://ri.xoosdigital.com/" class="founder-cta" target="_blank" rel="noopener noreferrer">
+            LEARN MORE ABOUT ME
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12" />
+              <polyline points="12 5 19 12 12 19" />
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       SECTION 4 — STATS BAR
+  ══════════════════════════════════════════ -->
+  <section id="stats" class="stats-bar overflow-safe">
+    <div class="stats-grid">
+      <div class="stat-item" data-animate>
+        <div class="stat-number"><span data-count="50" data-suffix="+">0</span></div>
+        <div class="stat-label">BRANDS DESIGNED</div>
+      </div>
+      <div class="stat-item" data-animate>
+        <div class="stat-number"><span data-count="30" data-suffix="+">0</span></div>
+        <div class="stat-label">WEBSITES LAUNCHED</div>
+      </div>
+      <div class="stat-item" data-animate>
+        <div class="stat-number"><span data-count="80" data-suffix="+">0</span></div>
+        <div class="stat-label">CLIENTS SERVED</div>
+      </div>
+      <div class="stat-item" data-animate>
+        <div class="stat-number"><span data-count="4" data-suffix="+">0</span></div>
+        <div class="stat-label">YEARS EXPERIENCE</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       SECTION 5 — PROCESS / HOW WE WORK
+  ══════════════════════════════════════════ -->
+  <section id="process" class="process-section overflow-safe">
+    <div class="process-header" data-animate>
+      <div class="t-label-pill">
+        <span class="t-label-dot"></span>
+        <span class="t-label-text">OUR PROCESS</span>
+      </div>
+      <h2 class="process-headline">YOUR VISION<br><span class="brand-line">INTO REALITY</span></h2>
+      <p class="process-sub">A clear, collaborative process — so you always know what's happening and what comes next.
+      </p>
+    </div>
+
+    <div class="process-timeline">
+
+      <!-- Step 01 — left -->
+      <div class="process-step process-step-left">
+        <div class="process-card">
+          <div class="process-time">Within 24 hours</div>
+          <h3 class="process-title">DISCOVERY & BRIEFING</h3>
+          <p class="process-desc">We start with a deep dive into your brand, goals, target audience, and competition. A
+            detailed brief ensures we're aligned from day one — no guesswork, no surprises.</p>
+          <ul class="process-list">
+            <li>✓ Brand discovery call</li>
+            <li>✓ Competitor analysis</li>
+            <li>✓ Goal setting & KPIs</li>
+          </ul>
+        </div>
+        <div class="process-node">01</div>
+      </div>
+
+      <!-- Step 02 — right -->
+      <div class="process-step process-step-right">
+        <div class="process-card">
+          <div class="process-time">Days 2-3</div>
+          <h3 class="process-title">STRATEGY & PLANNING</h3>
+          <p class="process-desc">We build a tailored strategy — design direction, content plan, technical roadmap, or
+            marketing blueprint depending on your service. You approve before we build a single pixel.</p>
+          <ul class="process-list">
+            <li>✓ Creative direction deck</li>
+            <li>✓ Project timeline</li>
+            <li>✓ Milestone sign-off</li>
+          </ul>
+        </div>
+        <div class="process-node">02</div>
+      </div>
+
+      <!-- Step 03 — left -->
+      <div class="process-step process-step-left">
+        <div class="process-card">
+          <div class="process-time">Days 4-14</div>
+          <h3 class="process-title">DESIGN, BUILD & PRODUCE</h3>
+          <p class="process-desc">This is where the magic happens. Our team executes with precision — whether that's
+            crafting a brand identity, building a WordPress site, or producing a campaign. Regular updates keep you in
+            the loop.</p>
+          <ul class="process-list">
+            <li>✓ Design iterations</li>
+            <li>✓ 2-3 revision rounds</li>
+            <li>✓ Progress check-ins</li>
+          </ul>
+        </div>
+        <div class="process-node">03</div>
+      </div>
+
+      <!-- Step 04 — right -->
+      <div class="process-step process-step-right">
+        <div class="process-card">
+          <div class="process-time">Day 14-21</div>
+          <h3 class="process-title">LAUNCH & GROW</h3>
+          <p class="process-desc">We deliver, launch, and don't disappear. Post-launch support, performance tracking,
+            and growth optimization are part of how we work. Your success is our reputation.</p>
+          <ul class="process-list">
+            <li>✓ Final delivery & handover</li>
+            <li>✓ Performance tracking setup</li>
+            <li>✓ 30-day post-launch support</li>
+          </ul>
+        </div>
+        <div class="process-node">04</div>
+      </div>
+
+    </div>
+
+    <div class="process-cta">
+      <p>Ready to start your project?</p>
+      <a href="#" onclick="event.preventDefault();openProjectForm()" class="process-cta-btn">START THE PROCESS →</a>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       SECTION 6 — BRANDS WE WORK WITH
+  ══════════════════════════════════════════ -->
+  <section id="brands" class="brands-section overflow-safe" data-animate>
+
+    <!-- Atmospheric background gradient -->
+    <div class="brands-atmos-bg"></div>
+
+    <!-- Top edge glow -->
+    <div class="brands-edge-top"></div>
+
+    <!-- Bottom edge glow -->
+    <div class="brands-edge-bottom"></div>
+
+    <!--═══ HEADER ═══-->
+    <div class="brands-glass-header">
+
+      <!-- Label pill -->
+      <div class="brands-pill">
+        <span class="brands-pill-dot"></span>
+        <span class="brands-pill-text">BRANDS WE WORK WITH</span>
+      </div>
+
+      <!-- Headline -->
+      <h2 class="brands-glass-headline">
+        TRUSTED BY
+        <span class="brands-headline-outline">GROWING BRANDS</span>
+      </h2>
+
+      <p class="brands-glass-sub">From Dhaka startups to international businesses — brands that chose to grow with Xoos
+        Digital.</p>
+
+    </div>
+
+    <!--═══ CAROUSEL ═══-->
+    <div class="brands-carousel-outer">
+
+      <!-- Track: cards injected by JS -->
+      <div class="brands-carousel-track" id="brandsTrack"></div>
+
+    </div>
+
+    <!--═══ NAVIGATION ═══-->
+    <div class="brands-nav" id="brandsNav">
+
+      <button class="brands-arrow" id="brandsPrev" aria-label="Previous brand">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round">
+          <path d="M19 12H5M12 5l-7 7 7 7" />
+        </svg>
+      </button>
+
+      <div class="brands-dots" id="brandsDots"></div>
+
+      <button class="brands-arrow" id="brandsNext" aria-label="Next brand">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round">
+          <path d="M5 12h14M12 5l7 7-7 7" />
+        </svg>
+      </button>
+
+    </div>
+
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       SECTION 7 — SERVICES (Expanding Accordion)
+   ══════════════════════════════════════════ -->
+  <section id="services" class="svc-section overflow-safe" data-animate>
+    <div class="svc-bg-glow"></div>
+    <div class="container-xl">
+
+      <!-- Two-column header -->
+      <div class="svc-header-grid">
+        <div>
+          <div class="brands-pill">
+            <span class="brands-pill-dot"></span>
+            <span class="brands-pill-text">EXCELLENCE IN EVERY PIXEL</span>
+          </div>
+          <h2 class="svc-header-title">
+            INNOVATIVE<br>
+            SERVICES FOR<br>
+            <span class="svc-header-title-accent">MODERN BRANDS</span>
+          </h2>
+        </div>
+        <div class="svc-header-sub-col">
+          <p class="svc-header-sub">From brand identity to digital growth — every service designed to move the needle
+            for your business.</p>
+          <a href="#" onclick="event.preventDefault();openProjectForm()" class="svc-header-link">DISCUSS YOUR PROJECT →</a>
+        </div>
+      </div>
+
+      <!-- Accordion List -->
+      <div class="svc-list">
+
+        <!-- Service 01: Branding -->
+        <div class="svc-item" data-index="0">
+          <div class="svc-trigger">
+            <div class="svc-left">
+              <span class="svc-num">01</span>
+              <h3 class="svc-title">BRANDING IDENTITY</h3>
+            </div>
+            <div class="svc-tags-row">
+              <span class="svc-tag">#BrandIdentityDesign</span>
+              <span class="svc-tag">#LogoAndBranding</span>
+              <span class="svc-tag">#VisualIdentity</span>
+              <span class="svc-tag">#BrandStrategy</span>
+            </div>
+            <div class="svc-right">
+              <div class="svc-icon-circle"><img src="images/Icons/service3.svg" alt="" loading="lazy"></div>
+              <div class="svc-expand-btn"><svg class="svc-plus-icon" width="14" height="14" viewBox="0 0 14 14"
+                  fill="none">
+                  <line x1="7" y1="0" x2="7" y2="14" stroke="currentColor" stroke-width="2" />
+                  <line x1="0" y1="7" x2="14" y2="7" stroke="currentColor" stroke-width="2" />
+                </svg></div>
+            </div>
+          </div>
+          <div class="svc-body">
+            <div class="svc-body-inner">
+              <div class="svc-desc-col">
+                <p class="svc-desc">Strategic brand identity that makes your business unforgettable. We build the visual
+                  foundation your brand needs — logo, color system, typography, and guidelines that scale across every
+                  touchpoint from business cards to billboards.</p>
+                <ul class="svc-features">
+                  <li>Logo Design (3 unique concepts)</li>
+                  <li>Brand Color Palette & Typography</li>
+                  <li>Brand Guidelines Document</li>
+                  <li>Business Card & Stationery</li>
+                  <li>Social Media Profile Kit</li>
+                  <li>Delivered in 5–7 business days</li>
+                </ul>
+                <div class="svc-action-row">
+                  <div class="svc-price"><span class="svc-price-from">Starting from</span><span
+                      class="svc-price-amount">$299</span></div>
+                  <a href="#" onclick="event.preventDefault();openProjectForm()" class="svc-cta-btn">START THIS PROJECT →</a>
+                </div>
+              </div>
+              <div class="svc-visual-panel desktop-only">
+                <div>
+                  <div class="panel-icon"><img src="images/Icons/service3.svg" alt="" loading="lazy"></div>
+                  <div class="panel-stat">50+</div>
+                  <div class="panel-stat-label">Brands Designed</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Service 02: WordPress -->
+        <div class="svc-item" data-index="1">
+          <div class="svc-trigger">
+            <div class="svc-left">
+              <span class="svc-num">02</span>
+              <h3 class="svc-title">WORDPRESS & E-COMMERCE</h3>
+            </div>
+            <div class="svc-tags-row">
+              <span class="svc-tag">#CustomWordPress</span>
+              <span class="svc-tag">#WooCommerce</span>
+              <span class="svc-tag">#EcommerceExperts</span>
+              <span class="svc-tag">#WebDevelopment</span>
+            </div>
+            <div class="svc-right">
+              <div class="svc-icon-circle"><img src="images/Icons/service1.svg" alt="" loading="lazy"></div>
+              <div class="svc-expand-btn"><svg class="svc-plus-icon" width="14" height="14" viewBox="0 0 14 14"
+                  fill="none">
+                  <line x1="7" y1="0" x2="7" y2="14" stroke="currentColor" stroke-width="2" />
+                  <line x1="0" y1="7" x2="14" y2="7" stroke="currentColor" stroke-width="2" />
+                </svg></div>
+            </div>
+          </div>
+          <div class="svc-body">
+            <div class="svc-body-inner">
+              <div class="svc-desc-col">
+                <p class="svc-desc">Custom WordPress websites and WooCommerce stores built for performance, conversion,
+                  and growth. Mobile-first, blazing fast, and designed to turn visitors into customers — not just look
+                  pretty.</p>
+                <ul class="svc-features">
+                  <li>Custom WordPress Theme Design</li>
+                  <li>WooCommerce Store Setup</li>
+                  <li>Mobile-Responsive Development</li>
+                  <li>SEO Foundation & Speed Optimization</li>
+                  <li>Payment Gateway Integration</li>
+                  <li>Delivered in 2–4 weeks</li>
+                </ul>
+                <div class="svc-action-row">
+                  <div class="svc-price"><span class="svc-price-from">Starting from</span><span
+                      class="svc-price-amount">$499</span></div>
+                  <a href="#" onclick="event.preventDefault();openProjectForm()" class="svc-cta-btn">START THIS PROJECT →</a>
+                </div>
+              </div>
+              <div class="svc-visual-panel desktop-only">
+                <div>
+                  <div class="panel-icon"><img src="images/Icons/service1.svg" alt="" loading="lazy"></div>
+                  <div class="panel-stat">30+</div>
+                  <div class="panel-stat-label">Websites Launched</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Service 03: Digital Marketing -->
+        <div class="svc-item" data-index="2">
+          <div class="svc-trigger">
+            <div class="svc-left">
+              <span class="svc-num">03</span>
+              <h3 class="svc-title">DIGITAL MARKETING</h3>
+            </div>
+            <div class="svc-tags-row">
+              <span class="svc-tag">#SocialMediaMarketing</span>
+              <span class="svc-tag">#PPCCampaigns</span>
+              <span class="svc-tag">#ContentStrategy</span>
+              <span class="svc-tag">#GrowthMarketing</span>
+            </div>
+            <div class="svc-right">
+              <div class="svc-icon-circle"><img src="images/Icons/service2.svg" alt="" loading="lazy"></div>
+              <div class="svc-expand-btn"><svg class="svc-plus-icon" width="14" height="14" viewBox="0 0 14 14"
+                  fill="none">
+                  <line x1="7" y1="0" x2="7" y2="14" stroke="currentColor" stroke-width="2" />
+                  <line x1="0" y1="7" x2="14" y2="7" stroke="currentColor" stroke-width="2" />
+                </svg></div>
+            </div>
+          </div>
+          <div class="svc-body">
+            <div class="svc-body-inner">
+              <div class="svc-desc-col">
+                <p class="svc-desc">Data-driven marketing campaigns that connect you with the right audience at the
+                  right time. From Facebook and Instagram ads to Google PPC — every campaign is tied to KPIs that
+                  actually matter to your business.</p>
+                <ul class="svc-features">
+                  <li>Social Media Strategy & Management</li>
+                  <li>Facebook & Instagram Ad Campaigns</li>
+                  <li>Google Ads (Search & Display)</li>
+                  <li>Content Creation & Copywriting</li>
+                  <li>Monthly Performance Reports</li>
+                  <li>A/B Testing & Optimization</li>
+                </ul>
+                <div class="svc-action-row">
+                  <div class="svc-price"><span class="svc-price-from">Starting from</span><span
+                      class="svc-price-amount">$399/mo</span></div>
+                  <a href="#" onclick="event.preventDefault();openProjectForm()" class="svc-cta-btn">START THIS PROJECT →</a>
+                </div>
+              </div>
+              <div class="svc-visual-panel desktop-only">
+                <div>
+                  <div class="panel-icon"><img src="images/Icons/service2.svg" alt="" loading="lazy"></div>
+                  <div class="panel-stat">4×</div>
+                  <div class="panel-stat-label">Average ROI Delivered</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Service 04: SEO -->
+        <div class="svc-item" data-index="3">
+          <div class="svc-trigger">
+            <div class="svc-left">
+              <span class="svc-num">04</span>
+              <h3 class="svc-title">SEO & ORGANIC GROWTH</h3>
+            </div>
+            <div class="svc-tags-row">
+              <span class="svc-tag">#TechnicalSEO</span>
+              <span class="svc-tag">#KeywordResearch</span>
+              <span class="svc-tag">#OrganicGrowth</span>
+              <span class="svc-tag">#SearchRankings</span>
+            </div>
+            <div class="svc-right">
+              <div class="svc-icon-circle"><img src="images/Icons/service4.svg" alt="" loading="lazy"></div>
+              <div class="svc-expand-btn"><svg class="svc-plus-icon" width="14" height="14" viewBox="0 0 14 14"
+                  fill="none">
+                  <line x1="7" y1="0" x2="7" y2="14" stroke="currentColor" stroke-width="2" />
+                  <line x1="0" y1="7" x2="14" y2="7" stroke="currentColor" stroke-width="2" />
+                </svg></div>
+            </div>
+          </div>
+          <div class="svc-body">
+            <div class="svc-body-inner">
+              <div class="svc-desc-col">
+                <p class="svc-desc">Long-term organic growth that compounds over time. Our SEO strategy combines
+                  technical optimization, content planning, and link building to move your business up the rankings and
+                  keep it there — driving free traffic month after month.</p>
+                <ul class="svc-features">
+                  <li>Technical SEO Audit & Fixes</li>
+                  <li>Keyword Research & Strategy</li>
+                  <li>On-Page Optimization</li>
+                  <li>Content SEO Planning</li>
+                  <li>Google Search Console Setup</li>
+                  <li>Monthly Ranking Reports</li>
+                </ul>
+                <div class="svc-action-row">
+                  <div class="svc-price"><span class="svc-price-from">Starting from</span><span
+                      class="svc-price-amount">$349/mo</span></div>
+                  <a href="#" onclick="event.preventDefault();openProjectForm()" class="svc-cta-btn">START THIS PROJECT →</a>
+                </div>
+              </div>
+              <div class="svc-visual-panel desktop-only">
+                <div>
+                  <div class="panel-icon"><img src="images/Icons/service4.svg" alt="" loading="lazy"></div>
+                  <div class="panel-stat">280%</div>
+                  <div class="panel-stat-label">Avg Traffic Increase</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Service 05: Video -->
+        <div class="svc-item" data-index="4">
+          <div class="svc-trigger">
+            <div class="svc-left">
+              <span class="svc-num">05</span>
+              <h3 class="svc-title">VIDEO PRODUCTION</h3>
+            </div>
+            <div class="svc-tags-row">
+              <span class="svc-tag">#BrandFilms</span>
+              <span class="svc-tag">#MotionGraphics</span>
+              <span class="svc-tag">#SocialContent</span>
+              <span class="svc-tag">#VideoStrategy</span>
+            </div>
+            <div class="svc-right">
+              <div class="svc-icon-circle"><img src="images/Icons/bars-icons1.svg" alt="" loading="lazy"></div>
+              <div class="svc-expand-btn"><svg class="svc-plus-icon" width="14" height="14" viewBox="0 0 14 14"
+                  fill="none">
+                  <line x1="7" y1="0" x2="7" y2="14" stroke="currentColor" stroke-width="2" />
+                  <line x1="0" y1="7" x2="14" y2="7" stroke="currentColor" stroke-width="2" />
+                </svg></div>
+            </div>
+          </div>
+          <div class="svc-body">
+            <div class="svc-body-inner">
+              <div class="svc-desc-col">
+                <p class="svc-desc">Video content that stops the scroll and tells your brand story in a way that text
+                  and images never can. From cinematic brand films to social media reels and motion graphics — we make
+                  your brand move.</p>
+                <ul class="svc-features">
+                  <li>Brand Film & Corporate Video</li>
+                  <li>Social Media Reels (10 videos)</li>
+                  <li>Motion Graphics & Animation</li>
+                  <li>Script & Storyboard Development</li>
+                  <li>Professional Editing & Color Grade</li>
+                  <li>Delivered in 1–2 weeks</li>
+                </ul>
+                <div class="svc-action-row">
+                  <div class="svc-price"><span class="svc-price-from">Starting from</span><span
+                      class="svc-price-amount">$599</span></div>
+                  <a href="#" onclick="event.preventDefault();openProjectForm()" class="svc-cta-btn">START THIS PROJECT →</a>
+                </div>
+              </div>
+              <div class="svc-visual-panel desktop-only">
+                <div>
+                  <div class="panel-icon"><img src="images/Icons/bars-icons1.svg" alt="" loading="lazy"></div>
+                  <div class="panel-stat">2M+</div>
+                  <div class="panel-stat-label">Views Generated</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       SECTION 8 — PORTFOLIO (Bento Grid)
+  ══════════════════════════════════════════ -->
+  <section id="portfolio" class="p-section overflow-safe" data-animate>
+    <div class="container-xl">
+
+      <div class="brands-pill">
+        <span class="brands-pill-dot"></span>
+        <span class="brands-pill-text">OUR LATEST PROJECTS</span>
+      </div>
+
+      <div class="p-header-row">
+        <h2 class="p-heading">OUR SUCCESSFUL PROJECTS</h2>
+      </div>
+
+      <!-- Filter Tabs -->
+      <div class="p-filters">
+        <span class="p-filter active" data-filter="all">All</span>
+        <span class="p-filter" data-filter="branding">Branding</span>
+        <span class="p-filter" data-filter="wordpress">WordPress</span>
+        <span class="p-filter" data-filter="marketing">Marketing</span>
+        <span class="p-filter" data-filter="seo">SEO</span>
+        <span class="p-filter" data-filter="video">Video</span>
+      </div>
+
+      <!-- Bento Grid -->
+      <div class="p-bento-grid">
+
+        <!-- Card 1: Hero (7-col span, 2 rows) -->
+        <div class="p-card" data-category="branding">
+          <div class="p-card-bg"><img src="images/Xoos_Digital_Facebook_Cover_Image.jpg" alt="" class="p-card-img" loading="lazy">
+          </div>
+          <div class="p-card-overlay">
+            <span class="p-badge">CREATIVE AGENCY</span>
+            <div class="p-card-info">
+              <h3 class="p-card-title">XOOS DIGITAL BRAND</h3>
+              <p class="p-card-sub">Full brand identity & digital presence</p>
+            </div>
+            <div class="p-view-btn"><span>↗</span></div>
+          </div>
+        </div>
+
+        <!-- Card 2 (5-col) -->
+        <div class="p-card" data-category="branding">
+          <div class="p-card-bg p-card-bg-1"></div>
+          <div class="p-card-logo-wrap"><img src="images/Brands_that_we work_with/Bright-hash-Logo-1.webp"
+              alt="Bright Hash" loading="lazy"></div>
+          <div class="p-card-overlay">
+            <span class="p-badge">BRANDING & IDENTITY</span>
+            <div class="p-card-info">
+              <h3 class="p-card-title">BRIGHT HASH</h3>
+              <p class="p-card-sub">Logo design & brand system</p>
+            </div>
+            <div class="p-view-btn"><span>↗</span></div>
+          </div>
+        </div>
+
+        <!-- Card 3 (5-col) -->
+        <div class="p-card" data-category="branding">
+          <div class="p-card-bg p-card-bg-2"></div>
+          <div class="p-card-logo-wrap"><img src="images/Brands_that_we work_with/Holy-Basket-Logo.webp"
+              alt="Holy Basket" loading="lazy"></div>
+          <div class="p-card-overlay">
+            <span class="p-badge">BRANDING & IDENTITY</span>
+            <div class="p-card-info">
+              <h3 class="p-card-title">HOLY BASKET</h3>
+              <p class="p-card-sub">Complete visual identity system</p>
+            </div>
+            <div class="p-view-btn"><span>↗</span></div>
+          </div>
+        </div>
+
+        <!-- Card 4 (4-col) -->
+        <div class="p-card" data-category="branding">
+          <div class="p-card-bg p-card-bg-3"></div>
+          <div class="p-card-logo-wrap"><img src="images/Brands_that_we work_with/Fly-Dream-Logo-1.webp"
+              alt="Fly Dream Aviation" loading="lazy"></div>
+          <div class="p-card-overlay">
+            <span class="p-badge">BRAND IDENTITY</span>
+            <div class="p-card-info">
+              <h3 class="p-card-title">FLY DREAM AVIATION</h3>
+              <p class="p-card-sub">Corporate brand identity</p>
+            </div>
+            <div class="p-view-btn"><span>↗</span></div>
+          </div>
+        </div>
+
+        <!-- Card 5 (4-col) -->
+        <div class="p-card" data-category="branding">
+          <div class="p-card-bg p-card-bg-4"></div>
+          <div class="p-card-logo-wrap"><img src="images/Brands_that_we work_with/GUG-Logo-2.webp" alt="GUG" loading="lazy"></div>
+          <div class="p-card-overlay">
+            <span class="p-badge">LOGO & BRANDING</span>
+            <div class="p-card-info">
+              <h3 class="p-card-title">GUG</h3>
+              <p class="p-card-sub">Logo design & guidelines</p>
+            </div>
+            <div class="p-view-btn"><span>↗</span></div>
+          </div>
+        </div>
+
+        <!-- Card 6 (4-col) -->
+        <div class="p-card" data-category="branding">
+          <div class="p-card-bg p-card-bg-5"></div>
+          <div class="p-card-logo-wrap"><img src="images/Brands_that_we work_with/Holy-Agro-Logo.webp" alt="Holy Agro" loading="lazy">
+          </div>
+          <div class="p-card-overlay">
+            <span class="p-badge">BRAND SYSTEM</span>
+            <div class="p-card-info">
+              <h3 class="p-card-title">HOLY AGRO</h3>
+              <p class="p-card-sub">Agricultural brand identity</p>
+            </div>
+            <div class="p-view-btn"><span>↗</span></div>
+          </div>
+        </div>
+
+        <!-- Card 7: CTA (full 12-col) -->
+        <div class="p-card-cta">
+          <div>
+            <div class="p-cta-text">GOT A PROJECT? LET'S <span>BUILD IT.</span></div>
+            <p class="p-cta-sub">View all our work or start your own project today.</p>
+          </div>
+          <div class="p-cta-actions">
+            <a href="portfolio.html" class="p-view-all-link">VIEW ALL PROJECTS →</a>
+            <a href="#" onclick="event.preventDefault();openProjectForm()" class="p-start-link">START A PROJECT →</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       SECTION 9 — PRICING PACKAGES
+  ══════════════════════════════════════════ -->
+  <section id="pricing" class="pricing-section overflow-safe">
+    <div class="pricing-header" data-animate>
+      <div class="t-label-pill">
+        <span class="t-label-dot"></span>
+        <span class="t-label-text">TRANSPARENT PRICING</span>
+      </div>
+      <h2 class="pricing-headline">PACKAGES<br><span class="brand-line">FOR EVERY STAGE</span></h2>
+      <p class="pricing-sub">No hidden fees. No surprises. Choose a package or get a custom quote for your project.</p>
+      <div class="pricing-toggle">
+        <span class="pricing-toggle-btn active">ONE-TIME PROJECT</span>
+        <span class="pricing-toggle-btn">MONTHLY RETAINER</span>
+      </div>
+    </div>
+
+    <div class="pricing-grid" data-animate>
+
+      <!-- Card 1: Starter -->
+      <div class="pricing-card" data-billing-cycle="one-time">
+        <div class="pricing-card-top">
+          <div class="pricing-name">STARTER</div>
+          <div class="pricing-price-row">
+            <span class="pricing-amount">$299</span>
+            <span class="pricing-from">starting from</span>
+          </div>
+          <p class="pricing-tagline">Perfect for new businesses that need a professional brand presence fast.</p>
+        </div>
+        <div class="pricing-divider"></div>
+        <ul class="pricing-features">
+          <li><span class="pf-yes">✓</span> Logo Design (3 concepts)</li>
+          <li><span class="pf-yes">✓</span> Brand Color Palette</li>
+          <li><span class="pf-yes">✓</span> Typography Selection</li>
+          <li><span class="pf-yes">✓</span> Business Card Design</li>
+          <li><span class="pf-yes">✓</span> Social Media Kit</li>
+          <li><span class="pf-yes">✓</span> 2 Revision Rounds</li>
+          <li><span class="pf-no">✗</span> Website Development</li>
+          <li><span class="pf-no">✗</span> SEO Setup</li>
+          <li><span class="pf-no">✗</span> Marketing Campaign</li>
+        </ul>
+        <a href="#" onclick="event.preventDefault();openProjectForm()" class="pricing-cta">GET STARTED →</a>
+      </div>
+
+      <!-- Card 2: Growth (Popular) -->
+      <div class="pricing-card pricing-popular" data-billing-cycle="one-time">
+        <div class="pricing-popular-badge">MOST POPULAR</div>
+        <div class="pricing-card-top">
+          <div class="pricing-name">GROWTH</div>
+          <div class="pricing-price-row">
+            <span class="pricing-amount">$799</span>
+            <span class="pricing-from">starting from</span>
+          </div>
+          <p class="pricing-tagline">For growing brands that need a website, identity, and digital presence that
+            converts.</p>
+        </div>
+        <div class="pricing-divider"></div>
+        <ul class="pricing-features">
+          <li><span class="pf-yes">✓</span> Everything in Starter</li>
+          <li><span class="pf-yes">✓</span> WordPress Website (5 pages)</li>
+          <li><span class="pf-yes">✓</span> Mobile Responsive Design</li>
+          <li><span class="pf-yes">✓</span> SEO Foundation Setup</li>
+          <li><span class="pf-yes">✓</span> Google Analytics Integration</li>
+          <li><span class="pf-yes">✓</span> Social Media Setup</li>
+          <li><span class="pf-yes">✓</span> 3 Revision Rounds</li>
+          <li><span class="pf-yes">✓</span> 30-Day Post-Launch Support</li>
+          <li><span class="pf-no">✗</span> Custom WooCommerce Store</li>
+          <li><span class="pf-no">✗</span> Ongoing Marketing Campaign</li>
+        </ul>
+        <a href="#" onclick="event.preventDefault();openProjectForm()" class="pricing-cta pricing-cta-primary">START GROWING →</a>
+      </div>
+
+      <!-- Card 3: Premium -->
+      <div class="pricing-card" data-billing-cycle="one-time">
+        <div class="pricing-card-top">
+          <div class="pricing-name">PREMIUM</div>
+          <div class="pricing-price-row">
+            <span class="pricing-amount pricing-amount-sm">CUSTOM</span>
+            <span class="pricing-from">tailored to you</span>
+          </div>
+          <p class="pricing-tagline">Full-service partnership for brands ready to dominate their market completely.</p>
+        </div>
+        <div class="pricing-divider"></div>
+        <ul class="pricing-features">
+          <li><span class="pf-yes">✓</span> Everything in Growth</li>
+          <li><span class="pf-yes">✓</span> Custom WooCommerce Store</li>
+          <li><span class="pf-yes">✓</span> Full SEO Campaign (3 months)</li>
+          <li><span class="pf-yes">✓</span> Social Media Management</li>
+          <li><span class="pf-yes">✓</span> Video Production (1 brand film)</li>
+          <li><span class="pf-yes">✓</span> Performance Marketing Setup</li>
+          <li><span class="pf-yes">✓</span> Monthly Analytics Reports</li>
+          <li><span class="pf-yes">✓</span> Priority Support</li>
+          <li><span class="pf-yes">✓</span> Dedicated Account Manager</li>
+          <li><span class="pf-yes">✓</span> Unlimited Revisions</li>
+        </ul>
+        <a href="#" onclick="event.preventDefault();openProjectForm()" class="pricing-cta">GET A QUOTE →</a>
+      </div>
+
+    </div>
+
+    <p class="pricing-note">
+      All prices in USD. Payment: 50% upfront, 50% on delivery.<br>
+      Prefer bKash, Payoneer, or Wise? We support all.<br>
+      Need something custom? <a href="#contact" class="pricing-contact-link">Let's talk →</a>
+    </p>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       SECTION 10 — TESTIMONIALS (Focus Carousel)
+  ══════════════════════════════════════════ -->
+  <section id="testimonials" class="t-section overflow-safe" data-animate>
+
+    <div class="t-glow-line t-glow-top"></div>
+    <div class="t-glow-line t-glow-bottom"></div>
+    <div class="t-radial-glow"></div>
+
+    <div class="t-header">
+      <div class="t-label-pill">
+        <span class="t-label-dot"></span>
+        <span class="t-label-text">REAL FEEDBACK</span>
+      </div>
+      <h2 class="t-headline">
+        CLIENT
+        <span class="t-headline-outline">SUCCESS</span>
+        STORIES
+      </h2>
+      <p class="t-subtext">
+        Brands across Bangladesh and beyond — real words,
+        real results, real growth.
+      </p>
+    </div>
+
+    <div class="t-carousel-outer">
+      <div class="t-carousel-track" id="tCarouselTrack"></div>
+    </div>
+
+    <div class="t-nav">
+      <button class="t-arrow t-arrow-prev" id="tPrev" aria-label="Previous">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 12H5M12 5l-7 7 7 7" />
+        </svg>
+      </button>
+      <div class="t-dots" id="tDots"></div>
+      <button class="t-arrow t-arrow-next" id="tNext" aria-label="Next">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 12h14M12 5l7 7-7 7" />
+        </svg>
+      </button>
+    </div>
+
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       SECTION 11 — BLOG
+  ══════════════════════════════════════════ -->
+  <section id="blog" class="blog-section overflow-safe">
+    <div class="blog-header" data-animate>
+      <div class="brands-pill">
+        <span class="brands-pill-dot"></span>
+        <span class="brands-pill-text">OUR LATEST BLOG AND NEWS</span>
+      </div>
+      <h2 class="blog-headline"><span class="brand-line">STAY</span> INFORMED</h2>
+    </div>
+    <div class="blog-grid">
+
+      <!-- Post 1 -->
+      <article class="blog-card" data-animate>
+        <div class="blog-img-wrap">
+          <img src="images/Xoos_Digital_Facebook_Cover_Image.jpg" alt="Blog post 1" loading="lazy" width="400" height="300">
+          <div class="blog-img-overlay blog-overlay-1"></div>
+          <div class="blog-author-badge">
+            <img src="images/Icons/user1.svg" alt="" loading="lazy">
+            XOOS DIGITAL
+          </div>
+        </div>
+        <div class="blog-body">
+          <div class="blog-date">
+            <img src="images/Icons/date1.svg" alt="" loading="lazy">
+            <span>15 MAY 2026</span>
+          </div>
+          <h3>Why Branding & Identity Design Matters More Than Ever</h3>
+          <a href="#" class="blog-read-more">READ MORE →</a>
+        </div>
+      </article>
+
+      <!-- Post 2 -->
+      <article class="blog-card" data-animate>
+        <div class="blog-img-wrap">
+          <img src="images/Xoos_Digital_Facebook_Cover_Image.jpg" alt="Blog post 2" loading="lazy" width="400" height="300">
+          <div class="blog-img-overlay blog-overlay-2"></div>
+          <div class="blog-author-badge">
+            <img src="images/Icons/user1.svg" alt="" loading="lazy">
+            XOOS DIGITAL
+          </div>
+        </div>
+        <div class="blog-body">
+          <div class="blog-date">
+            <img src="images/Icons/date1.svg" alt="" loading="lazy">
+            <span>10 MAY 2026</span>
+          </div>
+          <h3>The Complete Guide to Building a High-Converting Website</h3>
+          <a href="#" class="blog-read-more">READ MORE →</a>
+        </div>
+      </article>
+
+      <!-- Post 3 -->
+      <article class="blog-card" data-animate>
+        <div class="blog-img-wrap">
+          <img src="images/Xoos_Digital_Facebook_Cover_Image.jpg" alt="Blog post 3" loading="lazy" width="400" height="300">
+          <div class="blog-img-overlay blog-overlay-3"></div>
+          <div class="blog-author-badge">
+            <img src="images/Icons/user1.svg" alt="" loading="lazy">
+            XOOS DIGITAL
+          </div>
+        </div>
+        <div class="blog-body">
+          <div class="blog-date">
+            <img src="images/Icons/date1.svg" alt="" loading="lazy">
+            <span>02 MAY 2026</span>
+          </div>
+          <h3>Effective SEO & Digital Marketing Strategies to Grow Your Brand</h3>
+          <a href="#" class="blog-read-more">READ MORE →</a>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       SECTION 12 — FAQ
+  ══════════════════════════════════════════ -->
+  <section id="faq" class="faq-section overflow-safe" data-animate>
+    <div class="faq-layout">
+
+      <!-- Left column (sticky header) -->
+      <div class="faq-left">
+        <div class="t-label-pill">
+          <span class="t-label-dot"></span>
+          <span class="t-label-text">FAQ</span>
+        </div>
+        <h2 class="faq-headline"><span class="brand-line">QUESTIONS</span> WE GET ALL THE TIME</h2>
+        <p class="faq-sub">Can't find your answer? <a href="#contact" class="faq-contact-link">Just ask us directly
+            →</a>
+        </p>
+        <div class="faq-deco">?</div>
+      </div>
+
+      <!-- Right column (accordion) -->
+      <div class="faq-right">
+        <div class="faq-item active">
+          <button class="faq-trigger">
+            <span>How long does a project take?</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer faq-answer-open">
+            It depends on the scope. A brand identity takes 5–7 business days. A WordPress website takes 2–4 weeks. SEO
+            is ongoing with results typically visible in 60–90 days. We provide a clear timeline before every project
+            starts.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-trigger">
+            <span>How much does a project cost?</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            Our projects start from $299 for branding and $499 for website development. We offer the packages above or
+            custom quotes for complex projects. We believe in transparent pricing — no hidden fees, ever.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-trigger">
+            <span>Do you work with international clients?</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            Absolutely. We currently work with clients across 12+ countries including the USA, UK, Australia, UAE,
+            Canada, Germany, and Japan. All communication happens via email, WhatsApp, or video call — location is never
+            a barrier.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-trigger">
+            <span>What do you need from me to get started?</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            Just a brief conversation about your business, your goals, and any existing brand materials you have. We'll
+            ask the right questions and guide you through the rest. Getting started takes less than 10 minutes.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-trigger">
+            <span>How many revisions do I get?</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            Starter projects include 2 revision rounds. Growth and Premium packages include 3+ rounds. We work
+            collaboratively so revisions are typically minor by the time they come — we get it right early.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-trigger">
+            <span>How do I make payment?</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            We accept bank transfer, bKash, Nagad, Payoneer, Wise, and PayPal. Payment structure is 50% upfront to begin
+            the project and 50% upon final delivery. No payment is ever asked 100% upfront.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-trigger">
+            <span>Can you maintain my website after launch?</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            Yes. We offer monthly maintenance packages starting from $49/month covering updates, security monitoring,
+            backups, and minor content changes. Many of our clients stay with us long-term for ongoing growth support.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-trigger">
+            <span>Why choose Xoos Digital over other agencies?</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            We combine creative quality with strategic thinking and honest communication. You work directly with Raihan
+            — the founder — not a junior account manager. 80+ clients across 12 countries trust us, and every single
+            project gets our full attention.
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       SECTION 13 — CTA / CONTACT FORM
+  ══════════════════════════════════════════ -->
+  <section id="contact-form" class="cta-section overflow-safe" data-animate>
+    <div class="cta-layout">
+
+      <!-- Left: Contact info -->
+      <div class="cta-info">
+        <div class="t-label-pill">
+          <span class="t-label-dot"></span>
+          <span class="t-label-text">START A PROJECT</span>
+        </div>
+        <h2 class="cta-headline"><span class="brand-line">READY TO BUILD</span> SOMETHING GREAT?</h2>
+        <p class="cta-sub">Tell us about your project and we'll get back to you within 24 hours with a clear plan and
+          honest quote.</p>
+
+        <div class="cta-details">
+          <div class="cta-detail-row">
+            <img src="images/Icons/phn2.svg" alt="" class="cta-icon-img" loading="lazy">
+            <div>
+              <div class="cta-detail-label">PHONE</div>
+              <div class="cta-detail-value">+880 1572-932943</div>
+            </div>
+          </div>
+          <div class="cta-detail-row">
+            <img src="images/Icons/mail2.svg" alt="" class="cta-icon-img" loading="lazy">
+            <div>
+              <div class="cta-detail-label">EMAIL</div>
+              <div class="cta-detail-value">xoosdigital@gmail.com</div>
+            </div>
+          </div>
+          <div class="cta-detail-row">
+            <img src="images/Icons/location1.svg" alt="" class="cta-icon-img" loading="lazy">
+            <div>
+              <div class="cta-detail-label">LOCATION</div>
+              <div class="cta-detail-value">Khilgaon, Dhaka, Bangladesh</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cta-availability">
+          <span class="cta-pulse-dot"></span>
+          <span>Currently Accepting New Projects</span>
+        </div>
+
+        <div class="cta-social-proof">
+          <p>Join 80+ brands who chose Xoos Digital</p>
+          <div class="cta-platform-badges">
+            <span class="cta-platform-badge">★ 4.9 Fiverr</span>
+            <span class="cta-platform-badge">★ 5.0 Upwork</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Contact form -->
+      <div class="cta-form-wrap">
+        <form class="cta-form" id="contactForm">
+          <!-- Web3Forms hidden fields -->
+          <input type="hidden" name="access_key" value="f5792651-e546-4e3e-a788-216ec76ab809">
+          <input type="hidden" name="subject" value="New Project Inquiry - Xoos Digital">
+          <input type="hidden" name="from_name" value="Xoos Digital Website">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label" for="cf-name">NAME</label>
+              <input id="cf-name" type="text" name="name" class="form-input" placeholder="Your full name" required autocomplete="name">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="cf-email">EMAIL</label>
+              <input id="cf-email" type="email" name="email" class="form-input" placeholder="your@email.com" required autocomplete="email">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cf-service">SERVICE</label>
+            <select id="cf-service" name="service" class="form-input form-select">
+              <option value="" disabled selected>Select a service...</option>
+              <option>Creative Branding & Logo Design</option>
+              <option>WordPress Website Development</option>
+              <option>WooCommerce / E-Commerce Store</option>
+              <option>Digital Marketing Campaign</option>
+              <option>SEO & Organic Growth</option>
+              <option>Video Production</option>
+              <option>Full Package (Multiple Services)</option>
+              <option>Other / Not Sure Yet</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">BUDGET</label>
+            <select id="cf-budget" name="budget" class="form-input form-select">
+              <option value="" disabled selected>Select your budget range...</option>
+              <option>Under $300</option>
+              <option>$300 – $500</option>
+              <option>$500 – $1,000</option>
+              <option>$1,000 – $3,000</option>
+              <option>$3,000+</option>
+              <option>Not sure — need a quote</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cf-message">MESSAGE</label>
+            <textarea id="cf-message" name="message" class="form-input form-textarea" rows="4"
+              placeholder="Tell us about your project, brand, and goals..."></textarea>
+          </div>
+          <button type="submit" class="form-submit" id="cf-submit">
+            <span class="cf-btn-text">SEND MESSAGE &#8594;</span>
+            <span class="cf-btn-loading" style="display:none">
+              <svg class="cf-spinner" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+              </svg>
+              SENDING...
+            </span>
+          </button>
+        </form>
+        <p class="form-footnote">Or reach us directly on <a href="https://wa.me/8801572932943" target="_blank"
+            rel="noopener noreferrer">WhatsApp</a> · We respond within 24 hours</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       SUCCESS MODAL
+  ══════════════════════════════════════════ -->
+  <div id="successModal" class="success-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="success-title">
+    <div class="success-modal-backdrop"></div>
+    <div class="success-modal-card">
+      <!-- Floating particles -->
+      <div class="success-particles">
+        <span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span>
+      </div>
+
+      <!-- Animated checkmark -->
+      <div class="success-icon-wrap">
+        <svg class="success-check" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle class="success-check-circle" cx="26" cy="26" r="24" stroke="url(#successGrad)" stroke-width="2.5"/>
+          <path class="success-check-tick" d="M14 27l8 8 16-16" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <defs>
+            <linearGradient id="successGrad" x1="0" y1="0" x2="52" y2="52" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#a78bfa"/>
+              <stop offset="1" stop-color="#60a5fa"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="success-icon-glow"></div>
+      </div>
+
+      <p class="success-pill">MESSAGE RECEIVED ✦</p>
+      <h3 id="success-title" class="success-title">You're All Set!</h3>
+      <p class="success-body">Thank you for reaching out. Our team will review your project details and get back to you within <strong>24 hours</strong> with a clear plan and honest quote.</p>
+
+      <div class="success-divider"></div>
+
+      <div class="success-next-steps">
+        <div class="success-step">
+          <div class="success-step-num">01</div>
+          <p>We'll review your requirements</p>
+        </div>
+        <div class="success-step">
+          <div class="success-step-num">02</div>
+          <p>You'll get a personalised proposal</p>
+        </div>
+        <div class="success-step">
+          <div class="success-step-num">03</div>
+          <p>We kick off your project together</p>
+        </div>
+      </div>
+
+      <div class="success-actions">
+        <a href="https://wa.me/8801572932943" target="_blank" rel="noopener noreferrer" class="success-wa-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.982 0C5.377 0 0 5.364 0 11.955c0 2.128.559 4.121 1.533 5.847L0 24l6.335-1.652A11.932 11.932 0 0011.982 24c6.605 0 11.982-5.364 11.982-11.955S18.587 0 11.982 0zm0 21.818a9.762 9.762 0 01-4.952-1.344l-.355-.211-3.755.979.998-3.65-.232-.374a9.724 9.724 0 01-1.502-5.218c0-5.393 4.409-9.786 9.798-9.786 5.39 0 9.798 4.393 9.798 9.786 0 5.394-4.408 9.818-9.798 9.818z"/></svg>
+          Chat on WhatsApp
+        </a>
+        <button class="success-close-btn" id="successCloseBtn">CLOSE ✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SECTION 14 — FOOTER / CONTACT
+  ══════════════════════════════════════════ -->
+  <footer id="contact" data-animate>
+    <!-- Mega text CTA -->
+    <div class="footer-mega has-corners">
+      <div class="corner-tl"></div>
+      <div class="corner-tr"></div>
+      <div class="corner-bl"></div>
+      <div class="corner-br"></div>
+      <a href="#" onclick="event.preventDefault();openProjectForm()">
+        <h2>GET IN TOUCH</h2>
+      </a>
+    </div>
+    <div class="footer-glow-line"></div>
+
+    <!-- Footer Grid -->
+    <div class="footer-grid-wrap">
+      <div class="footer-grid">
+
+        <!-- Col 1: Brand -->
+        <div>
+          <img src="images/logo.png" alt="Xoos Digital" class="footer-logo" loading="lazy" width="119" height="36">
+          <p class="footer-body">Empowering brands with smart digital solutions. Your trusted partner for digital
+            success.</p>
+          <div class="social-icons">
+            <a href="https://www.facebook.com/xoosdigital/" class="social-icon" target="_blank" rel="noopener noreferrer"
+              aria-label="Facebook">
+              <img src="images/Icons/facebook.svg" alt="Facebook" loading="lazy">
+            </a>
+            <a href="https://www.linkedin.com/in/ri-raihanislam99/" class="social-icon" target="_blank" rel="noopener noreferrer"
+              aria-label="LinkedIn">
+              <img src="images/Icons/linkedin.svg" alt="LinkedIn" loading="lazy">
+            </a>
+            <a href="#" class="social-icon" aria-label="Instagram">
+              <img src="images/Icons/instagram.svg" alt="Instagram" loading="lazy">
+            </a>
+          </div>
+        </div>
+
+        <!-- Col 2: Policies -->
+        <div>
+          <div class="footer-heading">Policies</div>
+          <a href="./policy.php?type=privacy" class="footer-link">Privacy Policy</a>
+          <a href="./policy.php?type=terms" class="footer-link">Terms of Service</a>
+          <a href="./policy.php?type=cookies" class="footer-link">Cookie Policy</a>
+        </div>
+
+        <!-- Col 3: Contact -->
+        <div>
+          <div class="footer-heading">Contact Us</div>
+          <div class="contact-item">
+            <img src="images/Icons/phn2.svg" alt="" loading="lazy">
+            <span>+880 1572-932943</span>
+          </div>
+          <div class="contact-item">
+            <img src="images/Icons/location1.svg" alt="" loading="lazy">
+            <span>Khilgaon, Dhaka, Bangladesh</span>
+          </div>
+          <div class="contact-item">
+            <img src="images/Icons/mail2.svg" alt="" loading="lazy">
+            <span>xoosdigital@gmail.com</span>
+          </div>
+        </div>
+
+        <!-- Col 4: Newsletter -->
+        <div>
+          <div class="footer-heading">Join Newsletter</div>
+          <p class="newsletter-desc">Join 2,000+ subscribers getting digital tips weekly.</p>
+          <div class="avatar-stack">
+            <div class="avatar-stack-item"></div>
+            <div class="avatar-stack-item"></div>
+            <div class="avatar-stack-item"></div>
+            <div class="avatar-stack-item"></div>
+            <div class="avatar-stack-item"></div>
+            <div class="avatar-stack-badge">2K+</div>
+          </div>
+          <div class="newsletter-form">
+            <input type="email" placeholder="Email" aria-label="Email address">
+            <button type="button">SUBSCRIBE</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Bottom bar -->
+    <div class="footer-bottom">
+      © 2026 <span class="footer-accent">Xoos Digital</span>. All Rights Reserved.
+    </div>
+  </footer>
+
+  <!-- ══════════════════════════════════════════
+       JAVASCRIPT
+  ══════════════════════════════════════════ -->
+  <script src="js/script.js"></script>
+  <script>
+  /* ─── Web3Forms Contact Form ─── */
+  (function () {
+    const form      = document.getElementById('contactForm');
+    const submitBtn = document.getElementById('cf-submit');
+    const btnText   = submitBtn.querySelector('.cf-btn-text');
+    const btnLoad   = submitBtn.querySelector('.cf-btn-loading');
+    const modal     = document.getElementById('successModal');
+    const closeBtn  = document.getElementById('successCloseBtn');
+
+    function showModal() {
+      modal.classList.add('is-visible');
+      modal.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      modal.querySelectorAll('.success-particles span').forEach((el, i) => {
+        el.style.animationDelay = (i * 0.12) + 's';
+      });
+      closeBtn.focus();
+    }
+
+    function hideModal() {
+      modal.classList.remove('is-visible');
+      modal.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+    }
+
+    closeBtn.addEventListener('click', hideModal);
+    modal.querySelector('.success-modal-backdrop').addEventListener('click', hideModal);
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && modal.classList.contains('is-visible')) hideModal();
+    });
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      btnText.style.display = 'none';
+      btnLoad.style.display = 'inline-flex';
+      submitBtn.disabled = true;
+
+      const data = new FormData(form);
+
+      try {
+        const res  = await fetch('https://api.web3forms.com/submit', {
+          method : 'POST',
+          body   : data
+        });
+        const json = await res.json();
+
+        if (json.success) {
+          form.reset();
+          showModal();
+        } else {
+          alert('Something went wrong: ' + (json.message || 'Please try again.'));
+        }
+      } catch (err) {
+        alert('Network error. Please check your connection and try again.');
+      } finally {
+        btnText.style.display = 'inline';
+        btnLoad.style.display = 'none';
+        submitBtn.disabled = false;
+      }
+    });
+  })();
+  </script>
+
+<!-- ══ PROJECT FORM POPUP ══ -->
+<div class="pf-overlay" id="pfOverlay" onclick="pfHandleOverlay(event)">
+<div class="pf-modal" id="pfModal">
+
+  <div class="pf-header">
+    <div>
+      <div class="pf-badge"><span class="pf-badge-dot"></span><span>New Project Inquiry</span></div>
+      <h2 class="pf-title">Let's Build Together</h2>
+      <p class="pf-sub">Fill in your project details — we'll respond within 24 hours.</p>
+    </div>
+    <button class="pf-close" onclick="closeProjectForm()">✕</button>
+  </div>
+
+  <div class="pf-progress-wrap" id="pfProgressWrap">
+    <div class="pf-progress-steps">
+      <div class="pf-p-step">
+        <div class="pf-step-circle pf-active" id="pfsc1">01</div>
+        <div class="pf-step-line" id="pfsl1"></div>
+      </div>
+      <div class="pf-p-step">
+        <div class="pf-step-circle" id="pfsc2">02</div>
+        <div class="pf-step-line" id="pfsl2"></div>
+      </div>
+      <div class="pf-p-step">
+        <div class="pf-step-circle" id="pfsc3">03</div>
+        <div class="pf-step-line" id="pfsl3"></div>
+      </div>
+      <div class="pf-p-step">
+        <div class="pf-step-circle" id="pfsc4">04</div>
+      </div>
+    </div>
+    <div class="pf-step-labels">
+      <span class="pf-step-label pf-active" id="pfsl-1">You</span>
+      <span class="pf-step-label" id="pfsl-2">Service</span>
+      <span class="pf-step-label" id="pfsl-3">Budget</span>
+      <span class="pf-step-label" id="pfsl-4">Review</span>
+    </div>
+  </div>
+
+  <div class="pf-steps-container">
+
+    <div class="pf-step pf-step-active" id="pfStep1">
+      <div class="pf-step-title">Tell us about you</div>
+      <div class="pf-step-desc">We'd love to know who we're working with before diving in.</div>
+      <div class="pf-form-row">
+        <div class="pf-form-group">
+          <label class="pf-label">Full Name <span class="pf-req">*</span></label>
+          <input type="text" class="pf-input" id="pfName" placeholder="Your full name">
+          <div class="pf-field-error" id="pfEName">Please enter your full name</div>
+        </div>
+        <div class="pf-form-group">
+          <label class="pf-label">Email Address <span class="pf-req">*</span></label>
+          <input type="email" class="pf-input" id="pfEmail" placeholder="you@example.com">
+          <div class="pf-field-error" id="pfEEmail">Please enter a valid email</div>
+        </div>
+      </div>
+      <div class="pf-form-row">
+        <div class="pf-form-group">
+          <label class="pf-label">Phone / WhatsApp</label>
+          <input type="tel" class="pf-input" id="pfPhone" placeholder="+1 234 567 8900">
+        </div>
+        <div class="pf-form-group">
+          <label class="pf-label">Company / Brand Name</label>
+          <input type="text" class="pf-input" id="pfCompany" placeholder="Your company name">
+        </div>
+      </div>
+      <div class="pf-form-row pf-single">
+        <div class="pf-form-group">
+          <label class="pf-label">Your Country <span class="pf-req">*</span></label>
+          <select class="pf-select" id="pfCountry">
+            <option value="">Select your country...</option>
+            <option>Bangladesh</option>
+            <option>United States</option>
+            <option>United Kingdom</option>
+            <option>Australia</option>
+            <option>Canada</option>
+            <option>United Arab Emirates</option>
+            <option>Germany</option>
+            <option>Netherlands</option>
+            <option>Japan</option>
+            <option>India</option>
+            <option>Other</option>
+          </select>
+          <div class="pf-field-error" id="pfECountry">Please select your country</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pf-step" id="pfStep2">
+      <div class="pf-step-title">What do you need?</div>
+      <div class="pf-step-desc">Select one or more services. You can always discuss more later.</div>
+      <div class="pf-service-grid">
+        <div class="pf-svc-card" data-service="Creative Branding" onclick="pfToggleSvc(this)">
+          <div class="pf-svc-icon">🎨</div>
+          <div class="pf-svc-name">Creative Branding</div>
+          <div class="pf-svc-desc">Logo, identity, color system, brand guidelines</div>
+          <div class="pf-svc-check">✓</div>
+        </div>
+        <div class="pf-svc-card" data-service="WordPress & E-Commerce" onclick="pfToggleSvc(this)">
+          <div class="pf-svc-icon">🌐</div>
+          <div class="pf-svc-name">WordPress & E-Commerce</div>
+          <div class="pf-svc-desc">Custom websites, WooCommerce, landing pages</div>
+          <div class="pf-svc-check">✓</div>
+        </div>
+        <div class="pf-svc-card" data-service="Digital Marketing" onclick="pfToggleSvc(this)">
+          <div class="pf-svc-icon">📣</div>
+          <div class="pf-svc-name">Digital Marketing</div>
+          <div class="pf-svc-desc">Social media, Facebook & Google ads, content</div>
+          <div class="pf-svc-check">✓</div>
+        </div>
+        <div class="pf-svc-card" data-service="SEO & Organic Growth" onclick="pfToggleSvc(this)">
+          <div class="pf-svc-icon">📈</div>
+          <div class="pf-svc-name">SEO & Organic Growth</div>
+          <div class="pf-svc-desc">Rankings, technical SEO, keyword strategy</div>
+          <div class="pf-svc-check">✓</div>
+        </div>
+        <div class="pf-svc-card" data-service="Video Production" onclick="pfToggleSvc(this)">
+          <div class="pf-svc-icon">🎬</div>
+          <div class="pf-svc-name">Video Production</div>
+          <div class="pf-svc-desc">Brand films, reels, motion graphics</div>
+          <div class="pf-svc-check">✓</div>
+        </div>
+        <div class="pf-svc-card" data-service="Full Package" onclick="pfToggleSvc(this)">
+          <div class="pf-svc-icon">⚡</div>
+          <div class="pf-svc-name">Full Package</div>
+          <div class="pf-svc-desc">Complete digital presence — everything included</div>
+          <div class="pf-svc-check">✓</div>
+        </div>
+      </div>
+      <div class="pf-field-error" id="pfESvc" style="margin-top:0.75rem">Please select at least one service</div>
+    </div>
+
+    <div class="pf-step" id="pfStep3">
+      <div class="pf-step-title">Budget & Timeline</div>
+      <div class="pf-step-desc">Help us understand the scale so we can plan the right approach.</div>
+      <div class="pf-form-group" style="margin-bottom:1.5rem">
+        <label class="pf-label">Project Budget (USD) <span class="pf-req">*</span></label>
+        <div class="pf-budget-display">
+          <div class="pf-budget-amount" id="pfBudgetDisplay">$450</div>
+          <div class="pf-budget-lbl">Estimated project budget</div>
+        </div>
+        <div style="padding:0 0.5rem">
+          <input type="range" class="pf-slider" id="pfBudgetSlider" min="0" max="23" value="5" step="1" oninput="pfUpdateBudget(this.value)">
+          <div class="pf-range-labels"><span>$199</span><span>$3,999</span></div>
+        </div>
+      </div>
+      <div class="pf-form-group" style="margin-bottom:1.5rem">
+        <label class="pf-label">Desired Timeline <span class="pf-req">*</span></label>
+        <div class="pf-timeline-opts" id="pfTimelineOpts">
+          <div class="pf-tl-opt" data-val="ASAP (Rush)" onclick="pfSelectTL(this)"><div class="pf-tl-name">ASAP</div><div class="pf-tl-sub">Rush delivery</div></div>
+          <div class="pf-tl-opt" data-val="1–2 Weeks" onclick="pfSelectTL(this)"><div class="pf-tl-name">1–2 Weeks</div><div class="pf-tl-sub">Fast turnaround</div></div>
+          <div class="pf-tl-opt pf-selected" data-val="2–4 Weeks" onclick="pfSelectTL(this)"><div class="pf-tl-name">2–4 Weeks</div><div class="pf-tl-sub">Standard</div></div>
+          <div class="pf-tl-opt" data-val="1–2 Months" onclick="pfSelectTL(this)"><div class="pf-tl-name">1–2 Months</div><div class="pf-tl-sub">Relaxed pace</div></div>
+          <div class="pf-tl-opt" data-val="Flexible" onclick="pfSelectTL(this)"><div class="pf-tl-name">Flexible</div><div class="pf-tl-sub">No rush</div></div>
+        </div>
+      </div>
+      <div class="pf-form-row pf-single">
+        <div class="pf-form-group">
+          <label class="pf-label">Project Description <span class="pf-req">*</span></label>
+          <textarea class="pf-textarea" id="pfDesc" placeholder="Tell us about your project, your brand, your goals..." oninput="pfCharCount(this)" maxlength="1000"></textarea>
+          <div class="pf-char-count" id="pfCharCount">0 / 1000</div>
+          <div class="pf-field-error" id="pfEDesc">Please describe your project (min 20 characters)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pf-step" id="pfStep4">
+      <div class="pf-step-title">Review & Submit</div>
+      <div class="pf-step-desc">Everything look good? Submit and we'll be in touch within 24 hours.</div>
+      <div class="pf-review-card">
+        <div class="pf-review-header"><span class="pf-review-header-label">01 · YOUR INFO</span></div>
+        <div class="pf-review-body">
+          <div class="pf-review-row"><span class="pf-review-key">Name</span><span class="pf-review-val" id="pfRName">—</span></div>
+          <div class="pf-review-row"><span class="pf-review-key">Email</span><span class="pf-review-val" id="pfREmail">—</span></div>
+          <div class="pf-review-row"><span class="pf-review-key">Phone</span><span class="pf-review-val" id="pfRPhone">—</span></div>
+          <div class="pf-review-row"><span class="pf-review-key">Company</span><span class="pf-review-val" id="pfRCompany">—</span></div>
+          <div class="pf-review-row"><span class="pf-review-key">Country</span><span class="pf-review-val" id="pfRCountry">—</span></div>
+        </div>
+      </div>
+      <div class="pf-review-card">
+        <div class="pf-review-header"><span class="pf-review-header-label">02 · SERVICES</span></div>
+        <div class="pf-review-body">
+          <div class="pf-review-row"><span class="pf-review-key">Selected</span><div class="pf-svc-tags" id="pfRSvcs"></div></div>
+        </div>
+      </div>
+      <div class="pf-review-card" style="margin-bottom:1rem">
+        <div class="pf-review-header"><span class="pf-review-header-label">03 · PROJECT DETAILS</span></div>
+        <div class="pf-review-body">
+          <div class="pf-review-row"><span class="pf-review-key">Budget</span><span class="pf-review-val" id="pfRBudget">—</span></div>
+          <div class="pf-review-row"><span class="pf-review-key">Timeline</span><span class="pf-review-val" id="pfRTimeline">—</span></div>
+          <div class="pf-review-row" style="align-items:flex-start"><span class="pf-review-key">Description</span><span class="pf-review-val" id="pfRDesc" style="font-size:0.75rem;color:#9CA3AF;max-width:70%">—</span></div>
+        </div>
+      </div>
+      <div class="pf-terms-row" id="pfTermsRow" onclick="pfToggleTerms()">
+        <div class="pf-checkbox" id="pfCheckbox"></div>
+        <div class="pf-terms-text">I agree that Xoos Digital may contact me regarding this inquiry via email or WhatsApp. My data will only be used to respond to this project request.</div>
+      </div>
+      <div class="pf-field-error" id="pfETerms" style="margin-top:0.5rem">Please accept the terms to continue</div>
+    </div>
+
+    <div class="pf-step" id="pfStep5">
+      <div class="pf-success-wrap">
+        <div class="pf-success-ring"><span class="pf-success-check">✓</span></div>
+        <h3 class="pf-success-title">Project Submitted!</h3>
+        <p class="pf-success-sub">Thank you! We've received your inquiry and will review it within <strong style="color:white">24 hours</strong>. Raihan will reach out personally to discuss next steps.</p>
+        <div class="pf-success-ref">
+          <div>
+            <div class="pf-ref-label">Reference ID</div>
+            <div class="pf-ref-code" id="pfRefCode">XD-000000</div>
+          </div>
+        </div>
+        <div class="pf-success-btns">
+          <a href="https://wa.me/8801600008085" class="pf-success-btn pf-wa-btn" target="_blank">💬 WhatsApp Us</a>
+          <a href="mailto:xoosdigital@gmail.com" class="pf-success-btn pf-em-btn">✉ Send Email</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="pf-footer" id="pfFooter">
+    <span class="pf-step-counter" id="pfCounter">STEP 1 OF 4</span>
+    <div class="pf-footer-right">
+      <button class="pf-btn-back" id="pfBtnBack" onclick="pfPrev()" style="display:none">← BACK</button>
+      <button class="pf-btn-next" id="pfBtnNext" onclick="pfNext()">NEXT →</button>
+    </div>
+  </div>
+
+</div>
+</div>
+<!-- ══ END PROJECT FORM POPUP ══ -->
+
+<script src="js/project-form.js"></script>
+<script src="js/xoos-ai.js"></script>
+</body>
+
+</html>

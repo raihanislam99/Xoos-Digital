@@ -8,7 +8,12 @@
 $pageTitle ??= 'Xoos Digital — Creative Agency, Dhaka, Bangladesh';
 $pageDesc  ??= 'Xoos Digital — eXcellence | Opportunity | Outcome | Success. Creative agency based in Dhaka, Bangladesh specializing in branding, web development, digital marketing, SEO, and video production.';
 $pageImage ??= BASE_URL . '/images/logo.png';
-$canonical = BASE_URL . rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+$reqPath = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+$basePath = parse_url(BASE_URL, PHP_URL_PATH);
+if ($basePath && str_starts_with($reqPath, $basePath)) {
+    $reqPath = substr($reqPath, strlen($basePath));
+}
+$canonical = BASE_URL . $reqPath;
 $ogType    = 'website';
 if (strpos($_SERVER['REQUEST_URI'], '/post/') === 0) $ogType = 'article';
 ?>

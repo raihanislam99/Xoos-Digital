@@ -28,7 +28,7 @@ if ($isDetail) {
     $pageDesc = $project['meta_description'] ?: strip_tags($project['description'] ?? '');
 
     // Get related projects (same category, excluding current)
-    $allProjects = get_all('portfolio', 'sort_order ASC, created_at DESC');
+    $allProjects = get_all('portfolio', 'created_at DESC');
     $related = array_filter($allProjects, fn($p) =>
         ($p['id'] !== $project['id']) && !empty($p['is_active']) &&
         ($p['category_id'] ?? 0) === ($project['category_id'] ?? 0)
@@ -179,7 +179,7 @@ exit;
 // ── Listing View ──
 $portfolios = [];
 try {
-    $tmp = get_all('portfolio', 'sort_order ASC, created_at DESC');
+    $tmp = get_all('portfolio', 'created_at DESC');
     $portfolios = array_values(array_filter($tmp, fn($p) => !empty($p['is_active'])));
     foreach ($portfolios as &$p) {
         $p['image_url'] = image_url($p['image_url'] ?? '');
