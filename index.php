@@ -7,8 +7,7 @@ $blogs = [];
 
 try {
     $services    = get_all('services', 'sort_order ASC');
-    $tmp  = get_all('portfolio', 'sort_order ASC, created_at DESC');
-    $tmp = array_values(array_filter($tmp, fn($p) => !empty($p['is_active'])));
+    $tmp  = get_all('portfolio', 'created_at DESC');
     $portfolios = array_slice($tmp, 0, 5);
     foreach ($portfolios as &$p) { $p['image_url'] = image_url($p['image_url'] ?? ''); }
     unset($p);
