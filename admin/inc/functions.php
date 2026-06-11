@@ -85,10 +85,11 @@ function get_dashboard_stats(): array {
             (SELECT COUNT(*) FROM contact_messages WHERE is_read = 0) AS unread_msgs,
             (SELECT COUNT(*) FROM admin_tasks WHERE status IN ('pending','in_progress')) AS pending_tasks,
             (SELECT COUNT(*) FROM notes) AS notes_count";
-        $row = db()->query($sql)->fetch(PDO::FETCH_ASSOC);
+        $stmt = db()->query($sql);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($row) $stats = $row;
     } catch (Throwable $e) {
-        // Fallback to individual cached queries
+        error_log('get_dashboard_stats batch failed: ' . $e->getMessage());
         $stats = [];
     }
     set_cache('dashboard_stats', $stats);
@@ -141,14 +142,31 @@ function db() {
     static $useRest = null;
 
     if ($useRest === null) {
-        // Try direct PDO first — much faster than REST API calls.
-        // If pdo_pgsql is missing or connection fails, fall back to REST.
-        $useRest = !extension_loaded('pdo_pgsql') || empty(SUPABASE_DB_HOST);
+        // Decide once per request: can we use PDO or must we fall back to REST?
+        if (!extension_loaded('pdo_pgsql') || empty(SUPABASE_DB_HOST)) {
+            $useRest = true;
+        } else {
+            // Quick DNS check — avoids a multi-second PDO timeout when the host
+            // is not resolvable (e.g. IPv6-only Supabase on a Windows / XAMPP box).
+            // gethostbynamel checks IPv4; if that fails, try AAAA (IPv6) via dns_get_record.
+            $ipv4 = @gethostbynamel(SUPABASE_DB_HOST);
+            if ($ipv4 !== false) {
+                $useRest = false;
+            } else {
+                $aaaa = @dns_get_record(SUPABASE_DB_HOST, DNS_AAAA);
+                $useRest = empty($aaaa);
+            }
+        }
     }
 
     if ($useRest) {
         if ($restDb === null) {
             $restDb = Supabase::getInstance()->restDb();
+            try {
+                $restDb->restCall('GET', '', null, ['Prefer: reload-schema']);
+            } catch (Exception $reloadErr) {
+                error_log('PostgREST schema reload failed: ' . $reloadErr->getMessage());
+            }
         }
         return $restDb;
     }
@@ -168,6 +186,11 @@ function db() {
         } catch (PDOException $e) {
             $useRest = true;
             $restDb = Supabase::getInstance()->restDb();
+            try {
+                $restDb->restCall('GET', '', null, ['Prefer: reload-schema']);
+            } catch (Exception $reloadErr) {
+                error_log('PostgREST schema reload failed: ' . $reloadErr->getMessage());
+            }
             return $restDb;
         }
     }
