@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/inc/page-cache.php';
+page_cache_start('index', 300);
+
 require_once __DIR__ . '/admin/config.php';
 require_once __DIR__ . '/admin/inc/functions.php';
 
@@ -930,4 +933,5 @@ $allCats = array_unique($allCats);
 require __DIR__ . '/inc/project-form.php';
 require __DIR__ . '/inc/chatbot.php';
 require __DIR__ . '/inc/scripts.php';
+page_cache_end();
 ?>

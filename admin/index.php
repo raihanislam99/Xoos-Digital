@@ -2,41 +2,29 @@
 require_once __DIR__ . '/inc/functions.php';
 require_login();
 
-// ── Dashboard data (session-cached COUNTs to avoid 27+ queries per load) ──
-$stats = [];
-try {
-    $tables = ['blog_posts', 'services', 'packages', 'testimonials', 'faq', 'portfolio'];
-    foreach ($tables as $t) {
-        $stats[$t] = db_count_cached("dash_{$t}", "SELECT COUNT(*) FROM {$t}", [], 60);
-        $stats[$t . '_new'] = db_count_cached("dash_{$t}_new", "SELECT COUNT(*) FROM {$t} WHERE created_at >= NOW() - INTERVAL '7 days'", [], 60);
-    }
-    $stats['messages'] = db_count_cached('dash_messages', "SELECT COUNT(*) FROM contact_messages", [], 60);
-    $stats['messages_new'] = db_count_cached('dash_messages_new', "SELECT COUNT(*) FROM contact_messages WHERE is_read = 0", [], 60);
-    $stats['messages_unread'] = $stats['messages_new'];
-} catch (Exception $e) { $stats = []; }
+// ── Dashboard data — single batch query (down from 22+ individual queries) ──
+$s = get_dashboard_stats();
 
-// Tasks stats
-$taskWidgetPending = db_count_cached('dash_task_pending', "SELECT COUNT(*) FROM admin_tasks WHERE status='pending'", [], 60);
-$taskWidgetProgress = db_count_cached('dash_task_progress', "SELECT COUNT(*) FROM admin_tasks WHERE status='in_progress'", [], 60);
-$taskWidgetDone = db_count_cached('dash_task_done', "SELECT COUNT(*) FROM admin_tasks WHERE status='done'", [], 60);
-$tasksDueToday = db_count_cached('dash_tasks_due', "SELECT COUNT(*) FROM admin_tasks WHERE status IN ('pending','in_progress') AND due_date::date = CURRENT_DATE", [], 60);
+// Map batch stat names to readable variables
+$blogDrafts    = (int)($s['blog_drafts'] ?? 0);
+$blogPublished = (int)($s['blog_published'] ?? 0);
+$unpubPosts    = (int)($s['unpub_posts'] ?? 0);
+$pubPosts      = (int)($s['pub_posts'] ?? 0);
+
+$taskWidgetPending = (int)($s['task_pending'] ?? 0);
+$taskWidgetProgress = (int)($s['task_progress'] ?? 0);
+$taskWidgetDone    = (int)($s['task_done'] ?? 0);
+$tasksDueToday     = (int)($s['tasks_due'] ?? 0);
 $taskWidgetTotal = max($taskWidgetPending + $taskWidgetProgress + $taskWidgetDone, 1);
 $taskPct = round($taskWidgetDone / $taskWidgetTotal * 100);
 
-// Lead stats
-$leadTotal = db_count_cached('dash_lead_total', "SELECT COUNT(*) FROM leads WHERE is_blacklisted = 0", [], 60);
-$leadContacted = db_count_cached('dash_lead_contacted', "SELECT COUNT(*) FROM leads WHERE status IN ('contacted','replied','interested','meeting_booked')", [], 60);
-$leadReplied = db_count_cached('dash_lead_replied', "SELECT COUNT(*) FROM leads WHERE status='replied'", [], 60);
-$leadWon = db_count_cached('dash_lead_won', "SELECT COUNT(*) FROM leads WHERE status='closed_won'", [], 60);
-$newLeadsWeek = db_count_cached('dash_new_leads_week', "SELECT COUNT(*) FROM leads WHERE is_blacklisted = 0 AND created_at >= CURRENT_DATE - INTERVAL '7 days'", [], 60);
+$leadTotal     = (int)($s['lead_total'] ?? 0);
+$leadContacted = (int)($s['lead_contacted'] ?? 0);
+$leadReplied   = (int)($s['lead_replied'] ?? 0);
+$leadWon       = (int)($s['lead_won'] ?? 0);
+$newLeadsWeek  = (int)($s['new_leads_week'] ?? 0);
 
-// Blog stats
-$blogDrafts = db_count_cached('dash_blog_drafts', "SELECT COUNT(*) FROM blog_posts WHERE status='draft'", [], 60);
-$blogPublished = db_count_cached('dash_blog_published', "SELECT COUNT(*) FROM blog_posts WHERE status='published'", [], 60);
-
-// Post gen stats
-$unpubPosts = db_count_cached('dash_unpub_posts', "SELECT COUNT(*) FROM generated_posts WHERE status='draft'", [], 60);
-$pubPosts = db_count_cached('dash_pub_posts', "SELECT COUNT(*) FROM generated_posts WHERE status='published'", [], 60);
+$unreadMessages = (int)($s['messages_new'] ?? 0);
 
 // Activity feed (last 24h across modules)
 $activity = [];
@@ -97,7 +85,7 @@ $dayName = $dayNames[(int)date('w')];
         <div class="ds-label">New Leads</div>
     </div>
     <div class="v3-dash-stat" data-accent="green">
-        <div class="ds-value" style="color:var(--green)"><?= $stats['messages_unread'] ?? 0 ?></div>
+        <div class="ds-value" style="color:var(--green)"><?= $unreadMessages ?></div>
         <div class="ds-label">Unread Messages</div>
     </div>
     <div class="v3-dash-stat" data-accent="accent">
@@ -175,20 +163,19 @@ $dayName = $dayNames[(int)date('w')];
     <?php endif; ?>
 </div>
 
-
-</script>
-
 <!-- Mini Charts Row -->
 <div class="v3-mini-charts-row">
     <div class="v3-mini-chart-card">
         <div class="mc-title">Tasks by Priority</div>
         <div class="mc-body">
             <?php
-            $taskPriorities = ['urgent','high','medium','low'];
-            $taskPriCounts = [];
+            $taskPriCounts = ['urgent'=>0,'high'=>0,'medium'=>0,'low'=>0];
             try {
-                foreach ($taskPriorities as $p) {
-                    $taskPriCounts[$p] = (int)db_val("SELECT COUNT(*) FROM admin_tasks WHERE status IN ('pending','in_progress') AND priority='$p'");
+                $priRows = db_rows("SELECT priority, COUNT(*) AS cnt FROM admin_tasks WHERE status IN ('pending','in_progress') GROUP BY priority");
+                foreach ($priRows as $r) {
+                    if (isset($taskPriCounts[$r['priority']])) {
+                        $taskPriCounts[$r['priority']] = (int)$r['cnt'];
+                    }
                 }
             } catch (Exception $e) {}
             $taskPriTot = max(array_sum($taskPriCounts), 1);

@@ -46,6 +46,55 @@ function db_count_cached(string $cacheKey, string $query, array $params = [], in
     return $val;
 }
 
+// ── Batch dashboard stats (single DB round-trip instead of 22+ queries) ──
+function get_dashboard_stats(): array {
+    $cached = get_cache('dashboard_stats', 300);
+    if ($cached !== null) return $cached;
+
+    $stats = [];
+    try {
+        // Single batch query works with PostgreSQL PDO
+        $sql = "SELECT
+            (SELECT COUNT(*) FROM blog_posts) AS blog_posts,
+            (SELECT COUNT(*) FROM blog_posts WHERE created_at >= NOW() - INTERVAL '7 days') AS blog_posts_new,
+            (SELECT COUNT(*) FROM services) AS services,
+            (SELECT COUNT(*) FROM services WHERE created_at >= NOW() - INTERVAL '7 days') AS services_new,
+            (SELECT COUNT(*) FROM packages) AS packages,
+            (SELECT COUNT(*) FROM packages WHERE created_at >= NOW() - INTERVAL '7 days') AS packages_new,
+            (SELECT COUNT(*) FROM testimonials) AS testimonials,
+            (SELECT COUNT(*) FROM testimonials WHERE created_at >= NOW() - INTERVAL '7 days') AS testimonials_new,
+            (SELECT COUNT(*) FROM faq) AS faq,
+            (SELECT COUNT(*) FROM faq WHERE created_at >= NOW() - INTERVAL '7 days') AS faq_new,
+            (SELECT COUNT(*) FROM portfolio) AS portfolio,
+            (SELECT COUNT(*) FROM portfolio WHERE created_at >= NOW() - INTERVAL '7 days') AS portfolio_new,
+            (SELECT COUNT(*) FROM contact_messages) AS messages,
+            (SELECT COUNT(*) FROM contact_messages WHERE is_read = 0) AS messages_new,
+            (SELECT COUNT(*) FROM admin_tasks WHERE status='pending') AS task_pending,
+            (SELECT COUNT(*) FROM admin_tasks WHERE status='in_progress') AS task_progress,
+            (SELECT COUNT(*) FROM admin_tasks WHERE status='done') AS task_done,
+            (SELECT COUNT(*) FROM admin_tasks WHERE status IN ('pending','in_progress') AND due_date::date = CURRENT_DATE) AS tasks_due,
+            (SELECT COUNT(*) FROM leads WHERE is_blacklisted = 0) AS lead_total,
+            (SELECT COUNT(*) FROM leads WHERE status IN ('contacted','replied','interested','meeting_booked')) AS lead_contacted,
+            (SELECT COUNT(*) FROM leads WHERE status='replied') AS lead_replied,
+            (SELECT COUNT(*) FROM leads WHERE status='closed_won') AS lead_won,
+            (SELECT COUNT(*) FROM leads WHERE is_blacklisted = 0 AND created_at >= CURRENT_DATE - INTERVAL '7 days') AS new_leads_week,
+            (SELECT COUNT(*) FROM blog_posts WHERE status='draft') AS blog_drafts,
+            (SELECT COUNT(*) FROM blog_posts WHERE status='published') AS blog_published,
+            (SELECT COUNT(*) FROM generated_posts WHERE status='draft') AS unpub_posts,
+            (SELECT COUNT(*) FROM generated_posts WHERE status='published') AS pub_posts,
+            (SELECT COUNT(*) FROM contact_messages WHERE is_read = 0) AS unread_msgs,
+            (SELECT COUNT(*) FROM admin_tasks WHERE status IN ('pending','in_progress')) AS pending_tasks,
+            (SELECT COUNT(*) FROM notes) AS notes_count";
+        $row = db()->query($sql)->fetch(PDO::FETCH_ASSOC);
+        if ($row) $stats = $row;
+    } catch (Throwable $e) {
+        // Fallback to individual cached queries
+        $stats = [];
+    }
+    set_cache('dashboard_stats', $stats);
+    return $stats;
+}
+
 // ── Simple Cache Helper (File-based) ──────────────────────────────────
 function get_cache(string $key, int $ttl = 300): mixed {
     $cacheDir = __DIR__ . '/cache';
@@ -92,31 +141,14 @@ function db() {
     static $useRest = null;
 
     if ($useRest === null) {
-        // Decide once per request: can we use PDO or must we fall back to REST?
-        if (!extension_loaded('pdo_pgsql') || empty(SUPABASE_DB_HOST)) {
-            $useRest = true;
-        } else {
-            // Quick DNS check — avoids a multi-second PDO timeout when the host
-            // is not resolvable (e.g. IPv6-only Supabase on a Windows / XAMPP box).
-            // gethostbynamel checks IPv4; if that fails, try AAAA (IPv6) via dns_get_record.
-            $ipv4 = @gethostbynamel(SUPABASE_DB_HOST);
-            if ($ipv4 !== false) {
-                $useRest = false;
-            } else {
-                $aaaa = @dns_get_record(SUPABASE_DB_HOST, DNS_AAAA);
-                $useRest = empty($aaaa);
-            }
-        }
+        // Try direct PDO first — much faster than REST API calls.
+        // If pdo_pgsql is missing or connection fails, fall back to REST.
+        $useRest = !extension_loaded('pdo_pgsql') || empty(SUPABASE_DB_HOST);
     }
 
     if ($useRest) {
         if ($restDb === null) {
             $restDb = Supabase::getInstance()->restDb();
-            try {
-                $restDb->restCall('GET', '', null, ['Prefer: reload-schema']);
-            } catch (Exception $reloadErr) {
-                error_log('PostgREST schema reload failed: ' . $reloadErr->getMessage());
-            }
         }
         return $restDb;
     }
@@ -136,11 +168,6 @@ function db() {
         } catch (PDOException $e) {
             $useRest = true;
             $restDb = Supabase::getInstance()->restDb();
-            try {
-                $restDb->restCall('GET', '', null, ['Prefer: reload-schema']);
-            } catch (Exception $reloadErr) {
-                error_log('PostgREST schema reload failed: ' . $reloadErr->getMessage());
-            }
             return $restDb;
         }
     }
