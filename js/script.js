@@ -22,11 +22,8 @@ document.addEventListener('DOMContentLoaded', function() {
   const cursorRing = document.getElementById('cursorRing');
   if (!isMobileDevice && cursorDot && cursorRing) {
     let mouseX = 0, mouseY = 0, ringX = 0, ringY = 0;
-
-    document.addEventListener('mousemove', function(e) {
-      mouseX = e.clientX;
-      mouseY = e.clientY;
-    });
+    let cursorRafId = null;
+    let cursorMoving = false;
 
     function animateRing() {
       cursorDot.style.left = mouseX + 'px';
@@ -35,9 +32,25 @@ document.addEventListener('DOMContentLoaded', function() {
       ringY += (mouseY - ringY) * 0.1;
       cursorRing.style.left = ringX + 'px';
       cursorRing.style.top = ringY + 'px';
-      requestAnimationFrame(animateRing);
+      if (cursorMoving) {
+        cursorRafId = requestAnimationFrame(animateRing);
+      }
     }
-    animateRing();
+
+    let cursorIdleTimer = null;
+    document.addEventListener('mousemove', function(e) {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      if (!cursorMoving) {
+        cursorMoving = true;
+        cursorRafId = requestAnimationFrame(animateRing);
+      }
+      clearTimeout(cursorIdleTimer);
+      cursorIdleTimer = setTimeout(function() {
+        cursorMoving = false;
+        if (cursorRafId) cancelAnimationFrame(cursorRafId);
+      }, 100);
+    });
 
     const hoverTargets = 'a, button, [data-magnetic], .blog-card, .hamburger, .brand-glass-card, .p-card, .svc-item, .pricing-card';
     document.querySelectorAll(hoverTargets).forEach(function(el) {
@@ -168,12 +181,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // ── 7. MAGNETIC BUTTONS ──
   document.querySelectorAll('[data-magnetic]').forEach(function(el) {
-    el.style.transition = 'transform 0.1s ease-out';
+    el.style.willChange = 'transform';
+    el.style.transition = 'transform 0.15s cubic-bezier(0.16, 1, 0.3, 1)';
     el.addEventListener('mousemove', function(e) {
       const rect = el.getBoundingClientRect();
       const x = e.clientX - rect.left - rect.width / 2;
       const y = e.clientY - rect.top - rect.height / 2;
-      el.style.transform = `translate(${x * 0.25}px, ${y * 0.25}px)`;
+      el.style.transform = 'translate(' + (x * 0.25) + 'px, ' + (y * 0.25) + 'px)';
     });
     el.addEventListener('mouseleave', function() {
       el.style.transform = 'translate(0, 0)';
@@ -219,7 +233,7 @@ document.addEventListener('DOMContentLoaded', function() {
       card.className = 't-card';
       card.dataset.index = i;
       var avatarHtml = t.image
-        ? '<div class="t-avatar" style="overflow:hidden"><img src="' + t.image + '" alt="' + t.name + '" style="width:100%;height:100%;object-fit:cover"></div>'
+        ? '<div class="t-avatar" style="overflow:hidden"><img src="' + t.image + '" alt="' + t.name + '" width="46" height="46" style="width:100%;height:100%;object-fit:cover" loading="lazy"></div>'
         : '<div class="t-avatar" style="background:' + t.gradient + '">' + t.letter + '</div>';
       card.innerHTML = '<div class="t-quote-bg">\u275D</div><div class="t-card-top">' + avatarHtml + '<div class="t-meta"><div class="t-name">' + t.name + ' ' + t.flag + '</div><div class="t-role">' + t.role + '</div></div><div class="t-stars">' + stars + '</div></div><p class="t-quote">"' + t.quote + '"</p><div class="t-card-bottom"><span class="t-tag">' + t.tag + '</span><div class="t-platform-badge"><span class="t-platform-dot"></span><span class="t-platform-name">' + t.platform + '</span><span class="t-verified">\u2713 VERIFIED</span></div></div><div class="t-center-line"></div>';
       track.appendChild(card);
@@ -259,7 +273,7 @@ document.addEventListener('DOMContentLoaded', function() {
       isAnimating = true;
       current = (index + testimonials.length) % testimonials.length;
       updateCarousel();
-      setTimeout(function() { isAnimating = false; }, 650);
+      setTimeout(function() { isAnimating = false; }, 700);
       resetAuto();
     }
 
@@ -307,6 +321,17 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     updateCarousel();
+
+    // Stagger entrance: cards appear one after another
+    var entranceCards = track.querySelectorAll('.t-card');
+    entranceCards.forEach(function(c, i) {
+      c.style.transitionDelay = (i * 0.07) + 's';
+    });
+    // Force reflow, then clear delay so subsequent slides are instant
+    requestAnimationFrame(function() {
+      entranceCards.forEach(function(c) { c.style.transitionDelay = ''; });
+    });
+
     startAuto();
   })();
 
@@ -376,7 +401,8 @@ document.addEventListener('DOMContentLoaded', function() {
           var match = cat === 'all' || card.dataset.category === cat;
           card.style.opacity = '0';
           card.style.transform = 'scale(0.95)';
-          setTimeout(function() {
+          card.style.transition = 'opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1)';
+          requestAnimationFrame(function() {
             if (match) {
               card.style.display = '';
               card.style.visibility = '';
@@ -389,7 +415,7 @@ document.addEventListener('DOMContentLoaded', function() {
               card.style.visibility = 'hidden';
               card.style.pointerEvents = 'none';
             }
-          }, 150);
+          });
         });
       });
     });
@@ -534,32 +560,39 @@ document.addEventListener('DOMContentLoaded', function() {
     let isAnimating = false;
     let autoTimer   = null;
 
+    /* ── Live region for screen readers ── */
+    const liveRegion = document.createElement('div');
+    liveRegion.setAttribute('aria-live', 'polite');
+    liveRegion.setAttribute('aria-atomic', 'true');
+    liveRegion.className = 'sr-only';
+    liveRegion.style.cssText = 'position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;';
+    track.parentElement.appendChild(liveRegion);
+
     /* ── 1. Render cards ── */
     brands.forEach(function(b, i) {
       const card = document.createElement('div');
       card.className = 'brand-glass-card';
       card.dataset.index = i;
+      card.setAttribute('role', 'group');
+      card.setAttribute('aria-label', b.name + (b.industry ? ', ' + b.industry : ''));
+      card.setAttribute('tabindex', '0');
       card.style.setProperty('--bloom-color', b.bloom);
       card.innerHTML =
         '<div class="card-bloom"></div>' +
         '<div class="card-glass-surface">' +
           '<div class="card-top-row">' +
             '<div class="card-logo-wrap">' +
-              '<img src="' + b.logo + '" alt="' + b.name + '" class="card-logo-img">' +
+              '<img src="' + b.logo + '" alt="' + b.name + '" class="card-logo-img" width="52" height="52" loading="lazy">' +
             '</div>' +
             '<div class="card-verified-badge">' +
-              '<svg width="9" height="9" viewBox="0 0 10 10">' +
+              '<svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true">' +
                 '<path d="M5 0L6.12 3.38L9.51 3.38L6.88 5.49L7.94 8.88L5 6.88L2.06 8.88L3.12 5.49L0.49 3.38L3.88 3.38Z" fill="#CCFF00"/>' +
               '</svg>' +
-              '<span>CLIENT</span>' +
+              '<span>PARTNER</span>' +
             '</div>' +
           '</div>' +
           '<h3 class="card-brand-name">' + b.name + '</h3>' +
           '<span class="card-industry-tag">' + b.industry + '</span>' +
-          '<div class="card-active-indicator">' +
-            '<span class="card-active-dot"></span>' +
-            '<span class="card-active-text">CURRENT CLIENT</span>' +
-          '</div>' +
           '<div class="card-bottom-row">' +
             '<span class="card-country">' + b.country + '</span>' +
             '<span class="card-service-dot"></span>' +
@@ -570,49 +603,61 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     /* ── 2. Render dots ── */
-    brands.forEach(function(_, i) {
+    brands.forEach(function(b, i) {
       const dot = document.createElement('div');
       dot.className = 'brands-dot' + (i === 0 ? ' active' : '');
+      dot.setAttribute('role', 'button');
+      dot.setAttribute('tabindex', '0');
+      dot.setAttribute('aria-label', 'Go to ' + b.name);
       dot.addEventListener('click', function() { goTo(i); });
+      dot.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goTo(i); }
+      });
       dotsWrap.appendChild(dot);
     });
 
-    /* ── 3. Position class map ── */
-    function getPosClass(offset) {
-      if (offset === 0)  return 'b-pos-center';
-      if (offset === 1)  return 'b-pos-right1';
-      if (offset === 2)  return 'b-pos-right2';
-      if (offset === -1) return 'b-pos-left1';
-      if (offset === -2) return 'b-pos-left2';
-      return 'b-pos-hidden';
-    }
-
-    /* ── 4. Update carousel ── */
+    /* ── 3. Update carousel ── */
     function updateCarousel() {
       const cards = track.querySelectorAll('.brand-glass-card');
       const n = brands.length;
+      const spacing = 220;
 
       cards.forEach(function(card, i) {
-        card.classList.remove(
-          'b-pos-center', 'b-pos-left1', 'b-pos-left2',
-          'b-pos-right1', 'b-pos-right2', 'b-pos-hidden'
-        );
-
         let offset = i - current;
         if (offset > n / 2)  offset -= n;
         if (offset < -n / 2) offset += n;
 
-        var clamped = Math.max(-2, Math.min(2, offset));
-        var cls = Math.abs(offset) <= 2
-          ? getPosClass(clamped)
-          : 'b-pos-hidden';
+        const abs = Math.abs(offset);
+        const x = offset * spacing;
 
-        card.classList.add(cls);
+        var scale, blurAmt, opacityVal, zIdx;
+        if (abs === 0) {
+          scale = 1; blurAmt = 0; opacityVal = 1; zIdx = 5;
+        } else if (abs === 1) {
+          scale = 0.82; blurAmt = 3; opacityVal = 0.4; zIdx = 3;
+        } else if (abs === 2) {
+          scale = 0.70; blurAmt = 6; opacityVal = 0.15; zIdx = 1;
+        } else {
+          scale = 0.5; blurAmt = 15; opacityVal = 0; zIdx = 0;
+        }
+
+        card.style.transform = 'translate(calc(-50% + ' + x + 'px), -50%) scale(' + scale + ')';
+        card.style.filter = 'blur(' + blurAmt + 'px)';
+        card.style.opacity = opacityVal;
+        card.style.zIndex = zIdx;
+        card.style.pointerEvents = abs > 2 ? 'none' : '';
+
+        card.classList.toggle('b-pos-center', abs === 0);
       });
 
       dotsWrap.querySelectorAll('.brands-dot').forEach(function(d, i) {
         d.classList.toggle('active', i === current);
       });
+
+      // Announce current brand to screen readers
+      if (brands[current]) {
+        liveRegion.textContent = 'Showing: ' + brands[current].name + (brands[current].industry ? ', ' + brands[current].industry : '');
+      }
     }
 
     /* ── 5. Navigate ── */
@@ -621,7 +666,7 @@ document.addEventListener('DOMContentLoaded', function() {
       isAnimating = true;
       current = (index + brands.length) % brands.length;
       updateCarousel();
-      setTimeout(function() { isAnimating = false; }, 700);
+      setTimeout(function() { isAnimating = false; }, 750);
       resetAuto();
     }
 
@@ -631,12 +676,20 @@ document.addEventListener('DOMContentLoaded', function() {
     prevBtn.addEventListener('click', prev);
     nextBtn.addEventListener('click', next);
 
-    /* ── 6. Click side cards to focus ── */
+    /* ── 6. Click / Enter side cards to focus ── */
     track.addEventListener('click', function(e) {
       var card = e.target.closest('.brand-glass-card');
       if (!card) return;
       var idx = parseInt(card.dataset.index);
       if (idx !== current) goTo(idx);
+    });
+    track.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        var card = e.target.closest('.brand-glass-card');
+        if (!card) return;
+        var idx = parseInt(card.dataset.index);
+        if (idx !== current) { e.preventDefault(); goTo(idx); }
+      }
     });
 
     /* ── 7. Keyboard ── */
@@ -657,9 +710,9 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }, { passive: true });
 
-    /* ── 9. Auto-advance every 3 seconds ── */
+    /* ── 9. Auto-advance every 5 seconds ── */
     function startAuto() {
-      autoTimer = setInterval(next, 3000);
+      autoTimer = setInterval(next, 5000);
     }
     function resetAuto() {
       clearInterval(autoTimer);
@@ -675,6 +728,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     /* ── 11. Init ── */
     updateCarousel();
+
+    // Stagger entrance: cards appear one after another
+    var entranceCards = track.querySelectorAll('.brand-glass-card');
+    entranceCards.forEach(function(c, i) {
+      c.style.transitionDelay = (i * 0.06) + 's';
+    });
+    requestAnimationFrame(function() {
+      entranceCards.forEach(function(c) { c.style.transitionDelay = ''; });
+    });
+
     startAuto();
 
   })();
@@ -693,14 +756,16 @@ document.addEventListener('DOMContentLoaded', function() {
     var isAnimating = false;
     var autoTimer = null;
     var currentCycle = 'one-time';
+    var stepCache = 0;
 
     function getStep() {
       var visibleCards = Array.from(track.children).filter(function(c) { return c.style.display !== 'none'; });
-      return (visibleCards[0] ? visibleCards[0].offsetWidth : 0) + gap;
+      stepCache = (visibleCards[0] ? visibleCards[0].offsetWidth : 0) + gap;
+      return stepCache;
     }
 
     function applyPosition() {
-      track.style.transform = 'translateX(-' + (current * getStep()) + 'px)';
+      track.style.transform = 'translateX(-' + (current * (stepCache || getStep())) + 'px)';
     }
 
     function updateCarousel() {
@@ -871,13 +936,15 @@ document.addEventListener('DOMContentLoaded', function() {
     var current = 0;
     var isAnimating = false;
     var autoTimer = null;
+    var stepCache = 0;
 
     function getStep() {
-      return cards[0].offsetWidth + gap;
+      stepCache = cards[0].offsetWidth + gap;
+      return stepCache;
     }
 
     function applyPosition() {
-      track.style.transform = 'translateX(-' + (current * getStep()) + 'px)';
+      track.style.transform = 'translateX(-' + (current * (stepCache || getStep())) + 'px)';
     }
 
     for (var i = 0; i < slideCount; i++) {

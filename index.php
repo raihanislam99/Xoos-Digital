@@ -46,22 +46,22 @@ require __DIR__ . '/inc/head.php';
     <div class="hero-corner"></div>
 
     <!-- Spinning badge -->
-    <a href="#" onclick="event.preventDefault();openProjectForm()" class="hero-badge hero-badge-pos">
+    <button type="button" onclick="openProjectForm()" class="hero-badge hero-badge-pos" aria-label="Start a project">
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A"
-        stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <line x1="7" y1="17" x2="17" y2="7" />
         <polyline points="7 7 17 7 17 17" />
       </svg>
       <span>Get<br>Started</span>
-    </a>
+    </button>
 
     <!-- Hero content -->
-    <div class="hero-content hero-content-wrap">
+    <h1 class="hero-content hero-content-wrap">
       <a href="."><img src="images/logo.png" alt="Xoos Digital" class="hero-logo" loading="eager" width="240" height="73"></a>
-      <p class="hero-tagline"><span class="accent-sq">◼</span> e<span class="highlight">X</span>cellence | <span
+      <span class="hero-tagline"><span class="accent-sq">◼</span> e<span class="highlight">X</span>cellence | <span
           class="highlight">O</span>pportunity | <span class="highlight">O</span>utcome | <span
-          class="highlight">S</span>uccess <span class="accent-sq">◼</span></p>
-    </div>
+          class="highlight">S</span>uccess <span class="accent-sq">◼</span></span>
+    </h1>
 
     <!-- Ticker tape -->
     <div class="hero-ticker">
@@ -256,7 +256,7 @@ require __DIR__ . '/inc/head.php';
 <script>window.brandsData = <?= json_encode($brands) ?>;window.testimonialsData = <?= json_encode($testimonials) ?>;</script>
 
 <?php if (count($brands)): ?>
-  <section id="brands" class="brands-section overflow-safe" data-animate>
+  <section id="brands" class="brands-section overflow-safe" data-animate role="region" aria-label="Brands we work with">
 
     <!-- Atmospheric background gradient -->
     <div class="brands-atmos-bg"></div>
@@ -291,7 +291,7 @@ require __DIR__ . '/inc/head.php';
     <div class="brands-carousel-outer">
 
       <!-- Track: cards injected by JS -->
-      <div class="brands-carousel-track" id="brandsTrack"></div>
+      <div class="brands-carousel-track" id="brandsTrack" aria-live="polite"></div>
 
     </div>
 
@@ -572,7 +572,7 @@ $allCats = array_unique($allCats);
     </div>
 
     <div class="t-carousel-outer">
-      <div class="t-carousel-track" id="tCarouselTrack"></div>
+      <div class="t-carousel-track" id="tCarouselTrack" aria-live="polite"></div>
     </div>
 
     <div class="t-nav">

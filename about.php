@@ -185,7 +185,7 @@ require __DIR__ . '/inc/navbar.php';
 </section>
 
 <?php if (count($brands)): ?>
-<section id="brands" class="brands-section overflow-safe" data-animate>
+<section id="brands" class="brands-section overflow-safe" data-animate role="region" aria-label="Brands we work with">
   <div class="brands-atmos-bg"></div>
   <div class="brands-edge-top"></div>
   <div class="brands-edge-bottom"></div>
@@ -198,7 +198,7 @@ require __DIR__ . '/inc/navbar.php';
     <p class="brands-glass-sub">From startups to international businesses — brands that chose to grow with Xoos Digital.</p>
   </div>
   <div class="brands-carousel-outer">
-    <div class="brands-carousel-track" id="brandsTrack"></div>
+    <div class="brands-carousel-track" id="brandsTrack" aria-live="polite"></div>
   </div>
   <div class="brands-nav" id="brandsNav">
     <button class="brands-arrow" id="brandsPrev" aria-label="Previous brand">
@@ -224,7 +224,7 @@ require __DIR__ . '/inc/navbar.php';
     <p class="t-subtext">Real words, real results, real growth.</p>
   </div>
   <div class="t-carousel-outer">
-    <div class="t-carousel-track" id="tCarouselTrack"></div>
+    <div class="t-carousel-track" id="tCarouselTrack" aria-live="polite"></div>
   </div>
   <div class="t-nav">
     <button class="t-arrow t-arrow-prev" id="tPrev" aria-label="Previous">
