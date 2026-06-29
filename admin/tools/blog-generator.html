@@ -76,7 +76,7 @@ select.input{cursor:pointer}
         </div>
 
         <div class="field">
-            <label class="label">Featured Image Prompt</label>
+            <label class="label">Featured Image Prompt <span style="color:#6b7280;font-weight:400">(master style applied)</span></label>
             <textarea class="input image-prompt" id="imagePrompt" placeholder="AI image generation prompt for featured image..."></textarea>
         </div>
 
@@ -129,6 +129,7 @@ select.input{cursor:pointer}
 
 <script>
 var API_URL = '/api/proxy.php';
+var IMAGE_STYLE = 'Futuristic digital concept illustration representing [TOPIC]. Vibrant neon colors, glowing gradients, cinematic lighting. Central transparent holographic interface with glowing icons. Surrounding floating screens showing diverse scenes related to [TOPIC]. Smartphone on the side with live broadcast elements. Colorful flowing data lines and glowing particles connecting AI layers to multimedia elements. High-tech holographic overlays, futuristic UI design, clean composition, hyper-detailed.';
 
 function callAPI(systemMsg, userMsg) {
     return fetch(API_URL, {
@@ -158,7 +159,7 @@ function generateAll() {
     btn.innerHTML = '<span class="spinner"></span> Generating...';
 
     var systemMsg = 'You are an expert SEO blog writer for a digital design agency. Return ONLY valid JSON no markdown no explanation.';
-    var userMsg = 'Write a complete SEO blog post for the keyword "' + keyword + '" and return this exact JSON structure with these keys: title which is a 50-60 character SEO title, content which is an 800 word HTML blog post using h2 h3 p ul tags, image_prompt which is a detailed AI image generation prompt for the featured image, meta_title which is max 60 characters, meta_description which is max 160 characters, tags which is a comma separated string of 5 tags.';
+    var userMsg = 'Write a complete SEO blog post for the keyword "' + keyword + '" and return this exact JSON structure with these keys: title which is a 50-60 character SEO title, content which is an 800 word HTML blog post using h2 h3 p ul tags, image_prompt which is a detailed AI image generation prompt for the featured image, meta_title which is max 60 characters, meta_description which is max 160 characters, tags which is a comma separated string of 5 tags. For the image_prompt, use this consistent visual style: ' + IMAGE_STYLE;
 
     callAPI(systemMsg, userMsg).then(function(raw) {
         var cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();

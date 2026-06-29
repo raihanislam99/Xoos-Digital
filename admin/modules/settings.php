@@ -432,6 +432,11 @@ require_once __DIR__ . '/../inc/header.php';
                 </select>
             </div>
 
+            <div class="form-group">
+                <label>Image Generation Style <span class="text-muted">(applied to all featured image prompts)</span></label>
+                <textarea class="form-control" name="image_gen_style" rows="4" placeholder="e.g. Vibrant neon colors, glowing gradients, futuristic UI design, high-tech holographic overlays, cinematic lighting"><?= h(get_setting('image_gen_style', '')) ?></textarea>
+            </div>
+
             <div class="form-group" style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
                 <label>Chatbot Enabled</label>
                 <div style="display:flex;align-items:center;gap:0.75rem;margin-top:4px">
