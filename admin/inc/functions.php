@@ -599,7 +599,7 @@ function ai_best_model(string $provider): string {
         'openrouter'=> 'gpt-4o',
         'deepseek'  => 'deepseek-chat',
         'together'  => 'mistralai/Mixtral-8x22B-Instruct-v0.1',
-        'gemini'    => 'gemini-2.5-flash-lite',
+        'gemini'    => 'gemini-2.5-flash',
         'custom'    => 'gpt-4o',
         'claude'    => 'claude-sonnet-4-20250514',
     ];
