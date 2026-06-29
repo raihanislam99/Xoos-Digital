@@ -1,4 +1,5 @@
 <?php
+define('DEFAULT_IMAGE_STYLE', 'Futuristic digital concept illustration representing [TOPIC]. Vibrant neon colors, glowing gradients, cinematic lighting. Central transparent holographic interface with glowing icons. Surrounding floating screens showing diverse scenes related to [TOPIC]. Smartphone on the side with live broadcast elements. Colorful flowing data lines and glowing particles connecting AI layers to multimedia elements. High-tech holographic overlays, futuristic UI design, clean composition, hyper-detailed.');
 ob_start();
 register_shutdown_function(function () {
     while (ob_get_level() > 0) {

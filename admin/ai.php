@@ -27,10 +27,9 @@ if ($task === 'blog_ideas') {
 } elseif ($task === 'image_prompt' && is_array($context)) {
     $title = strip_tags($context['title'] ?? '');
     $excerpt = strip_tags($context['excerpt'] ?? '');
-    $imgStyle = get_setting('image_gen_style', '');
-    $styleNote = $imgStyle ? " Use this consistent visual style: {$imgStyle}" : "";
-    $systemPrompt = "You are an expert at writing AI image generation prompts. Write a detailed, vivid prompt for a professional blog featured image. Return ONLY the prompt text, no explanation." . $styleNote;
-    $userMessage = "Write an AI image generation prompt for a blog post titled: \"{$title}\" " . ($excerpt ? "Content summary: {$excerpt}" : "") . " The image should be professional, modern, suitable for a digital agency blog. Include: lighting, composition, color palette, mood. Return only the prompt text (2-3 sentences max)." . ($imgStyle ? " Apply this visual style: {$imgStyle}" : "");
+    $imgStyle = get_setting('image_gen_style', DEFAULT_IMAGE_STYLE);
+    $systemPrompt = "You are an expert at writing AI image generation prompts. Write a detailed, vivid prompt for a professional blog featured image. Return ONLY the prompt text, no explanation. Use this consistent visual style: {$imgStyle}";
+    $userMessage = "Write an AI image generation prompt for a blog post titled: \"{$title}\" " . ($excerpt ? "Content summary: {$excerpt}" : "") . " The image should be professional, modern, suitable for a digital agency blog. Include: lighting, composition, color palette, mood. Return only the prompt text (2-3 sentences max). Apply this visual style: {$imgStyle}";
 } elseif ($task === 'portfolio_case_study') {
     $details = is_array($context) ? $context : json_decode($context, true) ?? [];
     $name = strip_tags($details['project_name'] ?? '');
@@ -138,10 +137,8 @@ if (in_array($task, $noteTasks)) {
 
         // Append master image generation style to image-related prompts
         if (in_array($task, ['image_prompt', 'blog_generate_all'])) {
-            $imgStyle = get_setting('image_gen_style', '');
-            if ($imgStyle) {
-                $systemPrompt .= " For the image_prompt, use this consistent visual style: {$imgStyle}";
-            }
+            $imgStyle = get_setting('image_gen_style', DEFAULT_IMAGE_STYLE);
+            $systemPrompt .= " For the image_prompt, use this consistent visual style: {$imgStyle}";
         }
     }
 }

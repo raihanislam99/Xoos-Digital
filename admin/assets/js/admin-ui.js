@@ -30,7 +30,7 @@
       settingsTabs.forEach(function(t) { t.classList.remove('active'); });
       this.classList.add('active');
       document.querySelectorAll('.settings-section').forEach(function(s) { s.classList.remove('active'); });
-      var section = document.getElementById('settings-' + target);
+      var section = document.getElementById(target);
       if (section) section.classList.add('active');
       // Update URL hash
       history.replaceState(null, '', window.location.pathname + window.location.search + '#tab=' + target);

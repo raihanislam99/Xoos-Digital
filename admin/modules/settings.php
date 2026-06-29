@@ -142,8 +142,8 @@ require_once __DIR__ . '/../inc/header.php';
 </div>
 
 <style>
-.setting-pane { display:none }
-.setting-pane.active { display:block }
+.settings-section { display:none }
+.settings-section.active { display:block }
 .ai-spinner {
     display: inline-block;
     width: 14px;
@@ -434,7 +434,7 @@ require_once __DIR__ . '/../inc/header.php';
 
             <div class="form-group">
                 <label>Image Generation Style <span class="text-muted">(applied to all featured image prompts)</span></label>
-                <textarea class="form-control" name="image_gen_style" rows="4" placeholder="e.g. Vibrant neon colors, glowing gradients, futuristic UI design, high-tech holographic overlays, cinematic lighting"><?= h(get_setting('image_gen_style', '')) ?></textarea>
+                <textarea class="form-control" name="image_gen_style" rows="4"><?= h(get_setting('image_gen_style', '') ?: DEFAULT_IMAGE_STYLE) ?></textarea>
             </div>
 
             <div class="form-group" style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
@@ -570,55 +570,6 @@ require_once __DIR__ . '/../inc/header.php';
 </form>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form[action="settings.php"]');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            // Only handle the main save action, not the own key save
-            const actionInput = form.querySelector('input[name="action"]');
-            if (actionInput && actionInput.value === 'save_own_key') {
-                return; // Let the saveOwnApiKey handle it
-            }
-            e.preventDefault();
-            
-            const formData = new FormData(form);
-            const submitBtn = form.querySelector('button[type="submit"]');
-            const originalText = submitBtn.innerHTML;
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="ai-spinner"></span> Saving...';
-
-            fetch('settings.php', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(function(response) {
-                return response.json();
-            })
-            .then(function(data) {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalText;
-                if (data.ok) {
-                    showToast('Settings saved successfully!');
-                    // Update the page without full reload? For now, just a light refresh
-                    setTimeout(function() {
-                        window.location.href = 'settings.php?saved=1&tab=' + data.tab;
-                    }, 600);
-                } else {
-                    showToast(data.error || 'Error saving settings!', 'error');
-                }
-            })
-            .catch(function() {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalText;
-                showToast('Error saving settings!', 'error');
-            });
-        });
-    }
-});
-
 function testSmtp() {
     var btn = event.target;
     var result = document.getElementById('smtpTestResult');
