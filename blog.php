@@ -58,16 +58,16 @@ require __DIR__ . '/inc/navbar.php';
     <?php if ($bi === 0) continue; ?>
     <article class="blog-card" data-animate data-href="post/<?= h($post['slug']) ?>">
       <div class="blog-img-wrap">
-        <img src="<?= h(image_url($post['featured_image'] ?: 'images/placeholder.svg')) ?>" alt="<?= h($post['title']) ?>" width="900" height="506" loading="lazy">
-        <div class="blog-img-overlay blog-overlay-<?= ($bi % 3) + 1 ?>"></div>
+        <img src="<?= h(image_url($post['featured_image'] ?: 'images/placeholder.svg')) ?>" alt="<?= h($post['title']) ?>" loading="lazy">
+        <div class="blog-img-overlay blog-overlay-<?= $bi ?>"></div>
         <div class="blog-author-badge">
-          <img src="images/Icons/user1.svg" alt="" width="20" height="20" loading="lazy">
+          <img src="images/Icons/user1.svg" alt="" loading="lazy">
           XOOS DIGITAL
         </div>
       </div>
       <div class="blog-body">
         <div class="blog-date">
-          <img src="images/Icons/date1.svg" alt="" width="20" height="20" loading="lazy">
+          <img src="images/Icons/date1.svg" alt="" loading="lazy">
           <span><?= strtoupper(date('d M Y', strtotime($post['created_at']))) ?></span>
         </div>
         <h3><?= h($post['title']) ?></h3>

@@ -5120,6 +5120,11 @@ section:last-of-type {
   font-family: 'Inter', sans-serif;
 }
 
+.blog-grid-full .blog-img-wrap img {
+  aspect-ratio: 16/9;
+  object-fit: cover;
+}
+
 @media(max-width:768px) {
   .blog-grid-full {
     grid-template-columns: 1fr;
