@@ -11,7 +11,12 @@
  *    - Secret: your_random_secret
  *    - Events: Just the push event
  * 4. Push to GitHub — webhook auto-triggers, site updates
+ *
+ * NOTE: If behind Cloudflare, create a Page Rule for
+ *       xoosdigital.com/deploy.php → Security: Off
  */
+
+try {
 
 header('Content-Type: text/plain');
 
@@ -28,9 +33,10 @@ if (is_file($secretFile)) {
     }
 }
 
-if ($deploySecret) {
-    $payload = file_get_contents('php://input');
-    $sig = $_SERVER['HTTP_X_HUB_SIGNATURE_256'] ?? '';
+$payload = file_get_contents('php://input');
+$sig = $_SERVER['HTTP_X_HUB_SIGNATURE_256'] ?? '';
+
+if ($deploySecret && $payload) {
     $expected = 'sha256=' . hash_hmac('sha256', $payload, $deploySecret);
     if (!hash_equals($expected, $sig)) {
         http_response_code(401);
@@ -45,9 +51,9 @@ $zipUrl = 'https://github.com/raihanislam99/Xoos-Digital/archive/refs/heads/main
 
 echo "Downloading $zipUrl ...\n";
 
-$zipData = @file_get_contents($zipUrl);
+$zipData = file_get_contents($zipUrl, false, stream_context_create(['http' => ['timeout' => 60]]));
 if ($zipData === false) {
-    echo "Failed to download zip\n";
+    echo "Failed to download zip — allow_url_fopen may be disabled\n";
     exit;
 }
 
@@ -55,39 +61,39 @@ file_put_contents($tmpZip, $zipData);
 
 $zip = new ZipArchive;
 if ($zip->open($tmpZip) !== true) {
-    echo "Failed to open zip\n";
+    echo "Failed to open zip — ZipArchive may not be available\n";
     unlink($tmpZip);
     exit;
 }
 
-$extractTo = dirname(__FILE__) . '/_deploy_temp';
+$extractTo = __DIR__ . '/_deploy_temp';
 if (is_dir($extractTo)) {
-    array_map('unlink', glob("$extractTo/*.*"));
-} else {
-    mkdir($extractTo, 0755, true);
+    // Remove existing temp
+    $fi = new FilesystemIterator($extractTo, FilesystemIterator::SKIP_DOTS);
+    foreach ($fi as $f) { $f->isDir() ? rmdir_recursive($f->getPathname()) : unlink($f->getPathname()); }
+    rmdir($extractTo);
 }
+mkdir($extractTo, 0755, true);
 
 $zip->extractTo($extractTo);
 $zip->close();
 unlink($tmpZip);
 
-// Find extracted folder (Xoos-Digital-main-xxx or similar)
+// Find extracted folder
 $items = glob("$extractTo/*", GLOB_ONLYDIR);
 if (empty($items)) {
-    echo "Extract failed\n";
-    array_map('unlink', glob("$extractTo/*"));
-    rmdir($extractTo);
+    echo "Extract failed — no directory found\n";
+    rmdir_recursive($extractTo);
     exit;
 }
 
-$sourceDir = reset($items) . '/*';
-$targetDir = dirname(__FILE__);
+$source = reset($items);
+$targetDir = __DIR__;
 
 echo "Copying files to $targetDir ...\n";
 
-// Recursive copy, skipping .env and deploy.php
 $iterator = new RecursiveIteratorIterator(
-    new RecursiveDirectoryIterator(reset($items), RecursiveDirectoryIterator::SKIP_DOTS),
+    new RecursiveDirectoryIterator($source, RecursiveDirectoryIterator::SKIP_DOTS),
     RecursiveIteratorIterator::SELF_FIRST
 );
 
@@ -102,46 +108,21 @@ foreach ($iterator as $item) {
     }
 }
 
-// ── Install Composer dependencies ──
-echo "Installing Composer dependencies...\n";
-$composerBin = null;
-$possiblePaths = [
-    $targetDir . '/composer.phar',
-    $targetDir . '/../composer.phar',
-    'composer',
-    'composer.phar',
-];
-foreach ($possiblePaths as $p) {
-    if (file_exists($p) && !is_dir($p)) {
-        $composerBin = realpath($p);
-        break;
-    }
-    if (trim(shell_exec('which ' . escapeshellarg($p) . ' 2>/dev/null') ?? '')) {
-        $composerBin = $p;
-        break;
-    }
-}
-if ($composerBin) {
-    $oldDir = getcwd();
-    chdir($targetDir);
-    passthru(escapeshellarg($composerBin) . ' install --no-dev --no-interaction 2>&1');
-    chdir($oldDir);
-    echo "Composer install complete\n";
-} else {
-    echo "WARNING: Composer not found. Install manually via SSH:\n";
-    echo "  cd " . $targetDir . " && composer install --no-dev\n";
-}
-
-// Cleanup temp
-array_map('unlink', glob("$extractTo/*.*"));
-$iterator2 = new RecursiveIteratorIterator(
-    new RecursiveDirectoryIterator(reset($items), RecursiveDirectoryIterator::SKIP_DOTS),
-    RecursiveIteratorIterator::CHILD_FIRST
-);
-foreach ($iterator2 as $item) {
-    $item->isDir() ? rmdir($item) : unlink($item);
-}
-rmdir(reset($items));
-rmdir($extractTo);
-
 echo "Deploy complete\n";
+
+// ── Cleanup ──
+function rmdir_recursive($dir) {
+    $fi = new FilesystemIterator($dir, FilesystemIterator::SKIP_DOTS);
+    foreach ($fi as $f) {
+        $f->isDir() ? rmdir_recursive($f->getPathname()) : unlink($f->getPathname());
+    }
+    rmdir($dir);
+}
+
+rmdir_recursive($extractTo);
+
+} catch (Throwable $e) {
+    http_response_code(500);
+    echo "Error: " . $e->getMessage() . "\n";
+    echo "Line: " . $e->getLine() . "\n";
+}
